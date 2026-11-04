@@ -7,7 +7,8 @@ Milestones describe **verified outcomes**, not completed code alone.
 - [x] Choose project name: Ludava.
 - [x] Create `Soneka96/Ludava` and initialize `main` with documentation only.
 - [x] Define MVP, architectural principles and evidence-based compatibility rules.
-- [ ] Decide licensing and repository visibility before accepting contributions or releasing binaries.
+- [x] State proprietary, all-rights-reserved ownership and prohibit external contributions.
+- [ ] Decide whether to change the currently public repository visibility to private before implementation or distribution.
 - [ ] Review RatchetHax PR #1's verified real-game research.
 
 **Exit:** evidence-backed requirements for a narrow Dart proof of concept.
