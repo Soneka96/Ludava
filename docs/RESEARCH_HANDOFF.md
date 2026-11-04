@@ -6,7 +6,7 @@
 
 The owner reports testing the bolt location in RC2 inside Collection `BCUS98282`, with the HUD confirming a bolt change. The reported field is guest offset `0x01329E80`, unsigned 32-bit, big-endian; the tested session used guest memory base `0x300000000`, yielding host address `0x301329E80`. The active executable was reported as `RC2.ppu.self`, with internal app ID `NPUA80644`. Two snapshots tracked ordinary gameplay movement from 244,012 to 244,016; a separate owner-authorized write experiment reportedly changed 243,866 to 244,866.
 
-These are historical owner/research observations. The implementation in this repository has not been run against RPCS3, does not identify the active build, and does not treat those observations as compatibility verification. The base may vary by session and no exact executable fingerprint or RPCS3 version is recorded here. RatchetHax PR #1 remains draft with validation pending, so its code and findings are not substituted for Ludava runtime evidence.
+These are historical owner/research observations. The implementation in this repository has not been run against RPCS3, does not identify the active build, and does not treat those observations as compatibility verification. The base may vary by session and no exact executable fingerprint or RPCS3 version is recorded here. The CLI rejects write requests until active-build verification exists. RatchetHax PR #1 remains draft with validation pending, so its code and findings are not substituted for Ludava runtime evidence.
 
 ## Sources
 
@@ -27,19 +27,19 @@ These are historical owner/research observations. The implementation in this rep
 
 1. Review PR #1 findings and real machine logs, not just the PR's existence or merge status.
 2. Preserve citations to original references and observed experiments.
-3. Reproduce critical facts using a new Dart read-only implementation.
+3. Reproduce critical facts using Ludava's profile-driven Dart reader.
 4. Do not copy or mechanically translate RatchetHax's GPLv3 source or curated tables without a separate license and provenance assessment.
-5. Permit guarded writes only in a later, independently validated change.
+5. Keep writes disabled until Ludava can identify the active build and validate the selected field independently.
 
 ## Checklist
 
 - [x] Historical owner observations from the implementation brief are recorded above.
 - [ ] RatchetHax PR #1 provides reproducible live diagnostic findings; its validation is still pending.
 - [ ] Exact build and RPCS3 version are recorded.
-- [x] The Dart adapter and service distinguish complete reads from failures and partial reads.
+- [x] The Windows data source, repository, and read use case distinguish complete reads from failures and partial reads.
 - [x] The RC2 mapping is labelled experimental and separated from verified compatibility.
 - [x] Licensing and source provenance were reviewed; RatchetHax implementation code was not reused.
-- [x] The narrow Dart read-only implementation scope was authorized and implemented.
+- [x] The generic profile-driven read CLI and guarded write-use-case foundation were implemented; write requests are rejected before opening a process until active-build verification exists.
 - [ ] Two distinct real in-game values have been independently verified through Ludava.
 
 **Next action:** record the exact active build and RPCS3 version, then perform and document two read-only Ludava observations that match different in-game bolt counts. Do not mark Gate A complete before that evidence exists.

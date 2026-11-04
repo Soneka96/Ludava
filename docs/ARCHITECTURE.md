@@ -40,13 +40,14 @@ Dependencies point inward:
 presentation → application/domain
 application  → domain
 data         → domain
-target bin/ludava.dart → presentation + concrete data wiring
+target bin/ludava.dart → bin/ludava_cli.dart
+target bin/ludava_cli.dart → presentation + concrete data wiring
 features     → shared/constants
 ```
 
 Use cases express one domain operation or policy. Application workflows are added only when a larger task must coordinate multiple use cases or manage an application-level sequence. Domain code must not import CLI, Flutter, Windows FFI, or data-layer code; it may use `shared/constants`. Shared constants must not import feature code. Repository contracts belong in `domain/repositories`; their implementations belong in `data/repositories`. Data sources perform I/O and return data-layer results. Repositories translate those results into the domain contract. Keep a repository only when it provides a real boundary, translation, coordination, alternate implementation, or useful test seam; do not add pass-through wrappers just to fill the folder tree.
 
-The executable entry point is the composition root. In the target layout, `bin/ludava.dart` constructs concrete data implementations and passes them into presentation/application code. Domain code must not perform that wiring.
+The executable entry point `bin/ludava.dart` delegates to `bin/ludava_cli.dart`, which is the composition root and may construct concrete data implementations. Domain code must not perform that wiring.
 
 ## Files, classes, and methods
 
@@ -101,4 +102,4 @@ Compatibility is recorded per exact game/build and capability. Keep experimental
 
 ## Current implementation
 
-The current prototype is still in the earlier flat `lib/src` layout, with `bin/rc2_bolts.dart` as its entry point and a bolt-specific read path. It only opens process memory for reading; it has no dynamic field catalog or write implementation. The feature layout and `bin/ludava.dart` entry point above are the direction for the approved refactor. No game/build is verified against a live RPCS3 session yet.
+The implementation now uses `lib/features/game_memory` with generic read/write use cases, a profile catalog, and a Windows process-memory data source. The RC2 profile is still experimental and read-only. The writer use case checks the active-build flag, profile/field status, explicit confirmation, field bounds, complete native transfer, and matching read-back. The CLI deliberately does not set the active-build verification flag, so it rejects all write requests before opening a process. No game/build is verified against a live RPCS3 session yet.

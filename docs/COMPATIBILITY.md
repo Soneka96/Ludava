@@ -1,16 +1,18 @@
 # Compatibility and verification matrix
 
-**Ludava currently supports no verified game builds or memory modifications.** The RC2 row has an experimental read-only diagnostic; it is not a compatibility claim.
+**Ludava currently supports no verified game builds or memory modifications.** The RC2 row is available as an experimental profile for the generic reader; it is not a compatibility claim.
 
 | Game/edition | Identifier | Environment | Capability | Status |
 | --- | --- | --- | --- | --- |
-| Ratchet & Clank 2 — PS3 Collection | `BCUS98282` | RPCS3 / Windows 11 | Experimental read-only bolt diagnostic | Implemented; build and runtime unverified; unsupported as a verified profile |
-| Ratchet & Clank 2 — PS3 Collection | `BCUS98282` | RPCS3 / Windows 11 | Write bolts | Unverified; disabled |
+| Ratchet & Clank 2 — PS3 Collection | `BCUS98282` | RPCS3 / Windows 11 | Experimental read of the `bolts` field | Implemented in the generic reader; live build/runtime unverified; unsupported as a verified profile |
+| Ratchet & Clank 2 — PS3 Collection | `BCUS98282` | RPCS3 / Windows 11 | Write `bolts` | Unverified; CLI rejects writes before opening a process |
 | Ratchet & Clank 2 — standalone PS3 | `NPUA80644` | RPCS3 / Windows 11 | Read/write bolts | Not investigated for Ludava |
 
 A standalone profile's memory mapping must not be assumed to apply to the Collection.
 
-The diagnostic requires an explicit process ID and session memory base. Neither identifies the active game or executable build. The profile uses the research candidate offset `0x01329E80`, a four-byte unsigned big-endian value; the session base is not fixed in Ludava. No other RC2 fields or builds are included.
+The CLI requires an explicit process ID, profile ID, field ID, and session memory base. Those inputs do not identify the active game or executable build. The profile uses the research candidate offset `0x01329E80`, a four-byte unsigned big-endian value; the session base is not fixed in Ludava. No other RC2 fields or builds are included.
+
+The write use case requires verified profile/field status, an independently verified active build, explicit confirmation, an allowed value range, a complete write, and matching read-back. Active-build identification is not implemented; write requests remain disabled even if a profile is selected.
 
 ## Evidence vocabulary
 

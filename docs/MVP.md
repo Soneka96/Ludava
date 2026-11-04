@@ -1,47 +1,50 @@
 # MVP — one verified feature, one verified build
 
-**Current status:** read-only Dart foundation and experimental RC2 diagnostic implemented; Gate A verification remains incomplete.
+**Current status:** the profile-driven read foundation and generic CLI are implemented. Gate A live verification is incomplete. The guarded write use case is implemented, but active-build identification is not, so the CLI rejects every write request and no profile is writable.
 
 ## Objective
 
-Read and, after separate safety validation, modify the bolt count for one *exactly identified* game build running in RPCS3 on Windows 11.
-
-Initial investigation target: Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`). A research-backed experimental bolt offset is recorded, but Ludava has not verified it against a supported build.
+Read and, after separate safety validation, edit a selected value for one exactly identified game build running in RPCS3 on Windows 11. The initial target is Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`).
 
 ## First user-visible capability
 
-- Detect and establish an exact supported game/build; otherwise clearly indicate unknown/unsupported.
-- Show the current bolt count after a complete, verified read.
-- Distinguish a real value of zero from access denied, failed read, partial read, disconnection or unsupported build.
-- Once a write has been independently verified for that exact build, permit a single explicit user-entered value in a documented safe range.
-- Report write success only after complete write and read-back checks; release-level compatibility also requires in-game confirmation.
-- Disable write controls wherever any precondition is unverified.
+- Select a supported game profile and a named field such as `bolts`.
+- Show a value only after a complete, correctly decoded read.
+- Distinguish a real zero from access denied, failed/partial reads, disconnection, invalid mapping, and unsupported fields.
+- Reject unknown or unverified builds and fields.
+- Allow editing only after both the active build and field are verified, within a documented range, after explicit confirmation, and only report success after complete write and matching read-back.
+- Keep edit requests disabled while any precondition is missing.
+
+The current CLI supports generic reads. It parses a write request but rejects it before opening the process because it cannot yet identify the active game build. This limitation is intentional.
 
 ## Out of scope
 
-Other games/builds, health, inventory, weapons, unlock states, teleportation, repeated/frozen writes, complex dashboards, plugins, cloud services and multi-platform backends.
+Other capabilities such as health, inventory, weapons, unlock states, teleportation, repeated/frozen writes, complex dashboards, plugins, cloud services, and multi-platform backends.
 
 ## Gates
 
-### Gate A — Dart read-only proof of concept
+### Gate A — read one verified field
 
-The adapter, endian decoder, experimental RC2 profile, bolt service, and explicit-argument CLI exist. These implementation milestones do not satisfy the live-game verification requirement below.
+- Generic profile/field definitions, a read use case, checked Windows memory adapter, and profile-selecting CLI exist.
+- Native reads preserve 64-bit addresses and require native success plus the exact requested byte count.
+- Typed values decode with explicit endianness; fake-based tests distinguish zero from failure.
+- Identify the exact active game/build and RPCS3 version.
+- Match at least **two different** normal in-game values against independent Ludava reads.
 
-- Native process memory calls preserve full 64-bit addresses and check return codes and bytes read.
-- Typed, correctly endian-decoded values have deterministic fake-based tests.
-- The application layer is testable without RPCS3 or Windows memory APIs.
-- At least **two different** normal in-game bolt counts match two independently collected successful reads on the exact identified build and recorded RPCS3 version.
+Code and mocked tests do not satisfy the live verification requirement.
 
-### Gate B — guarded write
+### Gate B — one guarded edit
 
-- Unknown builds and unverified addresses are rejected.
-- Input range, failed/partial write and read-back mismatch tests pass.
-- A deliberate write against a backed-up save is verified in-game and documented, with limitations and recovery guidance.
+- Identify the active build from process/game evidence; a PID and selected profile alone are not proof.
+- Verify the exact profile and field for writing, set an allowed range, and reject all other fields.
+- Require explicit user confirmation, a complete native write, and a matching read-back.
+- Verify one deliberate edit in-game with a backed-up save and document recovery steps.
+- Enable the CLI write path only after active-build verification is implemented.
 
 ### Gate C — minimal Flutter desktop interface
 
-- Shows process/build status, bolt value and meaningful errors.
-- Allows a single deliberate edit only when the verified build is writable.
-- Windows build and real-game scenario are tested.
+- Show process/build status, selected field, value, and meaningful errors.
+- Enable editing only when the verified build and field are writable.
+- Test the Windows build and the real-game scenario.
 
 The MVP is complete only after all three gates pass. Partial milestones may be documented without claiming a usable complete release.
