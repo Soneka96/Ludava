@@ -9,16 +9,18 @@ Milestones describe **verified outcomes**, not completed code alone.
 - [x] Define MVP, architectural principles and evidence-based compatibility rules.
 - [x] State proprietary, all-rights-reserved ownership and prohibit external contributions.
 - [ ] Decide whether to change the currently public repository visibility to private before implementation or distribution.
-- [ ] Review RatchetHax PR #1's verified real-game research.
+- [x] Review RatchetHax PR #1 and record its current validation limits.
 
 **Exit:** evidence-backed requirements for a narrow Dart proof of concept.
 
 ## M1 — Read-only native proof of concept
 
-- [ ] Implement a narrowly scoped Dart Windows native-memory adapter using checked process reads.
-- [ ] Test address widths, byte counts, decoding, error handling and interfaces with fake dependencies.
+- [x] Implement a narrowly scoped Dart Windows native-memory adapter using checked process reads.
+- [x] Test address widths, byte counts, decoding, error handling and interfaces with fake dependencies.
 - [ ] Identify the exact active build, rejecting unknown/unsupported builds.
 - [ ] Match two distinct legitimate in-game bolt counts with successful reads.
+
+The experimental diagnostic is not evidence that Gate A has passed. Its RC2 profile is untrusted, and the active build is not automatically identified.
 
 **Exit:** repeatable read-only evidence for one build, without memory writes.
 

@@ -1,12 +1,12 @@
 # MVP — one verified feature, one verified build
 
-**Current status:** planned, not implemented.
+**Current status:** read-only Dart foundation and experimental RC2 diagnostic implemented; Gate A verification remains incomplete.
 
 ## Objective
 
 Read and, after separate safety validation, modify the bolt count for one *exactly identified* game build running in RPCS3 on Windows 11.
 
-Initial investigation target: Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`). This does **not** imply that its correct memory addresses are known.
+Initial investigation target: Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`). A research-backed experimental bolt offset is recorded, but Ludava has not verified it against a supported build.
 
 ## First user-visible capability
 
@@ -24,6 +24,8 @@ Other games/builds, health, inventory, weapons, unlock states, teleportation, re
 ## Gates
 
 ### Gate A — Dart read-only proof of concept
+
+The adapter, endian decoder, experimental RC2 profile, bolt service, and explicit-argument CLI exist. These implementation milestones do not satisfy the live-game verification requirement below.
 
 - Native process memory calls preserve full 64-bit addresses and check return codes and bytes read.
 - Typed, correctly endian-decoded values have deterministic fake-based tests.

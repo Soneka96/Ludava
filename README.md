@@ -2,7 +2,7 @@
 
 > An independent, lightweight game companion for inspecting and safely modifying **verified** game-state values.
 
-**Status: planning / documentation only (November 2026).** Ludava has no application code, verified memory addresses, supported game builds, or usable modifications yet.
+**Status: read-only foundation implemented; game compatibility unverified (November 2026).** Ludava has a Dart Windows process-memory reader and an experimental RC2 bolt diagnostic. No game build is currently supported or verified, and memory writes are not implemented.
 
 ## Vision
 
@@ -18,7 +18,27 @@ Our first feature is **reading the current bolt count**. A guarded write operati
 - **Flutter for Windows:** a minimal interface **after** the read-only proof of concept is reliable.
 - **Native APIs:** checked process access with correct 64-bit address handling, explicit byte counts, endianness, and meaningful errors.
 
-These are planned technologies, not an implemented or tested solution. Windows-specific memory access remains Windows-specific even if Flutter can target multiple platforms.
+The Dart read-only foundation and command-line diagnostic are implemented and tested. No Flutter interface is included. Windows-specific memory access remains Windows-specific even if Flutter can target multiple platforms.
+
+## Experimental RC2 diagnostic
+
+On 64-bit Windows, the diagnostic requires an explicit RPCS3 process ID and the memory base for that session:
+
+```powershell
+dart run bin/rc2_bolts.dart --pid RPCS3_PID --memory-base 0xSESSION_BASE
+```
+
+Replace both placeholders with values for the intended session. The base must be supplied in hexadecimal; Ludava does not assume a universal base or verify that the selected process is running the expected game/build. Results are labelled experimental. This command performs reads only.
+
+Run the automated checks with:
+
+```powershell
+dart analyze
+dart test
+dart format --output=none --set-exit-if-changed lib test bin
+```
+
+Gate A remains incomplete until the exact build and RPCS3 version are recorded and two different in-game bolt counts match independent Ludava reads.
 
 Technical references: [Dart native interop](https://dart.dev/interop/c-interop), [Flutter Windows development](https://docs.flutter.dev/platform-integration/windows/setup).
 
@@ -31,9 +51,9 @@ Technical references: [Dart native interop](https://dart.dev/interop/c-interop),
 5. **Evidence-based compatibility.** Successful connection or plausible values do not prove support.
 6. **Focused PRs.** One implementation task per branch, with explicit acceptance criteria and honest test results.
 
-## Initial repository status
+## Repository status
 
-This `main` branch contains **documentation only**. We will review [RatchetHax PR #1](https://github.com/Soneka96/RatchetHax/pull/1) for reproducible technical findings **before** opening the first implementation PR.
+The repository began as documentation only. The first read-only Dart foundation is now implemented; the experimental diagnostic remains unverified against a live RPCS3 session. [RatchetHax PR #1](https://github.com/Soneka96/RatchetHax/pull/1) was reviewed, but its live validation is still pending.
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 

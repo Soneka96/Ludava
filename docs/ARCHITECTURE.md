@@ -1,15 +1,17 @@
 # Architecture and testing strategy
 
-**This is a proposed boundary design, not an implemented class hierarchy.** Build only what the next milestone needs.
+**The first read-only implementation now follows these boundaries.** It remains a small set of files, not a multi-package class hierarchy.
 
 ## Responsibilities
 
 | Component | Responsibility | Excludes |
 | --- | --- | --- |
 | Presentation (Flutter later) | Show connection/build status, bolts and errors; collect explicit user actions | Calling Windows memory APIs or determining offsets |
-| Bolt service | Coordinate read/validation/write and return explicit results | Native platform calls, guessed address tables |
-| Build compatibility/profile | Establish exact build identity; store independently verified capabilities and mappings | Treating user selection or process name as sufficient evidence |
-| Process-memory adapter | Open/close handles; checked byte reads/writes; preserve native address width | Understanding bolts, weapons or planets |
+| Bolt service | Resolve and decode the experimental bolt read; return explicit results | Native platform calls, treating a selected PID as game identity, writes |
+| Build compatibility/profile | Describe the RC2 experimental field and its unverified status | Claiming that a user-selected process or profile proves the active build |
+| Process-memory adapter | Open/close handles; checked read-only byte transfers; preserve native address width | Understanding bolts, weapons or planets; writing memory |
+
+The RC2 profile cannot be marked trusted or writable in this implementation. Gate A still requires exact build identification and two different live in-game bolt readings.
 
 Keep interfaces small and dependencies injectable where they materially improve testability. Use classes for stateful/lifecycle responsibilities, plain functions and data types for simple logic. Do not add a plugin architecture or an unnecessary inheritance hierarchy.
 
@@ -33,4 +35,4 @@ Do not treat passing mocks or plausible readings as game compatibility.
 
 ## Technology direction
 
-Dart core with Windows native interop via [dart:ffi](https://dart.dev/interop/c-interop), then a minimal [Flutter Windows](https://docs.flutter.dev/platform-integration/windows/setup) interface after the read-only core is verified. This is not yet implemented or proven against RPCS3.
+Dart core with Windows native interop via [dart:ffi](https://dart.dev/interop/c-interop) is implemented for read-only diagnostics. A minimal [Flutter Windows](https://docs.flutter.dev/platform-integration/windows/setup) interface remains future work; the core has not been validated against RPCS3.
