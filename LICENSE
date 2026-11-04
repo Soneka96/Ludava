@@ -1,22 +1,34 @@
-LUDAVA — PROPRIETARY PROJECT
+LUDAVA — SOURCE-AVAILABLE, PROPRIETARY
 ALL RIGHTS RESERVED
 
 Copyright (c) 2026 Soneka96. All rights reserved.
 
-Ludava is a personal software project. It is not open-source software,
-and no open-source license is granted.
+Ludava is a personal project. Its source is published to support
+reading, study, and learning. It is NOT open-source software.
 
-Except where permitted by applicable law, GitHub's Terms of Service,
-or a separate written authorization from the relevant copyright holder,
-no permission is granted to copy, modify, redistribute, sublicense,
-publish derivative works of, or commercially exploit the original
-Ludava project materials.
+You are welcome to view and study the publicly available source code
+and learn the ideas, techniques, and general approaches it illustrates.
+You may create your own independently written implementations of
+those ideas, subject to applicable law and third-party rights.
 
-The project does not accept external code contributions, pull requests,
-or unsolicited code submissions. Publication of the source repository
-does not constitute permission to reuse the materials outside the
-rights expressly provided above.
+Except as permitted by applicable law, GitHub's Terms of Service,
+or a separate written license from the relevant rights holder,
+NO permission is granted to copy or incorporate protected portions
+of Ludava source code into another project; modify, redistribute,
+sublicense, sell, or publish derivative works based on that code;
+or otherwise commercially exploit the project's protected materials.
 
-This notice applies only to material in which the indicated copyright
-holder owns the relevant rights. Third-party materials, if any, remain
-subject to their respective copyright notices and licenses.
+To request permission to reuse or redistribute Ludava code, contact
+the repository owner through an appropriate channel. Commercial
+licensing may be available by separate written agreement, with terms
+and fees agreed case by case. Payment alone does not confer a license;
+permission must be expressly granted.
+
+External code contributions, pull requests, and unsolicited patches
+are not accepted.
+
+This notice applies only to original material for which the indicated
+copyright holder owns the necessary rights. Third-party code,
+documentation, data, and other materials remain governed by their
+own notices and licenses. No terms here override GitHub's Terms
+of Service or rights provided by applicable law.
