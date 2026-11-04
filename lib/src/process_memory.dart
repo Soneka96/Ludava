@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 
+import 'memory_reader.dart';
+
 const _processVmRead = 0x0010;
 const _maxNativeAddress = 0x7fffffffffffffff;
 
@@ -68,33 +70,6 @@ class WindowsMemoryApi {
   final _GetLastErrorDart getLastError;
 }
 
-enum MemoryReadStatus {
-  complete,
-  nativeFailure,
-  partial,
-  invalidAddress,
-  invalidRequest,
-  invalidByteCount,
-}
-
-class MemoryReadResult {
-  const MemoryReadResult({
-    required this.status,
-    required this.bytes,
-    required this.bytesRead,
-    required this.requestedBytes,
-    this.errorCode,
-  });
-
-  final MemoryReadStatus status;
-  final Uint8List bytes;
-  final int bytesRead;
-  final int requestedBytes;
-  final int? errorCode;
-
-  bool get isComplete => status == MemoryReadStatus.complete;
-}
-
 class ProcessMemoryOpenException implements Exception {
   const ProcessMemoryOpenException(this.processId, this.errorCode);
 
@@ -116,7 +91,7 @@ class ProcessMemoryException implements Exception {
   String toString() => '$operation failed (Windows error $errorCode).';
 }
 
-class WindowsProcessMemory {
+class WindowsProcessMemory implements MemoryReader {
   WindowsProcessMemory._(this._handle, this._api);
 
   static WindowsProcessMemory open(

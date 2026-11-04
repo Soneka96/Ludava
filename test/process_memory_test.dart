@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:ludava/src/memory_reader.dart';
 import 'package:ludava/src/process_memory.dart';
 import 'package:test/test.dart';
 
@@ -72,6 +73,7 @@ void main() {
       expect(fake.requestedAccess, 0x0010);
       expect(fake.requestedProcessId, 42);
       expect(memory, isA<WindowsProcessMemory>());
+      expect(memory, isA<MemoryReader>());
       memory.close();
     });
 
