@@ -37,7 +37,7 @@ This `main` branch contains **documentation only**. We will review [RatchetHax P
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 
-**License not yet chosen.** This repository is currently public, but no software license has been granted by this repository. A public repository without a LICENSE file is not automatically open source. The licensing decision is required before accepting code contributions or distributing an application.
+**Ownership and license:** Ludava is a personal, independently developed project maintained by Soneka96. Its original materials are **proprietary; all rights reserved**. No external code contributions are accepted. The repository is currently public for viewing, not open source; any rights granted by GitHub's Terms of Service or applicable law still apply. See [LICENSE](LICENSE) and [Development policy](docs/DEVELOPMENT.md). Third-party materials, if any, retain their own licenses.
 
 ## Documentation
 
@@ -46,4 +46,4 @@ Ludava is intended as a **new, independently implemented project**, not a rename
 - [Architecture and testing](docs/ARCHITECTURE.md)
 - [Compatibility evidence matrix](docs/COMPATIBILITY.md)
 - [RatchetHax research handoff](docs/RESEARCH_HANDOFF.md)
-- [Contribution policy](CONTRIBUTING.md)
+- [Development and no-contributions policy](docs/DEVELOPMENT.md)
