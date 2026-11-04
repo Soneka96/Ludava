@@ -18,8 +18,9 @@ void main() {
     });
   });
 
-  group('Method succeeded behaves correctly', () {
-    test('Method succeeded returns true when status and value indicate success',
+  group('Property succeeded behaves correctly', () {
+    test(
+        'Property succeeded returns true when status and value indicate success',
         () {
       const result = GameReadResult(
         status: GameReadStatus.success,
@@ -30,7 +31,7 @@ void main() {
       expect(result.succeeded, isTrue);
     });
 
-    test('Method succeeded returns false when status is not success', () {
+    test('Property succeeded returns false when status is not success', () {
       const result = GameReadResult(
         status: GameReadStatus.readFailed,
         fieldId: 'bolts',
@@ -40,7 +41,7 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('Method succeeded returns false when successful status has no value',
+    test('Property succeeded returns false when successful status has no value',
         () {
       const result = GameReadResult(status: GameReadStatus.success);
 
@@ -48,7 +49,7 @@ void main() {
     });
 
     test(
-        'Method succeeded returns false when successful result has no field id',
+        'Property succeeded returns false when successful result has no field id',
         () {
       const result = GameReadResult(
         status: GameReadStatus.success,
@@ -59,7 +60,7 @@ void main() {
     });
 
     test(
-        'Method succeeded returns false when successful result has an empty field id',
+        'Property succeeded returns false when successful result has an empty field id',
         () {
       const result = GameReadResult(
         status: GameReadStatus.success,

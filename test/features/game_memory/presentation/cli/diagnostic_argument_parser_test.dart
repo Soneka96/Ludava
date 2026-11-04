@@ -1,0 +1,201 @@
+import 'package:ludava/features/game_memory/presentation/cli/diagnostic_argument_parser.dart';
+import 'package:ludava/shared/constants/enums.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('Method parse() behaves correctly', () {
+    test('Method parse() returns read arguments when all options are valid',
+        () {
+      final arguments = DiagnosticArgumentParser.parse([
+        'read',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+      ]);
+
+      expect(arguments.action, GameMemoryAction.read);
+      expect(arguments.gameId, 'rc2-collection');
+      expect(arguments.fieldId, 'bolts');
+      expect(arguments.processId, 42);
+      expect(arguments.memoryBase, 0x300000000);
+      expect(arguments.value, isNull);
+      expect(arguments.confirmed, isFalse);
+    });
+
+    test('Method parse() returns explicitly confirmed write arguments', () {
+      final arguments = DiagnosticArgumentParser.parse([
+        'write',
+        '--memory-base',
+        '0x300000000',
+        '--pid',
+        '42',
+        '--field',
+        'bolts',
+        '--game',
+        'rc2-collection',
+        '--value',
+        '55',
+        '--confirm-write',
+      ]);
+
+      expect(arguments.action, GameMemoryAction.write);
+      expect(arguments.value, 55);
+      expect(arguments.confirmed, isTrue);
+    });
+
+    test('Method parse() rejects missing, duplicate, and unknown options', () {
+      for (final arguments in <List<String>>[
+        [],
+        ['read'],
+        [
+          'read',
+          '--game',
+          'rc2-collection',
+          '--game',
+          'other',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x1',
+        ],
+        [
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x1',
+          '--other',
+          '1',
+        ],
+      ]) {
+        expect(
+          () => DiagnosticArgumentParser.parse(arguments),
+          throwsFormatException,
+          reason: '$arguments should be rejected',
+        );
+      }
+    });
+
+    test('Method parse() rejects malformed pid base and values', () {
+      final common = [
+        'read',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+      ];
+      for (final options in [
+        ['--pid', '0', '--memory-base', '0x1'],
+        ['--pid', '4294967296', '--memory-base', '0x1'],
+        ['--pid', '42', '--memory-base', '300000000'],
+        ['--pid', '42', '--memory-base', '0x8000000000000000'],
+      ]) {
+        expect(
+          () => DiagnosticArgumentParser.parse([...common, ...options]),
+          throwsFormatException,
+        );
+      }
+      expect(
+        () => DiagnosticArgumentParser.parse([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x1',
+          '--value',
+          'not-an-integer',
+          '--confirm-write',
+        ]),
+        throwsFormatException,
+      );
+    });
+
+    test(
+        'Method parse() requires confirmation for writes and forbids it for reads',
+        () {
+      expect(
+        () => DiagnosticArgumentParser.parse([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x1',
+          '--value',
+          '1',
+        ]),
+        throwsFormatException,
+      );
+      expect(
+        () => DiagnosticArgumentParser.parse([
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x1',
+          '--confirm-write',
+        ]),
+        throwsFormatException,
+      );
+    });
+
+    test('Method parse() throws when a confirmed write has no value', () {
+      expect(
+        () => DiagnosticArgumentParser.parse([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x1',
+          '--confirm-write',
+        ]),
+        throwsFormatException,
+      );
+    });
+
+    test('Method parse() throws when a read command includes a value', () {
+      expect(
+        () => DiagnosticArgumentParser.parse([
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x1',
+          '--value',
+          '42',
+        ]),
+        throwsFormatException,
+      );
+    });
+  });
+}

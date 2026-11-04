@@ -6,8 +6,8 @@ import 'package:test/test.dart';
 import '../../../../support/fake_windows_memory_api.dart';
 
 void main() {
-  group('Method open behaves correctly', () {
-    test('Method open requests read access only', () {
+  group('Method open() behaves correctly', () {
+    test('Method open() requests read access only', () {
       final api = FakeWindowsMemoryApi();
       final source = _WindowsProcessMemoryDataSourceTestData.open(api);
 
@@ -17,7 +17,19 @@ void main() {
       source.close();
     });
 
-    test('Method open rejects invalid process ids before the native call', () {
+    test('Method open() grants write access only when requested', () {
+      final api = FakeWindowsMemoryApi();
+      final source = _WindowsProcessMemoryDataSourceTestData.open(
+        api,
+        allowWrites: true,
+      );
+
+      expect(api.requestedAccess, 0x0038);
+      source.close();
+    });
+
+    test('Method open() rejects invalid process ids before the native call',
+        () {
       final api = FakeWindowsMemoryApi();
 
       for (final processId in [0, -1, 0x100000000]) {
@@ -34,7 +46,8 @@ void main() {
       expect(api.openCalls, 0);
     });
 
-    test('Method open rejects unsupported operating systems and pointer sizes',
+    test(
+        'Method open() rejects unsupported operating systems and pointer sizes',
         () {
       final api = FakeWindowsMemoryApi();
 
@@ -59,7 +72,7 @@ void main() {
       expect(api.openCalls, 0);
     });
 
-    test('Method open preserves the Windows error when opening fails', () {
+    test('Method open() preserves the Windows error when opening fails', () {
       final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
 
       expect(
@@ -74,8 +87,9 @@ void main() {
     });
   });
 
-  group('Method read behaves correctly', () {
-    test('Method read returns the exact bytes for a complete high address read',
+  group('Method read() behaves correctly', () {
+    test(
+        'Method read() returns the exact bytes for a complete high address read',
         () {
       final api = FakeWindowsMemoryApi()..readBytes = [0x00, 0x01, 0x23, 0x45];
       final source = _WindowsProcessMemoryDataSourceTestData.open(api);
@@ -91,7 +105,7 @@ void main() {
       source.close();
     });
 
-    test('Method read preserves native errors and bytes returned on failure',
+    test('Method read() preserves native errors and bytes returned on failure',
         () {
       final api = FakeWindowsMemoryApi()
         ..readReturnValue = 0
@@ -108,7 +122,8 @@ void main() {
       source.close();
     });
 
-    test('Method read reports partial and zero-byte successful transfers', () {
+    test('Method read() reports partial and zero-byte successful transfers',
+        () {
       final partialApi = FakeWindowsMemoryApi()..reportedReadBytes = 2;
       final partialSource = _WindowsProcessMemoryDataSourceTestData.open(
         partialApi,
@@ -129,7 +144,7 @@ void main() {
       zeroSource.close();
     });
 
-    test('Method read rejects impossible native byte counts', () {
+    test('Method read() rejects impossible native byte counts', () {
       final api = FakeWindowsMemoryApi()..reportedReadBytes = 5;
       final source = _WindowsProcessMemoryDataSourceTestData.open(api);
 
@@ -141,7 +156,8 @@ void main() {
       source.close();
     });
 
-    test('Method read prioritizes impossible counts and preserves native error',
+    test(
+        'Method read() prioritizes impossible counts and preserves native error',
         () {
       final api = FakeWindowsMemoryApi()
         ..readReturnValue = 0
@@ -157,7 +173,7 @@ void main() {
     });
 
     test(
-        'Method read rejects invalid requests and addresses before native calls',
+        'Method read() rejects invalid requests and addresses before native calls',
         () {
       final api = FakeWindowsMemoryApi();
       final source = _WindowsProcessMemoryDataSourceTestData.open(api);
@@ -174,7 +190,7 @@ void main() {
       source.close();
     });
 
-    test('Method read throws when the source has been closed', () {
+    test('Method read() throws when the source has been closed', () {
       final source =
           _WindowsProcessMemoryDataSourceTestData.open(FakeWindowsMemoryApi())
             ..close();
@@ -183,8 +199,8 @@ void main() {
     });
   });
 
-  group('Method close behaves correctly', () {
-    test('Method close closes the handle only once', () {
+  group('Method close() behaves correctly', () {
+    test('Method close() closes the handle only once', () {
       final api = FakeWindowsMemoryApi();
       final source = _WindowsProcessMemoryDataSourceTestData.open(api);
 
@@ -194,7 +210,7 @@ void main() {
       expect(api.closeCalls, 1);
     });
 
-    test('Method close preserves the Windows error when closing fails', () {
+    test('Method close() preserves the Windows error when closing fails', () {
       final api = FakeWindowsMemoryApi()
         ..closeReturnValue = 0
         ..errorCode = 6;
@@ -211,14 +227,139 @@ void main() {
       expect(api.lastErrorCalls, 1);
     });
   });
+
+  group('Method write() behaves correctly', () {
+    test('Method write() rejects calls on a read-only handle', () {
+      final api = FakeWindowsMemoryApi();
+      final source = _WindowsProcessMemoryDataSourceTestData.open(api);
+
+      final result = source.write(0x1000, [1, 2, 3, 4]);
+
+      expect(result.status, MemoryWriteStatus.invalidRequest);
+      expect(api.writeCalls, 0);
+      source.close();
+    });
+
+    test('Method write() sends exact bytes when the handle has write access',
+        () {
+      final api = FakeWindowsMemoryApi();
+      final source = _WindowsProcessMemoryDataSourceTestData.open(
+        api,
+        allowWrites: true,
+      );
+
+      final result = source.write(0x301329e80, [10, 20, 30, 40]);
+
+      expect(result.status, MemoryWriteStatus.complete);
+      expect(result.bytesWritten, 4);
+      expect(result.bytesWritten, result.requestedBytes);
+      expect(api.writeAddress, 0x301329e80);
+      expect(api.writtenBytes, [10, 20, 30, 40]);
+      source.close();
+    });
+
+    test('Method write() preserves native failure and error details', () {
+      final api = FakeWindowsMemoryApi()
+        ..writeReturnValue = 0
+        ..reportedWriteBytes = 2
+        ..errorCode = 5;
+      final source = _WindowsProcessMemoryDataSourceTestData.open(
+        api,
+        allowWrites: true,
+      );
+
+      final result = source.write(0x1000, [1, 2, 3, 4]);
+
+      expect(result.status, MemoryWriteStatus.nativeFailure);
+      expect(result.bytesWritten, 2);
+      expect(result.errorCode, 5);
+      source.close();
+    });
+
+    test('Method write() reports partial and zero-byte transfers', () {
+      final partialApi = FakeWindowsMemoryApi()..reportedWriteBytes = 2;
+      final partialSource = _WindowsProcessMemoryDataSourceTestData.open(
+        partialApi,
+        allowWrites: true,
+      );
+      final partial = partialSource.write(0x1000, [1, 2, 3, 4]);
+      expect(partial.status, MemoryWriteStatus.partial);
+      expect(partial.bytesWritten, isNot(partial.requestedBytes));
+      partialSource.close();
+
+      final zeroApi = FakeWindowsMemoryApi()..reportedWriteBytes = 0;
+      final zeroSource = _WindowsProcessMemoryDataSourceTestData.open(
+        zeroApi,
+        allowWrites: true,
+      );
+      final zero = zeroSource.write(0x1000, [1, 2, 3, 4]);
+      expect(zero.status, MemoryWriteStatus.partial);
+      expect(zero.bytesWritten, 0);
+      zeroSource.close();
+    });
+
+    test('Method write() rejects impossible counts and preserves native errors',
+        () {
+      final api = FakeWindowsMemoryApi()
+        ..writeReturnValue = 0
+        ..reportedWriteBytes = 5
+        ..errorCode = 299;
+      final source = _WindowsProcessMemoryDataSourceTestData.open(
+        api,
+        allowWrites: true,
+      );
+
+      final result = source.write(0x1000, [1, 2, 3, 4]);
+
+      expect(result.status, MemoryWriteStatus.invalidByteCount);
+      expect(result.errorCode, 299);
+      source.close();
+    });
+
+    test(
+        'Method write() rejects invalid values and addresses before native calls',
+        () {
+      final api = FakeWindowsMemoryApi();
+      final source = _WindowsProcessMemoryDataSourceTestData.open(
+        api,
+        allowWrites: true,
+      );
+
+      expect(source.write(0x1000, []).status, MemoryWriteStatus.invalidRequest);
+      expect(
+          source.write(0x1000, [-1]).status, MemoryWriteStatus.invalidRequest);
+      expect(
+          source.write(0x1000, [256]).status, MemoryWriteStatus.invalidRequest);
+      expect(source.write(0, [1]).status, MemoryWriteStatus.invalidAddress);
+      expect(
+        source.write(0x7ffffffffffffffe, [1, 2, 3, 4]).status,
+        MemoryWriteStatus.invalidAddress,
+      );
+      expect(api.writeCalls, 0);
+      source.close();
+    });
+
+    test('Method write() throws when the source has been closed', () {
+      final source = _WindowsProcessMemoryDataSourceTestData.open(
+        FakeWindowsMemoryApi(),
+        allowWrites: true,
+      )..close();
+
+      expect(() => source.write(0x1000, [1]), throwsStateError);
+    });
+  });
 }
 
 abstract final class _WindowsProcessMemoryDataSourceTestData {
-  static WindowsProcessMemoryDataSource open(FakeWindowsMemoryApi api) =>
+  static WindowsProcessMemoryDataSource open(
+    FakeWindowsMemoryApi api, {
+    bool allowWrites = false,
+  }) =>
       WindowsProcessMemoryDataSource.open(
         42,
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
+        allowWrites: allowWrites,
       );
 }

@@ -2,8 +2,8 @@ import 'package:ludava/features/game_memory/domain/utils/address_resolver.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Method resolve behaves correctly', () {
-    test('Method resolve returns the RC2 host address when mapping is valid',
+  group('Method resolve() behaves correctly', () {
+    test('Method resolve() returns the RC2 host address when mapping is valid',
         () {
       expect(
         AddressResolver.resolve(
@@ -15,7 +15,7 @@ void main() {
       );
     });
 
-    test('Method resolve preserves addresses above 32 bits when valid', () {
+    test('Method resolve() preserves addresses above 32 bits when valid', () {
       expect(
         AddressResolver.resolve(
           memoryBase: 0x100000000,
@@ -26,7 +26,8 @@ void main() {
       );
     });
 
-    test('Method resolve accepts the maximum native address for one byte', () {
+    test('Method resolve() accepts the maximum native address for one byte',
+        () {
       expect(
         AddressResolver.resolve(
           memoryBase: 0x7fffffffffffffff,
@@ -38,7 +39,7 @@ void main() {
     });
 
     test(
-        'Method resolve throws ArgumentError for negative inputs or empty ranges',
+        'Method resolve() throws ArgumentError for negative inputs or empty ranges',
         () {
       expect(
         () => AddressResolver.resolve(
@@ -74,7 +75,7 @@ void main() {
       );
     });
 
-    test('Method resolve throws RangeError when addition or range overflows',
+    test('Method resolve() throws RangeError when addition or range overflows',
         () {
       expect(
         () => AddressResolver.resolve(

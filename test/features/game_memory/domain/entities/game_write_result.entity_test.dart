@@ -21,8 +21,8 @@ void main() {
     });
   });
 
-  group('Method succeeded behaves correctly', () {
-    test('Method succeeded returns true when read-back matches request', () {
+  group('Property succeeded behaves correctly', () {
+    test('Property succeeded returns true when read-back matches request', () {
       const result = GameWriteResult(
         status: GameWriteStatus.success,
         fieldId: 'bolts',
@@ -33,7 +33,7 @@ void main() {
       expect(result.succeeded, isTrue);
     });
 
-    test('Method succeeded returns false when read-back differs from request',
+    test('Property succeeded returns false when read-back differs from request',
         () {
       const result = GameWriteResult(
         status: GameWriteStatus.success,
@@ -45,7 +45,7 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('Method succeeded returns false when status is not success', () {
+    test('Property succeeded returns false when status is not success', () {
       const result = GameWriteResult(
         status: GameWriteStatus.writeFailed,
         fieldId: 'bolts',
@@ -56,7 +56,8 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('Method succeeded returns false when field or request is missing', () {
+    test('Property succeeded returns false when field or request is missing',
+        () {
       const noField = GameWriteResult(
         status: GameWriteStatus.success,
         requestedValue: 10,
@@ -72,7 +73,7 @@ void main() {
       expect(noRequest.succeeded, isFalse);
     });
 
-    test('Method succeeded returns false when field id is empty', () {
+    test('Property succeeded returns false when field id is empty', () {
       const result = GameWriteResult(
         status: GameWriteStatus.success,
         fieldId: '',
@@ -83,7 +84,8 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('Method succeeded returns false when read-back value is missing', () {
+    test('Property succeeded returns false when read-back value is missing',
+        () {
       const result = GameWriteResult(
         status: GameWriteStatus.success,
         fieldId: 'bolts',

@@ -5,19 +5,24 @@ import 'package:ffi/ffi.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
 import 'package:ludava/features/game_memory/data/models/process_memory_read.model.dart';
+import 'package:ludava/features/game_memory/data/models/process_memory_write.model.dart';
 import 'package:ludava/features/game_memory/domain/utils/address_resolver.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
-/// Performs checked, read-only transfers from a Windows process.
+/// Performs checked reads and explicitly enabled writes against a Windows process.
 class WindowsProcessMemoryDataSource {
-  WindowsProcessMemoryDataSource._(this._handle, this._api);
+  WindowsProcessMemoryDataSource._(this._handle, this._api, this._allowsWrites);
 
-  /// Opens [processId] with read access only.
+  /// Opens [processId] with read access and optional explicitly granted write access.
+  ///
+  /// Write access is granted only when [allowWrites] is explicitly true. A
+  /// verified write use case must still authorize each operation.
   factory WindowsProcessMemoryDataSource.open(
     int processId, {
     WindowsMemoryApi? api,
     bool? isWindows,
     int? pointerSize,
+    bool allowWrites = false,
   }) {
     if (processId <= 0 || processId > 0xffffffff) {
       throw ArgumentError.value(processId, 'processId', 'must be a valid PID');
@@ -32,7 +37,9 @@ class WindowsProcessMemoryDataSource {
     }
 
     final nativeApi = api ?? WindowsMemoryApi.system();
-    final handle = nativeApi.openProcess(_processVmRead, 0, processId);
+    final access = _processVmRead |
+        (allowWrites ? _processVmWrite | _processVmOperation : 0);
+    final handle = nativeApi.openProcess(access, 0, processId);
     if (handle.address == 0) {
       final errorCode = nativeApi.getLastError();
       throw WindowsMemoryException(
@@ -41,13 +48,16 @@ class WindowsProcessMemoryDataSource {
         errorCode: errorCode,
       );
     }
-    return WindowsProcessMemoryDataSource._(handle, nativeApi);
+    return WindowsProcessMemoryDataSource._(handle, nativeApi, allowWrites);
   }
 
+  static const int _processVmOperation = 0x0008;
   static const int _processVmRead = 0x0010;
+  static const int _processVmWrite = 0x0020;
 
   final Pointer<Void> _handle;
   final WindowsMemoryApi _api;
+  final bool _allowsWrites;
   bool _closed = false;
 
   /// Reads [byteCount] bytes from [address] and reports the exact native result.
@@ -117,6 +127,75 @@ class WindowsProcessMemoryDataSource {
         bytes: bytes,
         bytesRead: bytesRead,
         requestedBytes: byteCount,
+      );
+    } finally {
+      if (transferred.address != 0) calloc.free(transferred);
+      if (buffer.address != 0) calloc.free(buffer);
+    }
+  }
+
+  /// Writes [bytes] only when the data source was opened with write access.
+  ProcessMemoryWriteModel write(int address, List<int> bytes) {
+    _ensureOpen();
+    if (!_allowsWrites ||
+        bytes.isEmpty ||
+        bytes.any((byte) => byte < 0 || byte > 0xff)) {
+      return ProcessMemoryWriteModel(
+        status: MemoryWriteStatus.invalidRequest,
+        bytesWritten: 0,
+        requestedBytes: bytes.length,
+      );
+    }
+    if (!_hasValidRange(address, bytes.length)) {
+      return ProcessMemoryWriteModel(
+        status: MemoryWriteStatus.invalidAddress,
+        bytesWritten: 0,
+        requestedBytes: bytes.length,
+      );
+    }
+
+    Pointer<Uint8> buffer = nullptr;
+    Pointer<Uint64> transferred = nullptr;
+    try {
+      buffer = calloc<Uint8>(bytes.length);
+      buffer.asTypedList(bytes.length).setAll(0, bytes);
+      transferred = calloc<Uint64>();
+      final succeeded = _api.writeProcessMemory(
+        _handle,
+        Pointer<Void>.fromAddress(address),
+        buffer,
+        bytes.length,
+        transferred,
+      );
+      final errorCode = succeeded == 0 ? _api.getLastError() : null;
+      final bytesWritten = transferred.value;
+      if (bytesWritten > bytes.length) {
+        return ProcessMemoryWriteModel(
+          status: MemoryWriteStatus.invalidByteCount,
+          bytesWritten: bytesWritten,
+          requestedBytes: bytes.length,
+          errorCode: errorCode,
+        );
+      }
+      if (succeeded == 0) {
+        return ProcessMemoryWriteModel(
+          status: MemoryWriteStatus.nativeFailure,
+          bytesWritten: bytesWritten,
+          requestedBytes: bytes.length,
+          errorCode: errorCode,
+        );
+      }
+      if (bytesWritten != bytes.length) {
+        return ProcessMemoryWriteModel(
+          status: MemoryWriteStatus.partial,
+          bytesWritten: bytesWritten,
+          requestedBytes: bytes.length,
+        );
+      }
+      return ProcessMemoryWriteModel(
+        status: MemoryWriteStatus.complete,
+        bytesWritten: bytesWritten,
+        requestedBytes: bytes.length,
       );
     } finally {
       if (transferred.address != 0) calloc.free(transferred);

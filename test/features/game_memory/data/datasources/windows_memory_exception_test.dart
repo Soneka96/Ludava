@@ -2,8 +2,8 @@ import 'package:ludava/features/game_memory/data/datasources/windows_memory_exce
 import 'package:test/test.dart';
 
 void main() {
-  group('Method toString behaves correctly', () {
-    test('Method toString includes the operation and error code', () {
+  group('Method toString() behaves correctly', () {
+    test('Method toString() includes the operation and error code', () {
       const exception = WindowsMemoryException(
         operation: 'CloseHandle',
         errorCode: 6,
@@ -12,7 +12,7 @@ void main() {
       expect(exception.toString(), 'CloseHandle failed (Windows error 6).');
     });
 
-    test('Method toString includes the process id when opening fails', () {
+    test('Method toString() includes the process id when opening fails', () {
       const exception = WindowsMemoryException(
         operation: 'OpenProcess',
         processId: 42,

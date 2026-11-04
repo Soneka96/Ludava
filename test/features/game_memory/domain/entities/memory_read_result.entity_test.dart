@@ -19,8 +19,8 @@ void main() {
     });
   });
 
-  group('Method isComplete behaves correctly', () {
-    test('Method isComplete returns true for an exact complete read', () {
+  group('Property isComplete behaves correctly', () {
+    test('Property isComplete returns true for an exact complete read', () {
       final result = MemoryReadResult(
         status: MemoryReadStatus.complete,
         bytes: [1, 2, 3, 4],
@@ -31,7 +31,8 @@ void main() {
       expect(result.isComplete, isTrue);
     });
 
-    test('Method isComplete returns false for partial or inconsistent results',
+    test(
+        'Property isComplete returns false for partial or inconsistent results',
         () {
       final results = [
         MemoryReadResult(

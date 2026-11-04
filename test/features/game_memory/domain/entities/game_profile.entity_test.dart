@@ -35,8 +35,8 @@ void main() {
     });
   });
 
-  group('Method canRead behaves correctly', () {
-    test('Method canRead returns true when status is experimental', () {
+  group('Property canRead behaves correctly', () {
+    test('Property canRead returns true when status is experimental', () {
       expect(
         _GameProfileTestData.build(
           readStatus: VerificationStatus.experimental,
@@ -45,7 +45,7 @@ void main() {
       );
     });
 
-    test('Method canRead returns true when status is verified', () {
+    test('Property canRead returns true when status is verified', () {
       expect(
         _GameProfileTestData.build(
           readStatus: VerificationStatus.verified,
@@ -54,7 +54,8 @@ void main() {
       );
     });
 
-    test('Method canRead returns false when status is none or unsupported', () {
+    test('Property canRead returns false when status is none or unsupported',
+        () {
       for (final status in [
         VerificationStatus.none,
         VerificationStatus.unsupported,
@@ -64,8 +65,8 @@ void main() {
     });
   });
 
-  group('Method canWrite behaves correctly', () {
-    test('Method canWrite returns true when status is verified', () {
+  group('Property canWrite behaves correctly', () {
+    test('Property canWrite returns true when status is verified', () {
       expect(
         _GameProfileTestData.build(
           writeStatus: VerificationStatus.verified,
@@ -74,7 +75,7 @@ void main() {
       );
     });
 
-    test('Method canWrite returns false when status is not verified', () {
+    test('Property canWrite returns false when status is not verified', () {
       for (final status in [
         VerificationStatus.none,
         VerificationStatus.experimental,
@@ -86,8 +87,9 @@ void main() {
     });
   });
 
-  group('Method findField behaves correctly', () {
-    test('Method findField returns the matching field when id is present', () {
+  group('Method findField() behaves correctly', () {
+    test('Method findField() returns the matching field when id is present',
+        () {
       final profile = _GameProfileTestData.build(
         fields: {'bolts': _GameProfileTestData.buildBoltsField()},
       );
@@ -96,7 +98,7 @@ void main() {
       expect(profile.findField('bolts')?.id, 'bolts');
     });
 
-    test('Method findField returns null when id is missing', () {
+    test('Method findField() returns null when id is missing', () {
       expect(_GameProfileTestData.build().findField('health'), isNull);
     });
   });

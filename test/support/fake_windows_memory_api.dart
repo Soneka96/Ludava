@@ -16,6 +16,12 @@ class FakeWindowsMemoryApi {
   /// Native return value for the fake read call.
   int readReturnValue = 1;
 
+  /// Optional byte count reported by the fake write call.
+  int? reportedWriteBytes;
+
+  /// Native return value for the fake write call.
+  int writeReturnValue = 1;
+
   /// Native return value for the fake close call.
   int closeReturnValue = 1;
 
@@ -31,9 +37,16 @@ class FakeWindowsMemoryApi {
   /// Target address observed by the fake read call.
   int? readAddress;
 
+  /// Target address observed by the fake write call.
+  int? writeAddress;
+
+  /// Bytes copied from the fake write buffer.
+  List<int>? writtenBytes;
+
   /// Number of calls made to each fake native function.
   int openCalls = 0;
   int readCalls = 0;
+  int writeCalls = 0;
   int closeCalls = 0;
   int lastErrorCalls = 0;
 
@@ -58,6 +71,13 @@ class FakeWindowsMemoryApi {
           }
           transferred.value = reportedReadBytes ?? byteCount;
           return readReturnValue;
+        },
+        writeProcessMemory: (handle, address, buffer, byteCount, transferred) {
+          writeCalls++;
+          writeAddress = address.address;
+          writtenBytes = buffer.asTypedList(byteCount).toList(growable: false);
+          transferred.value = reportedWriteBytes ?? byteCount;
+          return writeReturnValue;
         },
         closeHandle: (_) {
           closeCalls++;

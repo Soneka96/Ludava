@@ -6,8 +6,8 @@ import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Method decodeUnsigned32 behaves correctly', () {
-    test('Method decodeUnsigned32 returns the big-endian unsigned value', () {
+  group('Method decodeUnsigned32() behaves correctly', () {
+    test('Method decodeUnsigned32() returns the big-endian unsigned value', () {
       expect(
         ValueDecoder.decodeUnsigned32(
           Uint8List.fromList([0x00, 0x01, 0x23, 0x45]),
@@ -17,7 +17,7 @@ void main() {
       );
     });
 
-    test('Method decodeUnsigned32 returns the little-endian value', () {
+    test('Method decodeUnsigned32() returns the little-endian value', () {
       expect(
         ValueDecoder.decodeUnsigned32(
           Uint8List.fromList([0x00, 0x01, 0x23, 0x45]),
@@ -27,7 +27,7 @@ void main() {
       );
     });
 
-    test('Method decodeUnsigned32 preserves zero and the maximum value', () {
+    test('Method decodeUnsigned32() preserves zero and the maximum value', () {
       expect(
         ValueDecoder.decodeUnsigned32(Uint8List(4), ByteOrder.big),
         0,
@@ -41,7 +41,8 @@ void main() {
       );
     });
 
-    test('Method decodeUnsigned32 throws ArgumentError for non-four-byte input',
+    test(
+        'Method decodeUnsigned32() throws ArgumentError for non-four-byte input',
         () {
       for (final length in [3, 5]) {
         expect(
@@ -54,7 +55,8 @@ void main() {
       }
     });
 
-    test('Method decodeUnsigned32 throws ArgumentError when byte order is none',
+    test(
+        'Method decodeUnsigned32() throws ArgumentError when byte order is none',
         () {
       expect(
         () => ValueDecoder.decodeUnsigned32(Uint8List(4), ByteOrder.none),

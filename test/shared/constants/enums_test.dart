@@ -8,8 +8,20 @@ void main() {
       expect(MemoryValueType.values.first, MemoryValueType.none);
       expect(ByteOrder.values.first, ByteOrder.none);
       expect(MemoryReadStatus.values.first, MemoryReadStatus.none);
+      expect(GameMemoryAction.values.first, GameMemoryAction.none);
+      expect(MemoryWriteStatus.values.first, MemoryWriteStatus.none);
       expect(GameReadStatus.values.first, GameReadStatus.none);
       expect(GameWriteStatus.values.first, GameWriteStatus.none);
+    });
+  });
+
+  group('Property byteLength behaves correctly', () {
+    test('Property byteLength returns null when type is none', () {
+      expect(MemoryValueType.none.byteLength, isNull);
+    });
+
+    test('Property byteLength returns four when type is unsigned32', () {
+      expect(MemoryValueType.unsigned32.byteLength, 4);
     });
   });
 }

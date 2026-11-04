@@ -3,14 +3,14 @@ import 'package:ludava/features/game_memory/domain/profiles/rc2_collection_profi
 import 'package:test/test.dart';
 
 void main() {
-  group('Method find behaves correctly', () {
-    test('Method find returns the RC2 profile when its id is registered', () {
+  group('Method find() behaves correctly', () {
+    test('Method find() returns the RC2 profile when its id is registered', () {
       final profile = GameProfileCatalog.find(Rc2CollectionProfile.id);
 
       expect(profile, same(Rc2CollectionProfile.profile));
     });
 
-    test('Method find returns null when profile id is not registered', () {
+    test('Method find() returns null when profile id is not registered', () {
       expect(GameProfileCatalog.find('unknown-game'), isNull);
     });
   });

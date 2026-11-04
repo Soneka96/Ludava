@@ -78,8 +78,8 @@ void main() {
     });
   });
 
-  group('Method canRead behaves correctly', () {
-    test('Method canRead returns true when status is experimental', () {
+  group('Property canRead behaves correctly', () {
+    test('Property canRead returns true when status is experimental', () {
       final field = _GameFieldTestData.build(
         readStatus: VerificationStatus.experimental,
       );
@@ -87,7 +87,7 @@ void main() {
       expect(field.canRead, isTrue);
     });
 
-    test('Method canRead returns true when status is verified', () {
+    test('Property canRead returns true when status is verified', () {
       final field = _GameFieldTestData.build(
         readStatus: VerificationStatus.verified,
       );
@@ -95,7 +95,8 @@ void main() {
       expect(field.canRead, isTrue);
     });
 
-    test('Method canRead returns false when status is none or unsupported', () {
+    test('Property canRead returns false when status is none or unsupported',
+        () {
       for (final status in [
         VerificationStatus.none,
         VerificationStatus.unsupported,
@@ -105,8 +106,8 @@ void main() {
     });
   });
 
-  group('Method canWrite behaves correctly', () {
-    test('Method canWrite returns true when status is verified', () {
+  group('Property canWrite behaves correctly', () {
+    test('Property canWrite returns true when status is verified', () {
       final field = _GameFieldTestData.build(
         writeStatus: VerificationStatus.verified,
       );
@@ -114,7 +115,7 @@ void main() {
       expect(field.canWrite, isTrue);
     });
 
-    test('Method canWrite returns false when status is not verified', () {
+    test('Property canWrite returns false when status is not verified', () {
       for (final status in [
         VerificationStatus.none,
         VerificationStatus.experimental,
