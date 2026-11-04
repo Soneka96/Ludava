@@ -1,0 +1,10 @@
+name: ludava
+description: Read-only game memory diagnostics.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dev_dependencies:
+  test: ^1.26.3
