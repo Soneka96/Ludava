@@ -1,12 +1,16 @@
 import 'dart:io';
 
 import 'package:ludava/features/game_memory/domain/entities/game_field.entity.dart';
+import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/game_memory/domain/profiles/game_profile_catalog.dart';
+import 'package:ludava/features/game_memory/domain/usecases/params/resolve_game_profile.params.dart';
+import 'package:ludava/features/game_memory/domain/usecases/resolve_game_profile.usecase.dart';
 import 'package:ludava/features/game_memory/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava/shared/constants/app_constants.dart';
+import 'package:ludava/shared/constants/enums.dart';
 
 /// Runs Ludava's interactive RPCS3 and game-memory terminal menus.
 class InteractiveTrainerCli {
@@ -24,6 +28,11 @@ class InteractiveTrainerCli {
       StringSink errorOutput,
     )
     runCommand,
+    GameDetectionResult Function(
+      int processId,
+      Rpcs3ProcessMetadata processMetadata,
+    )?
+    detectGame,
     String? Function()? readLine,
     bool? hasTerminal,
     bool Function()? clearScreen,
@@ -32,6 +41,7 @@ class InteractiveTrainerCli {
        _readProcessMetadata = readProcessMetadata,
        _resolveMemoryBaseCandidate = resolveMemoryBaseCandidate,
        _runCommand = runCommand,
+       _detectGame = detectGame,
        _readLine = readLine ?? stdin.readLineSync,
        _hasTerminal = hasTerminal,
        _clearScreen = clearScreen,
@@ -41,6 +51,7 @@ class InteractiveTrainerCli {
   static const int _changeGame = 1;
   static const int _changeProcess = 2;
   static const int _returnToGame = 3;
+  static const int _redetectGame = 4;
   static const int _researchTestedMemoryBase = 0x300000000;
   static const String _collectionTitleId = 'BCUS98282';
 
@@ -54,6 +65,11 @@ class InteractiveTrainerCli {
     StringSink errorOutput,
   )
   _runCommand;
+  final GameDetectionResult Function(
+    int processId,
+    Rpcs3ProcessMetadata processMetadata,
+  )?
+  _detectGame;
   final String? Function() _readLine;
   final bool? _hasTerminal;
   final bool Function()? _clearScreen;
@@ -64,6 +80,10 @@ class InteractiveTrainerCli {
   int? _boltCount;
   String? _boltReadError;
   String? _lastFeedback;
+  Rpcs3ProcessMetadata? _selectedProcessMetadata;
+  bool _processSessionChanged = false;
+  bool _processUnavailable = false;
+  bool _retryDetectionRequested = false;
 
   /// Runs the interactive menu and returns its process exit code.
   int run({StringSink? output, StringSink? errorOutput}) {
@@ -74,6 +94,10 @@ class InteractiveTrainerCli {
     _boltCount = null;
     _boltReadError = null;
     _lastFeedback = null;
+    _selectedProcessMetadata = null;
+    _processSessionChanged = false;
+    _processUnavailable = false;
+    _retryDetectionRequested = false;
     if (!(_hasTerminal ?? stdin.hasTerminal)) {
       stderrSink.writeln(
         'Interactive mode requires a terminal. Use --help to see commands.',
@@ -89,14 +113,25 @@ class InteractiveTrainerCli {
       if (memoryBase == null) return 0;
 
       final profiles = GameProfileCatalog.profiles.toList(growable: false);
+      var gameSelection = _selectGameForProcess(
+        processId,
+        profiles,
+        stdoutSink,
+      );
+      if (gameSelection == null) {
+        if (_processSessionChanged || _processUnavailable) {
+          _processSessionChanged = false;
+          _processUnavailable = false;
+          continue;
+        }
+        return 0;
+      }
       var returnToProcessMenu = false;
       while (!_inputEnded && !returnToProcessMenu) {
-        final profile = _selectGame(profiles, stdoutSink);
-        if (profile == null) return 0;
         final action = _gameMenu(
           processId,
           memoryBase,
-          profile,
+          gameSelection!,
           stdoutSink,
           stderrSink,
         );
@@ -104,6 +139,32 @@ class InteractiveTrainerCli {
           case _exitGame:
             return 0;
           case _changeGame:
+            _boltCount = null;
+            _boltReadError = null;
+            _lastFeedback = null;
+            final profile = _selectGame(profiles, stdoutSink);
+            if (profile == null) return 0;
+            gameSelection = _manualGameSelection(processId, profile);
+            continue;
+          case _redetectGame:
+            _boltCount = null;
+            _boltReadError = null;
+            _lastFeedback = null;
+            gameSelection = _selectGameForProcess(
+              processId,
+              profiles,
+              stdoutSink,
+              refreshProcess: true,
+            );
+            if (gameSelection == null) {
+              if (_processSessionChanged || _processUnavailable) {
+                returnToProcessMenu = true;
+                _processSessionChanged = false;
+                _processUnavailable = false;
+                continue;
+              }
+              return 0;
+            }
             continue;
           case _changeProcess:
             returnToProcessMenu = true;
@@ -173,6 +234,7 @@ class InteractiveTrainerCli {
       candidate = null;
       try {
         final metadata = _readProcessMetadata(processId);
+        _selectedProcessMetadata = metadata;
         candidate = _resolveMemoryBaseCandidate(metadata);
       } on Exception catch (error) {
         output.writeln('Could not check the RPCS3 process or its log: $error');
@@ -260,13 +322,227 @@ class InteractiveTrainerCli {
     return null;
   }
 
+  GameDetectionResult? _selectGameForProcess(
+    int processId,
+    List<GameProfile> profiles,
+    StringSink output, {
+    bool refreshProcess = false,
+  }) {
+    while (!_inputEnded) {
+      _processSessionChanged = false;
+      _processUnavailable = false;
+      var processMetadata = _selectedProcessMetadata;
+      if (refreshProcess) {
+        List<int> processIds;
+        try {
+          processIds = _discoverProcessIds();
+        } on Exception catch (error) {
+          output.writeln('Could not refresh RPCS3 detection: $error');
+          _processUnavailable = true;
+          return null;
+        } on UnsupportedError catch (error) {
+          output.writeln('Could not refresh RPCS3 detection: $error');
+          _processUnavailable = true;
+          return null;
+        }
+        if (!processIds.contains(processId)) {
+          output.writeln('The selected RPCS3 process is no longer running.');
+          _processUnavailable = true;
+          return null;
+        }
+        try {
+          processMetadata = _readProcessMetadata(processId);
+        } on Exception catch (error) {
+          return _chooseFromDetection(
+            GameDetectionResult(
+              status: GameDetectionStatus.failed,
+              processId: processId,
+              confidence: GameIdentityConfidence.none,
+              evidenceDescription:
+                  'Could not read RPCS3 process metadata: $error',
+            ),
+            processId,
+            profiles,
+            output,
+          );
+        } on UnsupportedError catch (error) {
+          return _chooseFromDetection(
+            GameDetectionResult(
+              status: GameDetectionStatus.failed,
+              processId: processId,
+              confidence: GameIdentityConfidence.none,
+              evidenceDescription:
+                  'Could not read RPCS3 process metadata: $error',
+            ),
+            processId,
+            profiles,
+            output,
+          );
+        }
+        final previousStart = _selectedProcessMetadata?.startedAtUtc;
+        if (previousStart != null &&
+            processMetadata.startedAtUtc != previousStart) {
+          output.writeln(
+            'The RPCS3 process session changed. Select the process and memory base again.',
+          );
+          _processSessionChanged = true;
+          return null;
+        }
+        _selectedProcessMetadata = processMetadata;
+      }
+
+      if (processMetadata == null) {
+        return _chooseFromDetection(
+          GameDetectionResult(
+            status: GameDetectionStatus.failed,
+            processId: processId,
+            confidence: GameIdentityConfidence.none,
+            evidenceDescription: 'RPCS3 process metadata is unavailable.',
+          ),
+          processId,
+          profiles,
+          output,
+        );
+      }
+
+      GameDetectionResult result;
+      try {
+        result =
+            _detectGame?.call(processId, processMetadata) ??
+            GameDetectionResult(
+              status: GameDetectionStatus.ambiguous,
+              processId: processId,
+              confidence: GameIdentityConfidence.none,
+              evidenceDescription:
+                  'No current-game identity provider is available.',
+            );
+      } on Exception catch (error) {
+        result = GameDetectionResult(
+          status: GameDetectionStatus.failed,
+          processId: processId,
+          confidence: GameIdentityConfidence.none,
+          evidenceDescription: 'Game detection failed: $error',
+        );
+      } on UnsupportedError catch (error) {
+        result = GameDetectionResult(
+          status: GameDetectionStatus.failed,
+          processId: processId,
+          confidence: GameIdentityConfidence.none,
+          evidenceDescription: 'Game detection failed: $error',
+        );
+      }
+      if (result.processId != processId) {
+        result = GameDetectionResult(
+          status: GameDetectionStatus.failed,
+          processId: processId,
+          confidence: GameIdentityConfidence.none,
+          evidenceDescription:
+              'Game detection evidence does not match the selected RPCS3 process.',
+        );
+      }
+      final selection = _chooseFromDetection(
+        result,
+        processId,
+        profiles,
+        output,
+      );
+      if (_retryDetectionRequested) {
+        _retryDetectionRequested = false;
+        refreshProcess = true;
+        continue;
+      }
+      return selection;
+    }
+    return null;
+  }
+
+  GameDetectionResult? _chooseFromDetection(
+    GameDetectionResult result,
+    int processId,
+    List<GameProfile> profiles,
+    StringSink output,
+  ) {
+    if (result.status == GameDetectionStatus.supportedGame &&
+        result.confidence == GameIdentityConfidence.confirmed) {
+      output.writeln('${result.gameTitle} detected.');
+      output.writeln('Trainer profile matched: ${result.profile!.id}.');
+      return result;
+    }
+    _writeDetectionSummary(output, result);
+    if (result.status == GameDetectionStatus.rpcs3NotRunning) {
+      _processUnavailable = true;
+      return null;
+    }
+    if (result.status == GameDetectionStatus.unsupportedGame &&
+        result.confidence == GameIdentityConfidence.confirmed) {
+      output.writeln('No trainer profile is available for this game.');
+      output.writeln('1. Retry detection');
+      output.writeln('0. Exit');
+      _retryDetectionRequested = _prompt(output, 'Select an option: ') == '1';
+      return null;
+    }
+    if (result.status == GameDetectionStatus.noActiveGame) {
+      output.writeln('No active game was identified.');
+      output.writeln('1. Retry detection');
+      output.writeln('0. Exit');
+      _retryDetectionRequested = _prompt(output, 'Select an option: ') == '1';
+      return null;
+    }
+
+    output.writeln('Choose a profile manually to continue:');
+    final profile = _selectGame(profiles, output);
+    if (profile == null) return null;
+    return _manualGameSelection(processId, profile);
+  }
+
+  GameDetectionResult _manualGameSelection(
+    int processId,
+    GameProfile profile,
+  ) => ResolveGameProfileUseCase().execute(
+    ResolveGameProfileParams(
+      processId: processId,
+      confidence: GameIdentityConfidence.manuallySelected,
+      manualProfileId: profile.id,
+      evidenceDescription:
+          'The user selected this profile manually; the active game was not verified.',
+    ),
+  );
+
+  void _writeDetectionSummary(StringSink output, GameDetectionResult result) {
+    output.writeln('\nDetecting game...');
+    final title = result.gameTitle;
+    final confirmedUnsupported =
+        result.status == GameDetectionStatus.unsupportedGame &&
+        result.confidence == GameIdentityConfidence.confirmed;
+    if (confirmedUnsupported && title != null) {
+      output.writeln('Game identified: $title');
+    } else if (title != null) {
+      output.writeln('RPCS3 log title candidate (unverified): $title');
+    }
+    final titleId = result.titleId;
+    if (titleId != null) {
+      output.writeln(
+        confirmedUnsupported
+            ? 'Title ID: $titleId'
+            : 'Title ID candidate: $titleId',
+      );
+    }
+    if (!confirmedUnsupported) {
+      output.writeln(
+        'Ludava could not verify the active game from current evidence.',
+      );
+    }
+    output.writeln('Detection: ${result.evidenceDescription}');
+  }
+
   int _gameMenu(
     int processId,
     int memoryBase,
-    GameProfile profile,
+    GameDetectionResult detection,
     StringSink output,
     StringSink errorOutput,
   ) {
+    final profile = detection.profile!;
     final field = profile.findField('bolts');
     if (field == null) {
       output.writeln('This profile does not define the bolts field.');
@@ -276,13 +552,14 @@ class InteractiveTrainerCli {
     _lastFeedback = null;
     while (!_inputEnded) {
       _beginScreen(output);
-      _writeGameScreen(output, profile);
+      _writeGameScreen(output, detection);
       final feedback = _lastFeedback;
       if (feedback != null) output.writeln('\n$feedback');
       output.writeln('\n1. Refresh bolts');
       output.writeln('2. Change bolts');
       output.writeln('3. Change game');
       output.writeln('4. Connection details');
+      output.writeln('5. Re-detect game');
       output.writeln('0. Exit');
       final selection = _prompt(output, 'Select an option: ');
       if (selection == null || selection == '0') return _exitGame;
@@ -303,6 +580,7 @@ class InteractiveTrainerCli {
             memoryBase,
             profile,
             field,
+            detection.confidence,
             output,
             errorOutput,
           );
@@ -314,11 +592,14 @@ class InteractiveTrainerCli {
             memoryBase,
             profile,
             field,
+            detection,
             output,
           );
           if (detailsAction == _changeProcess || detailsAction == _exitGame) {
             return detailsAction;
           }
+        case '5':
+          return _redetectGame;
         default:
           output.writeln('Choose one of the listed options.');
       }
@@ -331,6 +612,7 @@ class InteractiveTrainerCli {
     int memoryBase,
     GameProfile profile,
     GameField field,
+    GameIdentityConfidence confidence,
     StringSink output,
     StringSink errorOutput,
   ) {
@@ -354,9 +636,7 @@ class InteractiveTrainerCli {
     }
 
     output.writeln('You are changing bolts in ${_gameTitle(profile)}.');
-    output.writeln(
-      'Ludava cannot verify which game or build is running. Check Connection details.',
-    );
+    output.writeln(_identityDisclosure(confidence));
     final confirmation = _prompt(
       output,
       'Change bolts to ${_formatNumber(value)}? (Y/N): ',
@@ -430,7 +710,8 @@ class InteractiveTrainerCli {
     return exitCode == 0;
   }
 
-  void _writeGameScreen(StringSink output, GameProfile profile) {
+  void _writeGameScreen(StringSink output, GameDetectionResult detection) {
+    final profile = detection.profile!;
     output.writeln('================================');
     output.writeln('             LUDAVA');
     output.writeln('================================');
@@ -439,7 +720,11 @@ class InteractiveTrainerCli {
       '  ${_boltCount == null ? 'RPCS3 process found' : 'Connected to RPCS3'}',
     );
     output.writeln();
-    output.writeln('  ${profile.gameName}');
+    output.writeln(
+      detection.confidence == GameIdentityConfidence.manuallySelected
+          ? '  Manual profile: ${profile.gameName}'
+          : '  Detected game: ${profile.gameName}',
+    );
     if (profile.buildId == _collectionTitleId) {
       output.writeln('  PS3 Collection');
     }
@@ -466,6 +751,7 @@ class InteractiveTrainerCli {
     int memoryBase,
     GameProfile profile,
     GameField field,
+    GameDetectionResult detection,
     StringSink output,
   ) {
     while (!_inputEnded) {
@@ -480,9 +766,9 @@ class InteractiveTrainerCli {
         'Bolts guest offset: ${_formatMemoryBase(field.guestOffset)}',
       );
       output.writeln();
-      output.writeln(
-        'Runtime verification: Ludava cannot confirm the active game or build.',
-      );
+      output.writeln('Game identity: ${_identityLabel(detection.confidence)}');
+      output.writeln('Detection status: ${detection.status.name}');
+      output.writeln('Detection evidence: ${detection.evidenceDescription}');
       final readError = _boltReadError;
       if (_boltCount == null && readError != null) {
         output.writeln('Last read: $readError');
@@ -522,6 +808,20 @@ class InteractiveTrainerCli {
       profile.buildId == _collectionTitleId
           ? '${profile.gameName} — PS3 Collection'
           : profile.gameName;
+
+  String _identityLabel(
+    GameIdentityConfidence confidence,
+  ) => switch (confidence) {
+    GameIdentityConfidence.confirmed => 'automatically identified',
+    GameIdentityConfidence.manuallySelected => 'selected manually; unverified',
+    GameIdentityConfidence.none ||
+    GameIdentityConfidence.uncertain => 'unresolved',
+  };
+
+  String _identityDisclosure(GameIdentityConfidence confidence) =>
+      confidence == GameIdentityConfidence.manuallySelected
+          ? 'This profile was selected manually; Ludava cannot verify the active game or build.'
+          : 'Ludava cannot verify the active game build. Check Connection details.';
 
   String _formatNumber(int value) {
     final digits = value.toString();

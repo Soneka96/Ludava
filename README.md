@@ -14,7 +14,9 @@ dart run bin/ludava.dart
 
 Ludava selects a single running RPCS3 process automatically or asks you to choose when multiple instances are found. It checks fresh `RPCS3.log` files near the selected executable for a guest memory base. A log value remains a candidate and must be confirmed. If no candidate is found, you can accept the research-tested `0x300000000` suggestion for that session or enter another base. That value may differ between sessions.
 
-Choose Ratchet & Clank 1, 2 or 3 in the PS3 Collection (`BCUS98282`), then refresh or set bolts from the menu. Writes require entering a value and confirming the target process, profile, and base. Ludava reuses the existing write validation and read-back verification. It does not identify the active embedded game or build; select only the profile matching the Collection game currently running.
+Ludava inspects nearby RPCS3 logs for title, serial, and boot-path observations. These log entries may describe an earlier game load and cannot prove which game is active now. The built-in log reader therefore keeps detection uncertain and asks you to choose a profile manually. The shared Collection title ID `BCUS98282` cannot distinguish RC1, RC2, and RC3. The CLI can automatically use a profile only when a future/current-session evidence source returns a confirmed, process-matched identity.
+
+Choose Ratchet & Clank 1, 2 or 3 in the PS3 Collection, then refresh or set bolts from the menu. The trainer marks a manual profile selection as manual. The **Re-detect game** action clears the displayed field value and repeats detection; if identity remains unresolved, select a profile again. A detected unsupported title has no trainer profile. Writes still require entering a value and confirming the target process, profile, and base, and use the existing preliminary read and read-back verification.
 
 If bolts are unavailable, start the selected Collection game in RPCS3 and refresh. If the game is already running, check Connection Details for the selected process and memory base.
 
@@ -64,6 +66,7 @@ dart format --output=none --set-exit-if-changed lib test bin
 
 - [MVP scope and acceptance gates](docs/MVP.md)
 - [Compatibility evidence matrix](docs/COMPATIBILITY.md)
+- [RPCS3 game-detection investigation](docs/GAME_DETECTION.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md)
 - [Research handoff](docs/RESEARCH_HANDOFF.md)

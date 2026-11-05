@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:ludava/features/game_memory/data/datasources/rpcs3_game_identity_log.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_console.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
@@ -14,6 +15,8 @@ import 'package:ludava/features/game_memory/domain/profiles/game_profile_catalog
 import 'package:ludava/features/game_memory/domain/usecases/params/read_game_field.params.dart';
 import 'package:ludava/features/game_memory/domain/usecases/params/write_game_field.params.dart';
 import 'package:ludava/features/game_memory/domain/usecases/read_game_field.usecase.dart';
+import 'package:ludava/features/game_memory/domain/usecases/params/resolve_game_profile.params.dart';
+import 'package:ludava/features/game_memory/domain/usecases/resolve_game_profile.usecase.dart';
 import 'package:ludava/features/game_memory/domain/usecases/write_game_field.usecase.dart';
 import 'package:ludava/features/game_memory/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava/features/game_memory/presentation/cli/diagnostic_arguments.dart';
@@ -188,6 +191,32 @@ class LudavaCli {
     resolveMemoryBaseCandidate:
         (processMetadata) => Rpcs3MemoryBaseResolverDataSource()
             .resolveCandidate(processMetadata),
+    detectGame: (processId, processMetadata) {
+      final snapshots = Rpcs3GameIdentityLogDataSource().readCandidates(
+        processMetadata,
+      );
+      final hasConflicts = snapshots.any(
+        (snapshot) => snapshot.hasConflictingIdentity,
+      );
+      final titles = snapshots.expand((snapshot) => snapshot.titles).toSet();
+      final serials = snapshots.expand((snapshot) => snapshot.serials).toSet();
+      final hasUniqueIdentity = snapshots.isNotEmpty && !hasConflicts;
+      final evidenceDescription =
+          snapshots.isEmpty
+              ? 'No fresh candidate RPCS3 log identity fields were available.'
+              : 'Historical RPCS3 log fields were found; process ownership and active-game state are unverified.';
+      return ResolveGameProfileUseCase().execute(
+        ResolveGameProfileParams(
+          processId: processId,
+          titleId:
+              hasUniqueIdentity && serials.length == 1 ? serials.single : null,
+          gameTitle:
+              hasUniqueIdentity && titles.length == 1 ? titles.single : null,
+          confidence: GameIdentityConfidence.uncertain,
+          evidenceDescription: evidenceDescription,
+        ),
+      );
+    },
     runCommand:
         (arguments, output, errorOutput) =>
             run(arguments, output: output, errorOutput: errorOutput),

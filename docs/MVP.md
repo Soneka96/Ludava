@@ -1,6 +1,6 @@
 # MVP — RC2 bolt trainer
 
-**Current status:** the interactive Windows CLI discovers RPCS3 processes, offers fresh log-derived or manual memory-base choices, and reads or writes RC2 Collection bolts using owner-confirmed research. On November 5, 2026, the owner successfully read bolts in a live session (observing `0` during startup and `110` in gameplay) and wrote `120`, which Ludava displayed and the owner screenshot showed on the HUD. Exact Windows/RPCS3 versions and executable fingerprint were not supplied, so compatibility across builds is not established. Process discovery and log matching do not identify the active game/build.
+**Current status:** the interactive Windows CLI discovers RPCS3 processes, offers fresh log-derived or manual memory-base choices, reads candidate game identity fields from RPCS3 logs, and reads or writes RC2 Collection bolts using owner-confirmed research. Log observations remain uncertain and the CLI asks for manual profile selection; a **Re-detect game** action clears prior field state and repeats detection. On November 5, 2026, the owner successfully read bolts in a live session (observing `0` during startup and `110` in gameplay) and wrote `120`, which Ludava displayed and the owner screenshot showed on the HUD. Exact Windows/RPCS3 versions and executable fingerprint were not supplied, so compatibility across builds is not established. Neither process discovery nor log matching identifies the active game/build.
 
 ## Objective
 
@@ -8,12 +8,12 @@ Read and deliberately modify the bolt value for Ratchet & Clank 2 inside the PS3
 
 ## First user-visible capability
 
-- Select the intended RPCS3 process when multiple instances exist, choose the `rc2-collection` profile, and explicitly confirm a candidate or manual session guest memory base.
+- Select the intended RPCS3 process when multiple instances exist, review the uncertain identity result, choose a game profile manually when needed, and explicitly confirm a candidate or manual session guest memory base.
 - Read exactly four bytes and decode them as an unsigned big-endian 32-bit value.
 - Keep the guest offset `0x01329E80` in the RC2 profile; the observed research-session base was `0x300000000`.
 - Allow a write only for the research-confirmed bolt field, a value from 0 through 4294967295, and an explicit `--confirm-write` request.
 - Require native success and exactly four bytes written, then read back the value. Report write success only when the read-back matches.
-- Display the selected process/profile/base and explain that Ludava cannot identify the active game/build.
+- Display the selected process/profile/base, mark manual profile selection as unverified, and expose the detection evidence and status.
 - Close process handles after operations. The interactive refresh action runs a new read; the diagnostic CLI can be repeated to refresh too.
 
 Automated tests cover the codec, address mapping, preliminary read-before-write policy, CLI wiring, native errors, partial transfers, read-back, and handle lifecycle through controlled fakes and local test memory. They do not test against RPCS3.

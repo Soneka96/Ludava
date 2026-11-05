@@ -50,3 +50,14 @@ Milestones describe verified outcomes, not completed code alone.
 - [ ] Reevaluate architecture only when a new capability creates a real boundary.
 
 **Not planned now:** a large dashboard, plugin framework, cloud services, additional emulator backends, or unverified feature tables.
+
+## M5 — RPCS3 game-detection foundation
+
+- [x] Add domain detection outcomes, confidence, evidence, and profile-driven field exposure.
+- [x] Preserve RPCS3 log title/serial/path observations without treating history as active identity.
+- [x] Add explicit CLI re-detection, manual fallback labeling, and field-state invalidation.
+- [ ] Capture process-specific RPCS3 runtime evidence for no-game, RC1, RC2, RC3, game exit/switch, restart, unsupported titles, and multiple instances.
+- [ ] Add exact current-session identity keys for profiles only after those keys are established.
+- [ ] Reproduce live detection on RPCS3 before claiming automatic Collection subgame selection.
+
+**Current limit:** the built-in log reader does not confidently identify an active Collection subgame. The shared `BCUS98282` title ID remains ambiguous; RC1/RC3 executable identities are not established. The CLI uses manual selection for current built-in evidence and never infers a game from a bolt value or save namespace. See [game-detection investigation](GAME_DETECTION.md).

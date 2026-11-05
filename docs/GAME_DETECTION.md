@@ -54,6 +54,31 @@ memory availability, and permission to write remain separate facts.
 - Losing process or game identity invalidates the prior detected profile and
   displayed field values. Detection never performs a memory write.
 
+## Implemented foundation
+
+The domain result distinguishes RPCS3-not-running, no active game, unsupported,
+supported, ambiguous, and failed outcomes. It carries the selected process,
+identity fields, evidence description, confidence, optional profile, and the
+profile's available fields. The profile resolver selects a profile only when a
+confirmed title ID plus executable name uniquely matches a registered profile;
+`BCUS98282` alone stays ambiguous. Manual selection is represented separately
+from confirmed identity.
+
+The built-in RPCS3 log source reads candidate files newer than the selected
+process start and preserves distinct title, serial, and boot-path values from
+the complete log. It never treats those observations as confirmed current-game
+identity. As a result, the built-in CLI currently reports log values as
+unverified candidates and keeps manual selection available. An injected,
+confirmed, process-matched identity can bypass manual selection. The CLI's
+explicit **Re-detect game** action clears the previous field reading, checks
+that the selected process/session remains the same, and requires a fresh profile
+choice when the result is ambiguous. It does not poll continuously.
+
+Automated coverage exercises parsing, stale and conflicting log history,
+profile matching, unsupported titles, manual fallback, and CLI state clearing.
+No live RPCS3 game-detection scenario has been validated. The owner-tested
+read/write sessions do not establish automatic identity or profile matching.
+
 ## Evidence needed before broader automatic matching
 
 Capture RPCS3 runtime observations for no game loaded, each Collection game,
