@@ -48,8 +48,8 @@ dart format --output=none --set-exit-if-changed lib test bin
    match the current session.
 6. Refresh bolts, then deliberately confirm any write from the trainer menu.
 
-The owner successfully read and changed RC2 bolts with Ludava in RPCS3 on
-November 5, 2026. RC1 and RC3 bolt locations come from owner-confirmed RatchetHax research, but have not yet been tested with Ludava. That RC2 live test does not establish compatibility with every
+The owner successfully read and changed bolts with Ludava in all three PS3 Collection games on
+November 5, 2026. RC1 and RC3 bolt locations originated in owner-confirmed RatchetHax research and were subsequently live-tested in Ludava with matching HUD screenshots. These live tests do not establish compatibility with every
 RPCS3 version or game build. A successful read-back confirms the value at the
 selected address, but does not identify the active game or prove that the
 correct target was selected. Verify the session base and use a test save before
