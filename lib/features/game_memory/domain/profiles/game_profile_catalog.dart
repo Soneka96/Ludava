@@ -1,13 +1,17 @@
 import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_memory/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava/features/game_memory/domain/profiles/rc2_collection_profile.dart';
+import 'package:ludava/features/game_memory/domain/profiles/rc3_collection_profile.dart';
 
-/// Registers the game profiles supported by the shared memory reader.
+/// Registers the researched Collection game profiles for shared memory access.
 abstract final class GameProfileCatalog {
   static final Map<String, GameProfile> _profiles = Map.unmodifiable({
+    Rc1CollectionProfile.id: Rc1CollectionProfile.profile,
     Rc2CollectionProfile.id: Rc2CollectionProfile.profile,
+    Rc3CollectionProfile.id: Rc3CollectionProfile.profile,
   });
 
-  /// Profiles registered for command selection.
+  /// Profiles registered for command selection in Collection game order.
   static Iterable<GameProfile> get profiles => _profiles.values;
 
   /// Finds a registered profile by [profileId].
