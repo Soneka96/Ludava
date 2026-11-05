@@ -79,21 +79,24 @@ class WindowsProcessDiscoveryApi {
       createToolhelp32Snapshot: kernel32.lookupFunction<
         Pointer<Void> Function(Uint32, Uint32),
         Pointer<Void> Function(int, int)
-      >('CreateToolhelp32Snapshot'),
+      >('CreateToolhelp32Snapshot', isLeaf: true),
       process32FirstW: kernel32.lookupFunction<
         Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
         int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
-      >('Process32FirstW'),
+      >('Process32FirstW', isLeaf: true),
       process32NextW: kernel32.lookupFunction<
         Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
         int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
-      >('Process32NextW'),
+      >('Process32NextW', isLeaf: true),
       closeHandle: kernel32.lookupFunction<
         Int32 Function(Pointer<Void>),
         int Function(Pointer<Void>)
-      >('CloseHandle'),
+      >('CloseHandle', isLeaf: true),
+      // Keep these calls on the direct leaf-call path so Dart's native-call
+      // transition cannot disturb Win32's thread-local last-error value.
       getLastError: kernel32.lookupFunction<Uint32 Function(), int Function()>(
         'GetLastError',
+        isLeaf: true,
       ),
     );
   }
