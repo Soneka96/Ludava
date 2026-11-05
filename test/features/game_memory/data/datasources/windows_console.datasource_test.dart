@@ -1,204 +1,30 @@
-import 'dart:ffi';
-
-import 'package:ffi/ffi.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_console.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_console_api.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('Method clearScreen() behaves correctly', () {
-    test('Method clearScreen() clears with VT enabled and restores mode', () {
-      final fake = _FakeConsole();
+    test('Method clearScreen() clears a supported terminal', () {
+      final output = StringBuffer();
 
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
+      final cleared = WindowsConsoleDataSource().clearScreen(
+        output: output,
+        isTerminal: true,
+      );
 
       expect(cleared, isTrue);
-      expect(fake.standardHandle, -11);
-      expect(fake.consoleModes, [0x0005, 0x0001]);
-      expect(fake.output, '\x1b[2J\x1b[H');
-      expect(fake.writeCount, 7);
+      expect(output.toString(), '\x1b[2J\x1b[H');
     });
 
-    test('Method clearScreen() rejects redirected standard output', () {
-      final fake = _FakeConsole()..returnInvalidHandle = true;
+    test('Method clearScreen() leaves redirected output untouched', () {
+      final output = StringBuffer();
 
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
+      final cleared = WindowsConsoleDataSource().clearScreen(
+        output: output,
+        isTerminal: false,
+      );
 
       expect(cleared, isFalse);
-      expect(fake.getModeCalls, 0);
-      expect(fake.consoleModes, isEmpty);
+      expect(output.toString(), isEmpty);
     });
-
-    test('Method clearScreen() rejects an invalid standard output handle', () {
-      final fake = _FakeConsole()..returnInvalidHandleSentinel = true;
-
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
-
-      expect(cleared, isFalse);
-      expect(fake.getModeCalls, 0);
-      expect(fake.consoleModes, isEmpty);
-      expect(fake.writeCalls, 0);
-    });
-
-    test('Method clearScreen() rejects a non-console output handle', () {
-      final fake = _FakeConsole()..getModeResult = 0;
-
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
-
-      expect(cleared, isFalse);
-      expect(fake.consoleModes, isEmpty);
-      expect(fake.writeCalls, 0);
-    });
-
-    test('Method clearScreen() preserves mode when VT setup fails', () {
-      final fake = _FakeConsole()..setModeResult = 0;
-
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
-
-      expect(cleared, isFalse);
-      expect(fake.consoleModes, [0x0005]);
-      expect(fake.writeCalls, 0);
-    });
-
-    test('Method clearScreen() restores mode after a failed console write', () {
-      final fake = _FakeConsole()..writeResult = 0;
-
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
-
-      expect(cleared, isFalse);
-      expect(fake.consoleModes, [0x0005, 0x0001]);
-    });
-
-    test('Method clearScreen() rejects a partial console write', () {
-      final fake = _FakeConsole()..writtenCount = 2;
-
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
-
-      expect(cleared, isFalse);
-      expect(fake.consoleModes, [0x0005, 0x0001]);
-    });
-
-    test('Method clearScreen() reports a failed console mode restoration', () {
-      final fake = _FakeConsole()..restoreModeResult = 0;
-
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: true,
-          ).clearScreen();
-
-      expect(cleared, isFalse);
-      expect(fake.consoleModes, [0x0005, 0x0001]);
-    });
-
-    test('Method clearScreen() rejects non-Windows platforms', () {
-      final fake = _FakeConsole();
-
-      final cleared = WindowsConsoleDataSource(
-        api: fake.api,
-        isWindows: false,
-      ).clearScreen(isTerminal: false);
-
-      expect(cleared, isFalse);
-      expect(fake.standardHandle, isNull);
-    });
-
-    test(
-      'Method clearScreen() uses ANSI on a supported non-Windows terminal',
-      () {
-        final output = StringBuffer();
-
-        final cleared = WindowsConsoleDataSource(
-          isWindows: false,
-        ).clearScreen(output: output, isTerminal: true);
-
-        expect(cleared, isTrue);
-        expect(output.toString(), '\x1b[2J\x1b[H');
-      },
-    );
-
-    test(
-      'Method clearScreen() leaves redirected non-Windows output untouched',
-      () {
-        final output = StringBuffer();
-
-        final cleared = WindowsConsoleDataSource(
-          isWindows: false,
-        ).clearScreen(output: output, isTerminal: false);
-
-        expect(cleared, isFalse);
-        expect(output.toString(), isEmpty);
-      },
-    );
   });
-}
-
-class _FakeConsole {
-  final List<int> consoleModes = [];
-  int? standardHandle;
-  String? output;
-  int getModeCalls = 0;
-  int writeCalls = 0;
-  int writeCount = 0;
-  int getModeResult = 1;
-  int setModeResult = 1;
-  int writeResult = 1;
-  int? writtenCount;
-  int restoreModeResult = 1;
-  bool returnInvalidHandle = false;
-  bool returnInvalidHandleSentinel = false;
-
-  Pointer<Void> get _handle => Pointer<Void>.fromAddress(1);
-
-  WindowsConsoleApi get api => WindowsConsoleApi(
-    getStdHandle: (standardHandle) {
-      this.standardHandle = standardHandle;
-      if (returnInvalidHandleSentinel) return Pointer<Void>.fromAddress(-1);
-      return returnInvalidHandle ? nullptr : _handle;
-    },
-    getConsoleMode: (_, mode) {
-      getModeCalls++;
-      mode.value = 0x0001;
-      return getModeResult;
-    },
-    setConsoleMode: (_, mode) {
-      consoleModes.add(mode);
-      return consoleModes.length == 1 ? setModeResult : restoreModeResult;
-    },
-    writeConsoleW: (_, sequence, count, written, __) {
-      writeCalls++;
-      output = sequence.cast<Utf16>().toDartString();
-      writeCount = count;
-      written.value = writtenCount ?? (writeResult == 0 ? 0 : count);
-      return writeResult;
-    },
-  );
 }
