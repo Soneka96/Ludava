@@ -11,8 +11,9 @@ abstract final class DiagnosticArgumentParser {
 
 No arguments starts the interactive trainer. Diagnostic commands require an
 explicit process ID, profile, and session guest base. Ludava does not verify the active game build.
-RC2 bolts use owner-confirmed research and remain unverified against a live
-Ludava session. Repeat the read command to refresh.''';
+The owner tested RC2 bolt reading and writing in a live RPCS3 session on
+November 5, 2026. Compatibility across RPCS3 versions and game builds is not
+established. Repeat the read command to refresh.''';
 
   /// Parses a read or write command and rejects missing, duplicate, or invalid options.
   static DiagnosticArguments parse(List<String> arguments) {

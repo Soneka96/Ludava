@@ -8,7 +8,8 @@ abstract final class Rc2CollectionProfile {
   /// Profile identifier used by the CLI.
   static const String id = 'rc2-collection';
 
-  /// Experimental profile; its offset has not been live-verified by Ludava.
+  /// Experimental profile; live RC2 testing occurred, but exact-build
+  /// compatibility is unknown.
   static final GameProfile profile = GameProfile(
     id: id,
     gameName: 'Ratchet & Clank 2',

@@ -17,9 +17,11 @@ These findings establish the bolt mapping for the tested research session. They 
 
 ## Ludava implementation status
 
-Ludava stores this one bolt field in its RC2 Collection profile with `researchConfirmed` write eligibility. The CLI requires explicit process, profile, and guest-base selection. It does not identify the active executable/build automatically. Writes require an explicit request and confirmation, a valid unsigned 32-bit value, complete native transfer, and matching read-back.
+Ludava stores this one bolt field in its RC2 Collection profile with `researchConfirmed` write eligibility. The CLI requires explicit process, profile, and guest-base selection. It does not identify the active executable/build automatically. The shared write use case requires a complete preliminary read, an explicit request and confirmation, a valid unsigned 32-bit value, complete native transfer, and matching read-back.
 
-Automated tests cover the new implementation using fakes and controlled local memory. The owner reports a successful live RPCS3 read using Ludava on November 5, 2026, with PID `20992` and guest base `0x300000000`. Exact observed bolt values, full build identification, and a live Ludava write have not been recorded. Do not claim complete read/write runtime compatibility until the remaining evidence is recorded.
+Automated tests cover the implementation using fakes and controlled local memory. On November 5, 2026, the owner tested Ludava live with Ratchet & Clank 2 in the PS3 Collection under RPCS3. With the game closed, the initial read failed; a startup read returned `0`, and a gameplay read returned `110`. The owner requested a write to `120`; Ludava reported success and displayed `120`, and the owner screenshot showed `120` on the game's HUD. The observed guest base was `0x300000000`.
+
+The exact Windows/RPCS3 versions, executable fingerprint, and complete build-verification data were not supplied. These are successful live read/write observations in the owner's tested environment, not evidence of compatibility with every RPCS3 version or game build. A successful read of `0` does not prove gameplay is active.
 
 ## Sources and licensing
 
@@ -29,9 +31,9 @@ Automated tests cover the new implementation using fakes and controlled local me
 
 ## Next live-validation work
 
-1. Record the exact Windows version, RPCS3 version, game/session identity, and guest base.
-2. Match two distinct normal in-game bolt counts against Ludava reads.
-3. With a suitable test save, perform one deliberate Ludava write and record the requested value, exact transfer result, read-back, and HUD outcome.
-4. Record recovery steps and limitations in `COMPATIBILITY.md`.
+1. Capture the exact Windows version, RPCS3 version, executable fingerprint, and other build details for the owner-tested session if seeking an exact-build compatibility record.
+2. Record further normal gameplay values separately from startup reads; the observed `0` does not independently establish that gameplay was active.
+3. The owner-tested write to `120` and matching HUD screenshot are recorded above. For any future write session, verify the current guest base, use a suitable test save, and retain the native transfer/read-back details.
+4. Record recovery steps and any new runtime limitations in `COMPATIBILITY.md`.
 
 Do not add health, multiplier, planet, equipped-item, weapon, gadget, or unlock fields without separate evidence. Keep snapshots and logs local unless they are deliberately scrubbed and shared.

@@ -3,6 +3,23 @@ import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('Property usage behaves correctly', () {
+    test('Property usage reports live RC2 evidence and its limits', () {
+      expect(
+        DiagnosticArgumentParser.usage,
+        contains('The owner tested RC2 bolt reading and writing'),
+      );
+      expect(
+        DiagnosticArgumentParser.usage,
+        contains('Compatibility across RPCS3 versions and game builds'),
+      );
+      expect(
+        DiagnosticArgumentParser.usage,
+        isNot(contains('remain unverified against a live')),
+      );
+    });
+  });
+
   group('Method parse() behaves correctly', () {
     test(
       'Method parse() returns read arguments when all options are valid',

@@ -27,9 +27,10 @@ Milestones describe verified outcomes, not completed code alone.
 - [x] Implement the write use case with profile/field status, explicit confirmation, value bounds, complete transfer, and read-back checks.
 - [x] Enable RC2 bolt writes from the explicitly selected research-confirmed profile; report that Ludava does not identify the active build.
 - [ ] Validate Ludava reads against two live in-game bolt counts and record the exact RPCS3 session.
-- [ ] Verify one deliberate Ludava edit in-game and document the result and recovery steps.
+- [x] Owner-tested a deliberate live edit on 2026-11-05: requested `120`, Ludava displayed `120`, and the owner screenshot showed `120` on the HUD.
+- [ ] Record exact runtime/build details and recovery steps before making an exact-build compatibility claim.
 
-**Current limit:** The owner reports a successful live RC2 bolt read using Ludava on November 5, 2026. A live Ludava write and the complete compatibility evidence remain pending; the user must still select the intended process, profile, and session base.
+**Current limit:** The owner tested live RC2 reading and writing on November 5, 2026. The startup read returned `0` and gameplay read returned `110`; the write to `120` appeared in Ludava and on the game's HUD screenshot. Exact Windows/RPCS3 versions and executable fingerprint were not supplied. The user still selects the process, profile, and session base, and cross-build compatibility is not established.
 
 **Exit:** one Ludava edit is validated end to end, with its runtime assumptions documented and unknown fields still disabled.
 

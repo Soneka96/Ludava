@@ -9,7 +9,8 @@ enum VerificationStatus {
   /// A candidate is available for controlled experimentation.
   experimental,
 
-  /// Owner-confirmed research supports the capability; Ludava has not been live-tested.
+  /// Owner-confirmed research supports the capability; live Ludava evidence
+  /// is separate.
   researchConfirmed,
 
   /// The capability has been independently verified.
