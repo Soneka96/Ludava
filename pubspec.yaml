@@ -1,5 +1,5 @@
 name: ludava
-description: RC2 Collection bolt read/write game-memory CLI.
+description: PS3 Collection bolt read/write game-memory CLI.
 publish_to: none
 version: 0.1.0
 
