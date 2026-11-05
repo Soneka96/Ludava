@@ -19,7 +19,7 @@ These findings establish the bolt mapping for the tested research session. They 
 
 Ludava stores this one bolt field in its RC2 Collection profile with `researchConfirmed` write eligibility. The CLI requires explicit process, profile, and guest-base selection. It does not identify the active executable/build automatically. Writes require an explicit request and confirmation, a valid unsigned 32-bit value, complete native transfer, and matching read-back.
 
-Automated tests cover the new implementation using fakes and controlled local memory. No live RPCS3 test of Ludava has been performed. Do not describe Ludava as runtime-compatible until its own live read and write evidence is recorded.
+Automated tests cover the new implementation using fakes and controlled local memory. The owner reports a successful live RPCS3 read using Ludava on November 5, 2026, with PID `20992` and guest base `0x300000000`. Exact observed bolt values, full build identification, and a live Ludava write have not been recorded. Do not claim complete read/write runtime compatibility until the remaining evidence is recorded.
 
 ## Sources and licensing
 
