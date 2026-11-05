@@ -424,7 +424,6 @@ class InteractiveTrainerCli {
 
   String? _prompt(StringSink output, String prompt) {
     output.write(prompt);
-    if (identical(output, stdout)) stdout.flush();
     final input = _readLine();
     if (input == null) _inputEnded = true;
     return input;

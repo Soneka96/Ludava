@@ -111,6 +111,39 @@ void main() {
     });
 
     test(
+      'Method run() keeps console output writable after synchronous prompts',
+      () {
+        final inputs = ['3', '2', '0x400000000', '0'];
+        var resolveCalls = 0;
+        final cli = InteractiveTrainerCli(
+          discoverProcessIds: () => [42],
+          readProcessMetadata:
+              (_) => Rpcs3ProcessMetadata(
+                executablePath: r'C:\RPCS3\rpcs3.exe',
+                startedAtUtc: DateTime.utc(2026, 11, 5),
+              ),
+          resolveMemoryBaseCandidate: (_) {
+            resolveCalls++;
+            return null;
+          },
+          runCommand:
+              (_, __, ___) =>
+                  throw StateError(
+                    'The test exits before reading game memory.',
+                  ),
+          readLine: () => inputs.removeAt(0),
+          hasTerminal: true,
+        );
+
+        final exitCode = cli.run();
+
+        expect(exitCode, 0);
+        expect(resolveCalls, 2);
+        expect(inputs, isEmpty);
+      },
+    );
+
+    test(
       'Method run() exits cleanly when memory-base selection is cancelled',
       () {
         final harness =
