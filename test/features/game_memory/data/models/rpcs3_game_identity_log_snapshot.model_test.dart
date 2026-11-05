@@ -1,3 +1,4 @@
+import 'package:ludava/features/game_memory/data/models/rpcs3_game_identity_log_event.model.dart';
 import 'package:ludava/features/game_memory/data/models/rpcs3_game_identity_log_snapshot.model.dart';
 import 'package:test/test.dart';
 
@@ -9,10 +10,17 @@ void main() {
         final titles = ['Collection'];
         final serials = ['BCUS98282'];
         final bootPaths = [r'D:\Games\EBOOT.BIN'];
+        final events = [
+          const Rpcs3GameIdentityLogEvent(
+            executable: 'RC2.ppu.self',
+            executableHash: 'PPU-measured-hash',
+          ),
+        ];
         final snapshot = Rpcs3GameIdentityLogSnapshot(
           titles: titles,
           serials: serials,
           bootPaths: bootPaths,
+          events: events,
           logPath: r'C:\RPCS3\log\RPCS3.log',
           logModifiedAtUtc: DateTime.utc(2026, 11, 5, 12),
           processStartedAtUtc: DateTime.utc(2026, 11, 5, 11),
@@ -20,10 +28,13 @@ void main() {
         titles.add('Another game');
         serials.add('NPUA80644');
         bootPaths.add(r'D:\Other\EBOOT.BIN');
+        events.add(const Rpcs3GameIdentityLogEvent(processFinished: true));
 
         expect(snapshot.titles, ['Collection']);
         expect(snapshot.serials, ['BCUS98282']);
         expect(snapshot.bootPaths, [r'D:\Games\EBOOT.BIN']);
+        expect(snapshot.events, hasLength(1));
+        expect(snapshot.events.single.executableHash, 'PPU-measured-hash');
         expect(
           () => snapshot.titles.add('Another game'),
           throwsUnsupportedError,
@@ -33,6 +44,34 @@ void main() {
           () => snapshot.bootPaths.add(r'D:\Other\EBOOT.BIN'),
           throwsUnsupportedError,
         );
+        expect(
+          () => snapshot.events.add(
+            const Rpcs3GameIdentityLogEvent(processFinished: true),
+          ),
+          throwsUnsupportedError,
+        );
+      },
+    );
+  });
+
+  group('Property latestEvent behaves correctly', () {
+    test('Property latestEvent returns the last lifecycle observation', () {
+      const stopEvent = Rpcs3GameIdentityLogEvent(processFinished: true);
+      final snapshot = _snapshot(
+        events: const [
+          Rpcs3GameIdentityLogEvent(executableHash: 'PPU-first'),
+          stopEvent,
+        ],
+      );
+
+      expect(snapshot.latestEvent, same(stopEvent));
+      expect(snapshot.latestEvent?.processFinished, isTrue);
+    });
+
+    test(
+      'Property latestEvent returns null without lifecycle observations',
+      () {
+        expect(_snapshot(events: const []).latestEvent, isNull);
       },
     );
   });
@@ -103,10 +142,12 @@ Rpcs3GameIdentityLogSnapshot _snapshot({
   List<String> titles = const ['Collection'],
   List<String> serials = const ['BCUS98282'],
   List<String> bootPaths = const [],
+  List<Rpcs3GameIdentityLogEvent> events = const [],
 }) => Rpcs3GameIdentityLogSnapshot(
   titles: titles,
   serials: serials,
   bootPaths: bootPaths,
+  events: events,
   logPath: r'C:\RPCS3\log\RPCS3.log',
   logModifiedAtUtc: DateTime.utc(2026, 11, 5, 12),
   processStartedAtUtc: DateTime.utc(2026, 11, 5, 11),

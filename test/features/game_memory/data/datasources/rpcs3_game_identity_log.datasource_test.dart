@@ -12,6 +12,7 @@ void main() {
         modifiedAt: {paths.logDirectory: DateTime.utc(2026, 11, 5, 12)},
         contents: {
           paths.logDirectory: '''
+0:00:00 VFS: Path: D:/RPCS3/ignored-config-path
 0:00:01 SYS: Path: D:/Games/BCUS98282/PS3_GAME/USRDIR/EBOOT.BIN
 0:00:02 SYS: Title: Ratchet & Clank Collection
 0:00:02 SYS: Serial: BCUS98282
@@ -210,6 +211,173 @@ SYS: Serial: SECOND002
         );
       },
     );
+  });
+
+  group('Method readCandidates() parses lifecycle events', () {
+    test('Method readCandidates() preserves PPU loads and stop order', () {
+      final paths = _LogTestData.paths();
+      final source = _LogTestData.source(
+        modifiedAt: {paths.logDirectory: DateTime.utc(2026, 11, 5, 12)},
+        contents: {
+          paths.logDirectory: '''
+0:00:01 SYS: Path: D:/Games/Collection.iso
+0:00:02 SYS: Title: Ratchet & Clank Collection
+0:00:02 SYS: Serial: BCUS98282
+0:00:03 SYS: Elf path: D:/Games/USRDIR/EBOOT.BIN
+0:00:04 ppu_loader: PPU executable hash: PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5
+0:02:17 sys_process: Process finished -> /dev_bdvd/PS3_GAME/USRDIR/RC1.ppu.self
+0:02:18 SYS: Path: /dev_bdvd/PS3_GAME/USRDIR/RC1.ppu.self
+0:02:18 SYS: Title: Ratchet & Clank Collection
+0:02:18 SYS: Serial: BCUS98282
+0:02:18 ppu_loader: PPU executable hash: PPU-3de6ba9344eb2079d5afda4552e831826af4bd09
+0:03:00 sys_process: Process finished
+''',
+        },
+      );
+
+      final snapshot = source.readCandidates(_LogTestData.metadata()).single;
+
+      expect(snapshot.events, hasLength(4));
+      expect(snapshot.events[0].executable, 'EBOOT.BIN');
+      expect(
+        snapshot.events[0].executableHash,
+        'PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5',
+      );
+      expect(snapshot.events[1].processFinished, isTrue);
+      expect(snapshot.events[1].nextExecutable, 'RC1.ppu.self');
+      expect(snapshot.events[2].executable, 'RC1.ppu.self');
+      expect(
+        snapshot.events[2].executableHash,
+        'PPU-3de6ba9344eb2079d5afda4552e831826af4bd09',
+      );
+      expect(snapshot.events[2].titleId, 'BCUS98282');
+      expect(snapshot.events[3].processFinished, isTrue);
+      expect(snapshot.events[3].executableHash, isNull);
+      expect(snapshot.latestEvent?.processFinished, isTrue);
+    });
+
+    test('Method readCandidates() preserves an unknown PPU hash', () {
+      final paths = _LogTestData.paths();
+      final source = _LogTestData.source(
+        modifiedAt: {paths.logDirectory: DateTime.utc(2026, 11, 5, 12)},
+        contents: {
+          paths.logDirectory: '''
+SYS: Path: /dev_bdvd/PS3_GAME/USRDIR/Unknown.ppu.self
+SYS: Serial: BCUS98282
+ppu_loader: PPU executable hash: PPU-0000000000000000000000000000000000000000
+''',
+        },
+      );
+
+      final snapshot = source.readCandidates(_LogTestData.metadata()).single;
+
+      expect(snapshot.events, hasLength(1));
+      expect(snapshot.events.single.executable, 'Unknown.ppu.self');
+      expect(
+        snapshot.events.single.executableHash,
+        'PPU-0000000000000000000000000000000000000000',
+      );
+    });
+
+    test('Method readCandidates() parses an ELF path without a boot path', () {
+      final paths = _LogTestData.paths();
+      final source = _LogTestData.source(
+        modifiedAt: {paths.logDirectory: DateTime.utc(2026, 11, 5, 12)},
+        contents: {
+          paths.logDirectory: '''
+SYS: Elf path: D:/Games/USRDIR/EBOOT.BIN
+ppu_loader: PPU executable hash: PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5
+''',
+        },
+      );
+
+      final event =
+          source.readCandidates(_LogTestData.metadata()).single.events.single;
+
+      expect(event.executable, 'EBOOT.BIN');
+      expect(event.bootPath, isNull);
+      expect(
+        event.executableHash,
+        'PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5',
+      );
+    });
+
+    test('Method readCandidates() clears identity after process finish', () {
+      final paths = _LogTestData.paths();
+      final source = _LogTestData.source(
+        modifiedAt: {paths.logDirectory: DateTime.utc(2026, 11, 5, 12)},
+        contents: {
+          paths.logDirectory: '''
+SYS: Path: /dev_bdvd/PS3_GAME/USRDIR/RC2.ppu.self
+SYS: Title: Ratchet & Clank Collection
+SYS: Serial: BCUS98282
+ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
+sys_process: Process finished
+ppu_loader: PPU executable hash: PPU-0000000000000000000000000000000000000000
+''',
+        },
+      );
+
+      final events =
+          source.readCandidates(_LogTestData.metadata()).single.events;
+
+      expect(events, hasLength(3));
+      expect(
+        events[2].executableHash,
+        'PPU-0000000000000000000000000000000000000000',
+      );
+      expect(events[2].title, isNull);
+      expect(events[2].titleId, isNull);
+      expect(events[2].bootPath, isNull);
+      expect(events[2].executable, isNull);
+    });
+
+    test(
+      'Method readCandidates() invalidates the prior hash during a new boot',
+      () {
+        final paths = _LogTestData.paths();
+        final source = _LogTestData.source(
+          modifiedAt: {paths.logDirectory: DateTime.utc(2026, 11, 5, 12)},
+          contents: {
+            paths.logDirectory: '''
+SYS: Path: /dev_bdvd/PS3_GAME/USRDIR/RC2.ppu.self
+SYS: Title: Ratchet & Clank Collection
+SYS: Serial: BCUS98282
+ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
+SYS: Path: /dev_bdvd/PS3_GAME/USRDIR/RC3.ppu.self
+SYS: Title: Ratchet & Clank Collection
+SYS: Serial: BCUS98282
+''',
+          },
+        );
+
+        final snapshot = source.readCandidates(_LogTestData.metadata()).single;
+
+        expect(snapshot.events, hasLength(2));
+        expect(
+          snapshot.events.first.executableHash,
+          'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9',
+        );
+        expect(snapshot.latestEvent?.executable, 'RC3.ppu.self');
+        expect(snapshot.latestEvent?.executableHash, isNull);
+        expect(snapshot.latestEvent?.titleId, 'BCUS98282');
+      },
+    );
+  });
+
+  group('Method readCandidates() reports file-system errors', () {
+    test('Method readCandidates() propagates candidate-existence errors', () {
+      final source = Rpcs3GameIdentityLogDataSource(
+        fileExists: (_) => throw FileSystemException('access denied'),
+        lastModifiedUtc: (_) => DateTime.utc(2026, 11, 5, 12),
+        readAsString: (_) => 'SYS: Serial: BCUS98282',
+      );
+
+      expect(
+        () => source.readCandidates(_LogTestData.metadata()),
+        throwsA(isA<FileSystemException>()),
+      );
+    });
   });
 }
 
