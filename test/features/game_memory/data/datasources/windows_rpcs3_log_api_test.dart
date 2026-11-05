@@ -79,6 +79,7 @@ void main() {
     test('Method system() binds the Windows log-reading APIs', () {
       if (!Platform.isWindows) {
         markTestSkipped('The RPCS3 log APIs require Windows.');
+        return;
       }
 
       expect(WindowsRpcs3LogApi.system(), isA<WindowsRpcs3LogApi>());

@@ -10,6 +10,7 @@ void main() {
     test('Integration metadata reads the current Windows process', () {
       if (!Platform.isWindows || sizeOf<IntPtr>() != 8) {
         markTestSkipped('Process metadata requires 64-bit Windows.');
+        return;
       }
 
       final processId = WindowsMemoryApi.system().getCurrentProcessId();

@@ -65,6 +65,7 @@ void main() {
     test('Method system() binds the Windows process metadata exports', () {
       if (!Platform.isWindows) {
         markTestSkipped('The process metadata exports require Windows.');
+        return;
       }
 
       expect(

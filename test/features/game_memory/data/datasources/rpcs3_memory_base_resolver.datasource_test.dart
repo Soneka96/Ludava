@@ -1,3 +1,6 @@
+@TestOn('windows')
+library;
+
 import 'dart:io';
 
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
