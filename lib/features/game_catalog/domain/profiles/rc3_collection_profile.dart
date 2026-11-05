@@ -1,23 +1,23 @@
-import 'package:ludava/features/game_memory/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/shared/constants/app_constants.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
-/// Defines the experimental Ratchet & Clank 2 Collection [GameProfile].
-abstract final class Rc2CollectionProfile {
-  /// Profile identifier used by the CLI.
-  static const String id = 'rc2-collection';
+/// Defines the Ratchet & Clank 3 PS3 Collection bolt [GameProfile].
+abstract final class Rc3CollectionProfile {
+  /// Identifier used by interactive and diagnostic commands.
+  static const String id = 'rc3-collection';
 
   /// PPU hash measured in RPCS3 0.0.43-20565-eee3f0f7.
   static const String executableHash =
-      'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9';
+      'PPU-56a8d02d516d82e5c1d39a4f7b3c9f83e350ab61';
 
-  /// Experimental profile with a PPU hash measured in the owner-tested build.
+  /// Owner-confirmed bolt mapping and measured Collection executable identity.
   static final GameProfile profile = GameProfile(
     id: id,
-    gameName: 'Ratchet & Clank 2',
+    gameName: 'Ratchet & Clank 3',
     buildId: 'BCUS98282',
-    executable: 'RC2.ppu.self',
+    executable: 'RC3.ppu.self',
     executableHash: executableHash,
     readStatus: VerificationStatus.experimental,
     writeStatus: VerificationStatus.researchConfirmed,
@@ -25,7 +25,7 @@ abstract final class Rc2CollectionProfile {
       'bolts': GameField(
         id: 'bolts',
         name: 'Bolts',
-        guestOffset: 0x01329e80,
+        guestOffset: 0x00c1edac,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
         readStatus: VerificationStatus.experimental,

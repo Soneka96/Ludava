@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/domain/profiles/rc3_collection_profile.dart';
+import 'package:ludava/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 

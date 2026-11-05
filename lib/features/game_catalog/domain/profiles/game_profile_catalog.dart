@@ -1,7 +1,7 @@
-import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
-import 'package:ludava/features/game_memory/domain/profiles/rc1_collection_profile.dart';
-import 'package:ludava/features/game_memory/domain/profiles/rc2_collection_profile.dart';
-import 'package:ludava/features/game_memory/domain/profiles/rc3_collection_profile.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
+import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
+import 'package:ludava/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
 
 /// Registers the researched Collection game profiles for shared memory access.
 abstract final class GameProfileCatalog {

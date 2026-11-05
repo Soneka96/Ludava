@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/domain/entities/game_field.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
 /// Contains the outcome of reading one selected [GameField].

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:ludava/features/game_memory/domain/entities/game_field.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/memory_write_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/repositories/Igame_memory.repository.dart';

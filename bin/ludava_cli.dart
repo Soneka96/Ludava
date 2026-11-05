@@ -11,11 +11,11 @@ import 'package:ludava/features/game_memory/data/datasources/windows_process_mem
 import 'package:ludava/features/game_memory/data/repositories/game_memory.repository.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
-import 'package:ludava/features/game_memory/domain/profiles/game_profile_catalog.dart';
+import 'package:ludava/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava/features/game_memory/domain/usecases/params/read_game_field.params.dart';
 import 'package:ludava/features/game_memory/domain/usecases/params/write_game_field.params.dart';
 import 'package:ludava/features/game_memory/domain/usecases/read_game_field.usecase.dart';
