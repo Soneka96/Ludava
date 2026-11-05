@@ -1,10 +1,10 @@
 name: ludava
-description: Read-only game memory diagnostics.
+description: RC2 Collection bolt read/write game-memory CLI.
 publish_to: none
 version: 0.1.0
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.7.0 <4.0.0'
 
 dependencies:
   ffi: ^2.2.0
