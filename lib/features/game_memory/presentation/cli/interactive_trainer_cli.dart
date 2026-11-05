@@ -546,7 +546,7 @@ class InteractiveTrainerCli {
     output.write(prompt);
     final input = _readLine();
     if (input == null) _inputEnded = true;
-    return input;
+    return input?.trim();
   }
 
   void _beginScreen(StringSink output, {bool showHeader = false}) {
