@@ -26,12 +26,16 @@ class InteractiveTrainerCli {
     runCommand,
     String? Function()? readLine,
     bool? hasTerminal,
+    bool Function()? clearScreen,
+    bool clearScreenForInjectedOutput = false,
   }) : _discoverProcessIds = discoverProcessIds,
        _readProcessMetadata = readProcessMetadata,
        _resolveMemoryBaseCandidate = resolveMemoryBaseCandidate,
        _runCommand = runCommand,
        _readLine = readLine ?? stdin.readLineSync,
-       _hasTerminal = hasTerminal;
+       _hasTerminal = hasTerminal,
+       _clearScreen = clearScreen,
+       _clearScreenForInjectedOutput = clearScreenForInjectedOutput;
 
   static const int _exitGame = 0;
   static const int _changeGame = 1;
@@ -50,24 +54,25 @@ class InteractiveTrainerCli {
   _runCommand;
   final String? Function() _readLine;
   final bool? _hasTerminal;
+  final bool Function()? _clearScreen;
+  final bool _clearScreenForInjectedOutput;
 
   bool _inputEnded = false;
+  bool _ownsTerminalOutput = false;
+  String? _lastCommandSummary;
 
   /// Runs the interactive menu and returns its process exit code.
   int run({StringSink? output, StringSink? errorOutput}) {
     final stdoutSink = output ?? stdout;
     final stderrSink = errorOutput ?? stderr;
+    _ownsTerminalOutput = output == null || _clearScreenForInjectedOutput;
+    _lastCommandSummary = null;
     if (!(_hasTerminal ?? stdin.hasTerminal)) {
       stderrSink.writeln(
         'Interactive mode requires a terminal. Use --help to see commands.',
       );
       return 2;
     }
-
-    stdoutSink.writeln('========================================');
-    stdoutSink.writeln('               LUDAVA');
-    stdoutSink.writeln('          Game Memory Trainer');
-    stdoutSink.writeln('========================================');
 
     while (!_inputEnded) {
       final processId = _selectProcess(stdoutSink, stderrSink);
@@ -103,6 +108,7 @@ class InteractiveTrainerCli {
 
   int? _selectProcess(StringSink output, StringSink errorOutput) {
     while (!_inputEnded) {
+      _beginScreen(output, showHeader: true);
       output.writeln('\nSearching for RPCS3...');
       List<int> processIds;
       try {
@@ -156,6 +162,7 @@ class InteractiveTrainerCli {
   ) {
     Rpcs3MemoryBaseCandidate? candidate;
     while (!_inputEnded) {
+      _beginScreen(output);
       candidate = null;
       try {
         final metadata = _readProcessMetadata(processId);
@@ -228,6 +235,7 @@ class InteractiveTrainerCli {
   }
 
   GameProfile? _selectGame(List<GameProfile> profiles, StringSink output) {
+    _beginScreen(output);
     output.writeln('\nSelect a game:');
     for (var index = 0; index < profiles.length; index++) {
       final profile = profiles[index];
@@ -261,15 +269,6 @@ class InteractiveTrainerCli {
       output.writeln('This profile does not define the bolts field.');
       return _changeGame;
     }
-    output.writeln('\n========================================');
-    output.writeln('       ${profile.gameName}');
-    output.writeln('          ${profile.buildId}');
-    output.writeln('========================================');
-    output.writeln('RPCS3 process selected: PID $processId');
-    output.writeln('Memory base: ${_formatMemoryBase(memoryBase)}');
-    output.writeln(
-      'Runtime identity is unverified; the selected process may not be running ${profile.gameName}.',
-    );
     final initialReadSucceeded = _runRead(
       processId,
       memoryBase,
@@ -278,11 +277,24 @@ class InteractiveTrainerCli {
       output,
       errorOutput,
     );
-    output.writeln(
-      'Memory access: ${initialReadSucceeded ? 'available' : 'not available'}',
-    );
-
     while (!_inputEnded) {
+      _beginScreen(output);
+      output.writeln('========================================');
+      output.writeln('       ${profile.gameName}');
+      output.writeln('          ${profile.buildId}');
+      output.writeln('========================================');
+      output.writeln('RPCS3 process selected: PID $processId');
+      output.writeln('Memory base: ${_formatMemoryBase(memoryBase)}');
+      output.writeln(
+        'Runtime identity is unverified; the selected process may not be running ${profile.gameName}.',
+      );
+      output.writeln(
+        'Memory access: ${initialReadSucceeded ? 'available' : 'not available'}',
+      );
+      final commandSummary = _lastCommandSummary;
+      if (commandSummary != null && commandSummary.isNotEmpty) {
+        output.writeln(commandSummary);
+      }
       output.writeln('\n1. Refresh ${field.name}');
       output.writeln('2. Set ${field.name}');
       output.writeln('3. Change Game');
@@ -404,6 +416,7 @@ class InteractiveTrainerCli {
     final commandOutput = StringBuffer();
     final commandError = StringBuffer();
     final exitCode = _runCommand(arguments, commandOutput, commandError);
+    _lastCommandSummary = commandOutput.toString().trimRight();
     if (commandOutput.isNotEmpty)
       output.writeln(commandOutput.toString().trimRight());
     if (commandError.isNotEmpty) {
@@ -431,6 +444,17 @@ class InteractiveTrainerCli {
     final input = _readLine();
     if (input == null) _inputEnded = true;
     return input;
+  }
+
+  void _beginScreen(StringSink output, {bool showHeader = false}) {
+    var cleared = false;
+    if (_ownsTerminalOutput) cleared = _clearScreen?.call() ?? false;
+    if (!cleared) output.writeln('\n----------------------------------------');
+    if (showHeader) {
+      output.writeln('               LUDAVA');
+      output.writeln('          Game Memory Trainer');
+      output.writeln('========================================');
+    }
   }
 
   String _formatMemoryBase(int memoryBase) =>

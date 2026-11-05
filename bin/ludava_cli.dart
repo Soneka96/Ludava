@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:ludava/features/game_memory/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
+import 'package:ludava/features/game_memory/data/datasources/windows_console.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_process_discovery.datasource.dart';
@@ -48,8 +49,8 @@ class LudavaCli {
     final stderrSink = errorOutput ?? stderr;
     if (arguments.isEmpty) {
       return (_interactiveCli ?? _createInteractiveCli()).run(
-        output: stdoutSink,
-        errorOutput: stderrSink,
+        output: output,
+        errorOutput: errorOutput,
       );
     }
     if (arguments.length == 1 && arguments.single == '--help') {
@@ -190,5 +191,6 @@ class LudavaCli {
     runCommand:
         (arguments, output, errorOutput) =>
             run(arguments, output: output, errorOutput: errorOutput),
+    clearScreen: WindowsConsoleDataSource().clearScreen,
   );
 }

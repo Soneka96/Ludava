@@ -37,6 +37,54 @@ void main() {
       expect(harness.readCommands.single, contains('0x300000000'));
     });
 
+    test('Method run() clears each menu screen and redraws after retry', () {
+      var clearCalls = 0;
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..inputs = ['3', '0']
+            ..clearScreen = () {
+              clearCalls++;
+              return true;
+            };
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(clearCalls, 3);
+      expect(
+        output.toString(),
+        isNot(contains('----------------------------------------')),
+      );
+      expect(
+        'Could not confirm the RPCS3 memory base'.allMatches(output.toString()),
+        hasLength(2),
+      );
+    });
+
+    test(
+      'Method run() uses a separator when screen clearing is unavailable',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..inputs = ['0']
+              ..clearScreen = () => false;
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(
+          output.toString(),
+          contains('----------------------------------------'),
+        );
+      },
+    );
+
     test('Method run() asks the user to select among multiple processes', () {
       final harness =
           _InteractiveHarness()
@@ -219,6 +267,28 @@ void main() {
 
       expect(harness.readCommands, hasLength(2));
       expect(harness.readValues, 2);
+    });
+
+    test('Method run() redraws trainer context after refreshing a field', () {
+      var clearCalls = 0;
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..inputs = ['1', '1', '1', '0']
+            ..clearScreen = () {
+              clearCalls++;
+              return true;
+            };
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(clearCalls, 5);
+      expect(output.toString(), contains('RPCS3 process selected: PID 42'));
+      expect(output.toString(), contains('Memory base: 0x300000000'));
+      expect(output.toString(), contains('Value: 102'));
     });
 
     test('Method run() does not write when the user cancels confirmation', () {
@@ -465,6 +535,7 @@ class _InteractiveHarness {
   String readErrorOutput = '';
   String writeErrorOutput = '';
   bool hasTerminal = true;
+  bool Function()? clearScreen;
   Rpcs3MemoryBaseCandidate? candidate;
   Rpcs3MemoryBaseCandidate? Function(int processId)? candidateForProcess;
   Exception? metadataError;
@@ -538,6 +609,8 @@ class _InteractiveHarness {
       },
       readLine: () => inputs.isEmpty ? null : inputs.removeAt(0),
       hasTerminal: hasTerminal,
+      clearScreen: clearScreen,
+      clearScreenForInjectedOutput: clearScreen != null,
     );
   }
 }
