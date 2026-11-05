@@ -175,3 +175,42 @@ enum GameWriteStatus {
   /// The native write result was internally inconsistent.
   invalidWriteResult,
 }
+
+/// Describes the outcome of checking the current RPCS3 game identity.
+enum GameDetectionStatus {
+  /// Detection has not run or no meaningful outcome is available.
+  none,
+
+  /// No RPCS3 process is available.
+  rpcs3NotRunning,
+
+  /// RPCS3 is running without an identified active game.
+  noActiveGame,
+
+  /// A game was identified, but Ludava has no matching profile.
+  unsupportedGame,
+
+  /// A supported game profile was matched.
+  supportedGame,
+
+  /// Available identity evidence is incomplete or conflicting.
+  ambiguous,
+
+  /// Detection could not complete because of a technical error.
+  failed,
+}
+
+/// Describes the confidence and origin of an RPCS3 game identity.
+enum GameIdentityConfidence {
+  /// No identity evidence is available.
+  none,
+
+  /// Evidence exists but does not uniquely establish the active game.
+  uncertain,
+
+  /// Current runtime evidence uniquely establishes the active game.
+  confirmed,
+
+  /// The user deliberately selected a profile without runtime verification.
+  manuallySelected,
+}
