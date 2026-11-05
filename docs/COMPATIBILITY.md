@@ -9,6 +9,8 @@ The observed guest memory base was `0x300000000`. The exact Windows and RPCS3 ve
 | Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / Windows | `bolts` read | Owner-tested live on 2026-11-05; observed `0` during startup and `110` in gameplay; exact runtime/build details unavailable |
 | Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / Windows | `bolts` write | Owner-tested live on 2026-11-05; requested `120`, Ludava displayed `120`, and the owner screenshot showed `120` on the HUD; cross-build compatibility not established |
 | Ratchet & Clank 2 — standalone PS3 | `NPUA80644` | RPCS3 / Windows | Read/write bolts | Not supported by this Collection profile |
+| Ratchet & Clank 1 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80643` | RPCS3 / Windows | `bolts` read/write | Implemented from owner-confirmed RatchetHax research; live Ludava validation pending |
+| Ratchet & Clank 3 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80645` | RPCS3 / Windows | `bolts` read/write | Implemented from owner-confirmed RatchetHax research; live Ludava validation pending |
 
 ## RC2 Collection mapping
 
@@ -19,7 +21,9 @@ The observed guest memory base was `0x300000000`. The exact Windows and RPCS3 ve
 - The owner-confirmed research recorded ordinary HUD changes from 244012 to 244016 and a targeted write/read-back/HUD change from 243866 to 244866.
 - These research observations do not establish that Ludava's independent Dart implementation works with every RPCS3 build or Collection revision.
 - No other RC2 field is included or supported. Do not apply the Collection offset to standalone RC2.
-- Ratchet & Clank 1 and Ratchet & Clank 3 support have not been implemented in Ludava.
+- Ratchet & Clank 1: bolt guest offset `0x009BC3A0` (`0x3009BC3A0` with observed research base `0x300000000`). RatchetHax tracked HUD `5155 → 5105 → 5055` and confirmed a write to `105055` on the HUD; Ludava live validation is pending.
+- Ratchet & Clank 3: bolt guest offset `0x00C1EDAC` (`0x300C1EDAC` with observed research base `0x300000000`). RatchetHax tracked HUD `753 → 755` and confirmed a write to `1755` on the HUD; Ludava live validation is pending.
+- Both profiles store one big-endian unsigned 32-bit `bolts` field only; their active PPU SELF filenames/builds were not established in the research. The Collection's outer title ID is shared, so the selected profile must match the active embedded game. Neither the profile nor a plausible numeric read proves that match.
 
 ## Evidence vocabulary
 
