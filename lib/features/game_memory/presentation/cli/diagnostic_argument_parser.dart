@@ -10,10 +10,12 @@ abstract final class DiagnosticArgumentParser {
   dart run bin/ludava.dart write --game <id> --field <id> --pid <PID> --memory-base <0xHEX> --value <integer> --confirm-write
 
 No arguments starts the interactive trainer. Diagnostic commands require an
-explicit process ID, profile, and session guest base. Ludava does not verify the active game build.
-The owner tested RC2 bolt reading and writing in a live RPCS3 session on
-November 5, 2026. Compatibility across RPCS3 versions and game builds is not
-established. Repeat the read command to refresh.''';
+explicit process ID, profile, and session guest base. Writes also require a
+current matching PPU identity and guest base. Diagnostic reads remain manually
+profiled unless current identity evidence matches. The owner tested bolt reading
+and writing in a live RPCS3 session on November 5, 2026. Compatibility beyond
+the measured RPCS3 build and PPU hashes is not established. Repeat a read to
+refresh.''';
 
   /// Parses a read or write command and rejects missing, duplicate, or invalid options.
   static DiagnosticArguments parse(List<String> arguments) {
@@ -32,6 +34,7 @@ established. Repeat the read command to refresh.''';
     int? memoryBase;
     int? value;
     var confirmed = false;
+    var requireCurrentIdentity = false;
     final seenOptions = <String>{};
 
     for (var index = 1; index < arguments.length; index++) {
@@ -41,6 +44,10 @@ established. Repeat the read command to refresh.''';
       }
       if (option == '--confirm-write') {
         confirmed = true;
+        continue;
+      }
+      if (option == '--require-current-identity') {
+        requireCurrentIdentity = true;
         continue;
       }
       if (index + 1 >= arguments.length ||
@@ -88,6 +95,7 @@ established. Repeat the read command to refresh.''';
       memoryBase: memoryBase,
       value: value,
       confirmed: confirmed,
+      requireCurrentIdentity: requireCurrentIdentity,
     );
   }
 

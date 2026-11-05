@@ -8,7 +8,8 @@ import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metada
 
 /// Reads candidate title and boot-path observations from RPCS3 logs.
 ///
-/// Log contents are historical observations, not proof of the active game.
+/// The ordered events describe the latest logged lifecycle state; callers
+/// must still tie a unique, fresh candidate log to the selected process.
 class Rpcs3GameIdentityLogDataSource {
   /// Creates a reader with optional file system seams for deterministic tests.
   Rpcs3GameIdentityLogDataSource({
@@ -40,8 +41,9 @@ class Rpcs3GameIdentityLogDataSource {
 
   /// Reads logs at candidate locations newer than [processMetadata]'s start.
   ///
-  /// Every returned snapshot remains historical and must not be treated as a
-  /// confirmed active-game identity.
+  /// Each snapshot keeps historical values and ordered lifecycle events. The
+  /// caller must reject stale or ambiguous process/log ownership before using
+  /// its latest event as active-game evidence.
   List<Rpcs3GameIdentityLogSnapshot> readCandidates(
     Rpcs3ProcessMetadata processMetadata,
   ) {

@@ -108,10 +108,6 @@ class InteractiveTrainerCli {
     while (!_inputEnded) {
       final processId = _selectProcess(stdoutSink, stderrSink);
       if (processId == null) return 0;
-      final memoryBase = _selectMemoryBase(processId, stdoutSink, stderrSink);
-      if (_inputEnded) return 0;
-      if (memoryBase == null) return 0;
-
       final profiles = GameProfileCatalog.profiles.toList(growable: false);
       var gameSelection = _selectGameForProcess(
         processId,
@@ -122,10 +118,29 @@ class InteractiveTrainerCli {
         if (_processSessionChanged || _processUnavailable) {
           _processSessionChanged = false;
           _processUnavailable = false;
+          _selectedProcessMetadata = null;
           continue;
         }
         return 0;
       }
+      final memoryBase = _selectMemoryBase(
+        processId,
+        stdoutSink,
+        stderrSink,
+        automaticIdentity:
+            gameSelection.confidence == GameIdentityConfidence.confirmed,
+      );
+      if (_inputEnded) return 0;
+      if (memoryBase == null) {
+        if (_processSessionChanged || _processUnavailable) {
+          _processSessionChanged = false;
+          _processUnavailable = false;
+          _selectedProcessMetadata = null;
+          continue;
+        }
+        return 0;
+      }
+
       var returnToProcessMenu = false;
       while (!_inputEnded && !returnToProcessMenu) {
         final action = _gameMenu(
@@ -167,6 +182,11 @@ class InteractiveTrainerCli {
             }
             continue;
           case _changeProcess:
+            _boltCount = null;
+            _boltReadError = null;
+            _lastFeedback = null;
+            _selectedProcessMetadata = null;
+            _retryDetectionRequested = false;
             returnToProcessMenu = true;
         }
       }
@@ -225,15 +245,29 @@ class InteractiveTrainerCli {
   int? _selectMemoryBase(
     int processId,
     StringSink output,
-    StringSink errorOutput,
-  ) {
+    StringSink errorOutput, {
+    required bool automaticIdentity,
+  }) {
     Rpcs3MemoryBaseCandidate? candidate;
     while (!_inputEnded) {
       _beginScreen(output);
-      output.writeln('Confirm RPCS3 connection');
+      output.writeln(
+        automaticIdentity
+            ? 'Resolving RPCS3 guest memory base'
+            : 'Confirm RPCS3 connection',
+      );
       candidate = null;
       try {
+        final selectedStart = _selectedProcessMetadata?.startedAtUtc;
         final metadata = _readProcessMetadata(processId);
+        if (selectedStart != null && metadata.startedAtUtc != selectedStart) {
+          output.writeln(
+            'The RPCS3 process session changed. Select the process and memory base again.',
+          );
+          _processSessionChanged = true;
+          _selectedProcessMetadata = null;
+          return null;
+        }
         _selectedProcessMetadata = metadata;
         candidate = _resolveMemoryBaseCandidate(metadata);
       } on Exception catch (error) {
@@ -243,6 +277,17 @@ class InteractiveTrainerCli {
         );
       } on UnsupportedError catch (error) {
         errorOutput.writeln(error);
+        return null;
+      }
+
+      if (automaticIdentity && candidate != null) {
+        output.writeln('Guest memory base resolved for this RPCS3 session.');
+        return candidate.memoryBase;
+      }
+      if (automaticIdentity && candidate == null) {
+        output.writeln(
+          'Ludava could not verify a guest memory base for this RPCS3 session.',
+        );
         return null;
       }
 
@@ -332,6 +377,7 @@ class InteractiveTrainerCli {
       _processSessionChanged = false;
       _processUnavailable = false;
       var processMetadata = _selectedProcessMetadata;
+      final previousStart = processMetadata?.startedAtUtc;
       if (refreshProcess) {
         List<int> processIds;
         try {
@@ -350,6 +396,9 @@ class InteractiveTrainerCli {
           _processUnavailable = true;
           return null;
         }
+      }
+
+      if (refreshProcess || processMetadata == null) {
         try {
           processMetadata = _readProcessMetadata(processId);
         } on Exception catch (error) {
@@ -379,30 +428,17 @@ class InteractiveTrainerCli {
             output,
           );
         }
-        final previousStart = _selectedProcessMetadata?.startedAtUtc;
-        if (previousStart != null &&
+        if (refreshProcess &&
+            previousStart != null &&
             processMetadata.startedAtUtc != previousStart) {
           output.writeln(
             'The RPCS3 process session changed. Select the process and memory base again.',
           );
           _processSessionChanged = true;
+          _selectedProcessMetadata = null;
           return null;
         }
         _selectedProcessMetadata = processMetadata;
-      }
-
-      if (processMetadata == null) {
-        return _chooseFromDetection(
-          GameDetectionResult(
-            status: GameDetectionStatus.failed,
-            processId: processId,
-            confidence: GameIdentityConfidence.none,
-            evidenceDescription: 'RPCS3 process metadata is unavailable.',
-          ),
-          processId,
-          profiles,
-          output,
-        );
       }
 
       GameDetectionResult result;
@@ -548,7 +584,15 @@ class InteractiveTrainerCli {
       output.writeln('This profile does not define the bolts field.');
       return _changeGame;
     }
-    _runRead(processId, memoryBase, profile, field, errorOutput);
+    _runRead(
+      processId,
+      memoryBase,
+      profile,
+      field,
+      errorOutput,
+      requireCurrentIdentity:
+          detection.confidence == GameIdentityConfidence.confirmed,
+    );
     _lastFeedback = null;
     while (!_inputEnded) {
       _beginScreen(output);
@@ -571,6 +615,8 @@ class InteractiveTrainerCli {
             profile,
             field,
             errorOutput,
+            requireCurrentIdentity:
+                detection.confidence == GameIdentityConfidence.confirmed,
           );
           _lastFeedback =
               refreshed ? 'Bolts refreshed.' : 'Bolts could not be read.';
@@ -580,10 +626,17 @@ class InteractiveTrainerCli {
             memoryBase,
             profile,
             field,
-            detection.confidence,
+            detection,
             output,
             errorOutput,
           );
+          if (_processSessionChanged || _processUnavailable) {
+            return _changeProcess;
+          }
+          if (_retryDetectionRequested) {
+            _retryDetectionRequested = false;
+            return _redetectGame;
+          }
         case '3':
           return _changeGame;
         case '4':
@@ -612,11 +665,23 @@ class InteractiveTrainerCli {
     int memoryBase,
     GameProfile profile,
     GameField field,
-    GameIdentityConfidence confidence,
+    GameDetectionResult detection,
     StringSink output,
     StringSink errorOutput,
   ) {
-    if (!_runRead(processId, memoryBase, profile, field, errorOutput)) {
+    if (detection.confidence != GameIdentityConfidence.confirmed) {
+      _lastFeedback =
+          'Writes are disabled until the active game is verified automatically.';
+      return;
+    }
+    if (!_runRead(
+      processId,
+      memoryBase,
+      profile,
+      field,
+      errorOutput,
+      requireCurrentIdentity: true,
+    )) {
       _lastFeedback = 'Bolts could not be read. Change cancelled.';
       return;
     }
@@ -636,13 +701,23 @@ class InteractiveTrainerCli {
     }
 
     output.writeln('You are changing bolts in ${_gameTitle(profile)}.');
-    output.writeln(_identityDisclosure(confidence));
+    output.writeln(_identityDisclosure(detection.confidence));
     final confirmation = _prompt(
       output,
       'Change bolts to ${_formatNumber(value)}? (Y/N): ',
     );
     if (confirmation == null || confirmation.toLowerCase() != 'y') {
       _lastFeedback = 'Change cancelled. Your bolts were not changed.';
+      return;
+    }
+
+    if (!_validateCurrentWriteTarget(
+      processId,
+      memoryBase,
+      profile,
+      detection,
+      output,
+    )) {
       return;
     }
 
@@ -661,7 +736,74 @@ class InteractiveTrainerCli {
       '$value',
       '--confirm-write',
     ], errorOutput);
-    _runRead(processId, memoryBase, profile, field, errorOutput);
+    _runRead(
+      processId,
+      memoryBase,
+      profile,
+      field,
+      errorOutput,
+      requireCurrentIdentity: true,
+    );
+  }
+
+  bool _validateCurrentWriteTarget(
+    int processId,
+    int memoryBase,
+    GameProfile profile,
+    GameDetectionResult selectedDetection,
+    StringSink output,
+  ) {
+    void reject(String message) {
+      _boltCount = null;
+      _boltReadError = 'The current game identity is not verified.';
+      _lastFeedback = message;
+      output.writeln('\n$message');
+      _retryDetectionRequested = true;
+    }
+
+    try {
+      final processIds = _discoverProcessIds();
+      if (!processIds.contains(processId)) {
+        _processUnavailable = true;
+        reject('RPCS3 stopped. No write was made.');
+        return false;
+      }
+
+      final currentMetadata = _readProcessMetadata(processId);
+      final selectedStartedAt = _selectedProcessMetadata?.startedAtUtc;
+      if (selectedStartedAt == null ||
+          currentMetadata.startedAtUtc != selectedStartedAt) {
+        _processSessionChanged = true;
+        reject('The RPCS3 session changed. No write was made.');
+        return false;
+      }
+
+      final currentDetection = _detectGame?.call(processId, currentMetadata);
+      final currentBase = _resolveMemoryBaseCandidate(currentMetadata);
+      final identityStillMatches =
+          currentDetection?.processId == processId &&
+          currentDetection?.status == GameDetectionStatus.supportedGame &&
+          currentDetection?.confidence == GameIdentityConfidence.confirmed &&
+          currentDetection?.profile?.id == profile.id &&
+          currentDetection?.executableHash == selectedDetection.executableHash;
+      if (!identityStillMatches || currentBase?.memoryBase != memoryBase) {
+        reject(
+          'The active game or memory base changed. No write was made; re-detect before continuing.',
+        );
+        return false;
+      }
+      return true;
+    } on Exception catch (error) {
+      reject(
+        'Could not revalidate the game before writing. No write was made: $error',
+      );
+      return false;
+    } on UnsupportedError catch (error) {
+      reject(
+        'Could not revalidate the game before writing. No write was made: $error',
+      );
+      return false;
+    }
   }
 
   bool _runRead(
@@ -669,18 +811,25 @@ class InteractiveTrainerCli {
     int memoryBase,
     GameProfile profile,
     GameField field,
-    StringSink errorOutput,
-  ) => _runCommandAndDisplay([
-    'read',
-    '--game',
-    profile.id,
-    '--field',
-    field.id,
-    '--pid',
-    '$processId',
-    '--memory-base',
-    _formatMemoryBase(memoryBase),
-  ], errorOutput);
+    StringSink errorOutput, {
+    bool requireCurrentIdentity = false,
+  }) {
+    final arguments = [
+      'read',
+      '--game',
+      profile.id,
+      '--field',
+      field.id,
+      '--pid',
+      '$processId',
+      '--memory-base',
+      _formatMemoryBase(memoryBase),
+    ];
+    if (requireCurrentIdentity) {
+      arguments.add('--require-current-identity');
+    }
+    return _runCommandAndDisplay(arguments, errorOutput);
+  }
 
   bool _runCommandAndDisplay(List<String> arguments, StringSink errorOutput) {
     final commandOutput = StringBuffer();
@@ -821,7 +970,7 @@ class InteractiveTrainerCli {
   String _identityDisclosure(GameIdentityConfidence confidence) =>
       confidence == GameIdentityConfidence.manuallySelected
           ? 'This profile was selected manually; Ludava cannot verify the active game or build.'
-          : 'Ludava cannot verify the active game build. Check Connection details.';
+          : 'The current PPU identity was rechecked before this write. Compatibility with other builds is not established.';
 
   String _formatNumber(int value) {
     final digits = value.toString();

@@ -1,95 +1,34 @@
-# RPCS3 game detection investigation
+# RPCS3 game detection
 
-## Current conclusion
+## Current behavior
 
-Ludava can discover an RPCS3 process, but the available repository evidence does
-not yet establish a reliable, current identity for an embedded PS3 Collection
-game. Until current-session evidence uniquely identifies a game, detection must
-remain unresolved and the CLI must ask for deliberate manual profile selection.
+Ludava resolves the current Collection executable from the latest ordered PPU load and process-finished events in one fresh RPCS3 log. Automatic profile matching requires the shared title ID `BCUS98282`, the executable filename, and one measured PPU hash. Historical titles and hashes are not treated as current identity after a later stop, menu boot, pending executable load, or process restart.
 
-The Collection title ID `BCUS98282` is shared by Ratchet & Clank 1, 2, and 3, so
-it cannot select one of those profiles. The RC1 and RC3 active PPU executable
-names and build fingerprints are not established. Their observed save
-namespaces are research clues only and do not prove which game is currently
-running. The RC2 profile records `RC2.ppu.self`, but that profile value alone is
-not evidence that this executable is currently active in a given RPCS3 process.
+The interactive CLI checks game identity before the guest memory base. A fresh, unique base is used without asking the user to confirm it. If the game or base cannot be established, Ludava does not load a trainer. Manual profile selection remains available for read-only inspection and is labeled unverified.
 
-## Signals inspected
+Automatic refresh reads and writes check that the selected RPCS3 process and start time remain the same, the current PPU hash still matches the selected profile, and the guest base still matches the current session log. A failed read check clears the displayed value. Writes also use the existing preliminary read, explicit confirmation, complete native write, and matching read-back checks. The CLI does not poll in the background; **Re-detect game**, refresh, and a requested write trigger fresh checks.
 
-The current implementation obtains the selected process's executable path and
-process start time, then reads RPCS3 log files near that executable. The log
-resolver uses the process start time to reject logs that predate the process,
-but it does not establish that a log belongs exclusively to that process or
-that its most recent game record still describes a running game. A log path or
-timestamp is therefore not, on its own, a confirmed active-game identity.
+## Measured PPU identities
 
-RPCS3's upstream `Emulator::Load` source logs game title, serial, and path while
-loading a game ([RPCS3 `System.cpp`](https://github.com/RPCS3/rpcs3/blob/master/rpcs3/Emu/System.cpp)).
-These boot records are useful investigation signals. The repository has no
-live RPCS3 samples demonstrating how those records behave when a game exits,
-when one Collection subgame transitions to another, or when multiple emulator
-instances share a log location. The signals must not be treated as a current
-game API until those cases are established.
+The following fingerprints were captured from the RPCS3 process log while the owner switched games. The RPCS3 window showed build `0.0.43-20565-eee3f0f7`; the executable SHA-256 was `947681A2A2DEFBCD055D9AC4944ACDAFC7BCFEA0DBA8B43673E723C4FD3A3CEB`.
 
-Neither a plausible bolt value nor the save namespaces
-`NPUA80643_RC1_SAVEDATA_A`, `NPUA80644`, and
-`NPUA80645_RC3_SAVEDATA_A` establish active-game identity. Profile selection,
-memory availability, and permission to write remain separate facts.
+| Logged executable | Meaning in the tested Collection | PPU hash |
+| --- | --- | --- |
+| `EBOOT.BIN` | Collection menu; no trainer profile | `PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5` |
+| `RC1.ppu.self` | Ratchet & Clank 1 | `PPU-3de6ba9344eb2079d5afda4552e831826af4bd09` |
+| `RC2.ppu.self` | Ratchet & Clank 2 | `PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9` |
+| `RC3.ppu.self` | Ratchet & Clank 3 | `PPU-56a8d02d516d82e5c1d39a4f7b3c9f83e350ab61` |
 
-## Safe matching boundary
+All three embedded games retained the outer title ID `BCUS98282`. RPCS3 logged `Process finished -> <RCx.ppu.self>` during subgame transitions, then logged the new executable path and hash. Returning to the Collection menu logged a normal process finish followed by the `EBOOT.BIN` hash. Stopping RC3 while leaving RPCS3 open ended with a process-finished event and no later PPU load.
 
-- An RPCS3 process is not proof that a game is loaded.
-- The Collection ID `BCUS98282` alone matches none of the three embedded game
-  profiles individually.
-- A profile can be selected automatically only from unique, current-session
-  identity evidence tied to the selected RPCS3 process.
-- Missing, stale, conflicting, or incomplete evidence remains unresolved; do
-  not guess from a previous selection, log history, save namespace, or memory
-  contents.
-- A detected but unsupported game has no trainer profile or writable fields.
-- Manual profile selection must be disclosed as manual and does not verify the
-  active game.
-- Detection is an explicit refresh operation. Ludava does not claim continuous
-  monitoring; a future UI may call the same operation periodically.
-- Losing process or game identity invalidates the prior detected profile and
-  displayed field values. Detection never performs a memory write.
+These hashes were measured in the stated RPCS3 environment. Unknown or incomplete hashes remain unresolved, including when the outer title ID matches the Collection. No identity is inferred from save paths, bolt values, or window titles.
 
-## Implemented foundation
+## Guest memory base
 
-The domain result distinguishes RPCS3-not-running, no active game, unsupported,
-supported, ambiguous, and failed outcomes. It carries the selected process,
-identity fields, evidence description, confidence, optional profile, and the
-profile's available fields. The profile resolver selects a profile only when a
-confirmed title ID plus executable name uniquely matches a registered profile;
-`BCUS98282` alone stays ambiguous. Manual selection is represented separately
-from confirmed identity.
+RPCS3 logs `vm::g_base_addr` at runtime. The tested Collection boots recorded `0x300000000` in both observed RPCS3 process sessions. Ludava still reads the current session’s log instead of using that value as a constant. It accepts a base only when all readable fresh candidate logs agree; missing, unreadable, malformed, or conflicting candidates do not authorize a trainer or a write.
 
-The built-in RPCS3 log source reads candidate files newer than the selected
-process start and preserves distinct title, serial, and boot-path values from
-the complete log. It never treats those observations as confirmed current-game
-identity. As a result, the built-in CLI currently reports log values as
-unverified candidates and keeps manual selection available. An injected,
-confirmed, process-matched identity can bypass manual selection. The CLI's
-explicit **Re-detect game** action clears the previous field reading, checks
-that the selected process/session remains the same, and requires a fresh profile
-choice when the result is ambiguous. It does not poll continuously.
+## Process and evidence limits
 
-Automated coverage exercises parsing, stale and conflicting log history,
-profile matching, unsupported titles, manual fallback, and CLI state clearing.
-No live RPCS3 game-detection scenario has been validated. The owner-tested
-read/write sessions do not establish automatic identity or profile matching.
+The log is selected from the RPCS3 executable directory and must be at least as new as the selected process start time. If multiple RPCS3 processes share that log directory, or multiple fresh logs make ownership unclear, automatic detection stays unresolved. Restarting RPCS3 produced a new PID and fresh log with no old game identity; the first game boot then supplied that session’s hash and base.
 
-## Evidence needed before broader automatic matching
-
-Capture RPCS3 runtime observations for no game loaded, each Collection game,
-game exit, switching between Collection games, an unsupported title, emulator
-restart, and multiple RPCS3 instances. For each observation, record each
-candidate log path and whether it is shared, the process start time, relevant
-new log lines, title and serial values, and the active PPU executable where
-available. Establish whether the signals can be attributed to the selected
-process and how game-stop or switch transitions invalidate the previous
-identity.
-
-Until then, do not add RC1 or RC3 executable names, build fingerprints, or other
-identity signatures. Automated tests can validate parsing and ambiguity rules,
-but cannot substitute for these live RPCS3 observations.
+The owner-run log experiment establishes RPCS3’s observed hashes and transitions for this environment. The final compiled Ludava CLI was live-smoke-tested with RC2: it selected the profile and base automatically and displayed a bolt read of `0`. A zero read does not prove gameplay was active, and live Ludava detection runs for RC1 and RC3 remain pending. Automated tests cover parsing, ambiguity, stop and restart invalidation, and write guards, but they are not live-game compatibility tests. Unsupported-game and multiple-process behavior has not been exercised live; those cases fail closed and are covered by deterministic tests.

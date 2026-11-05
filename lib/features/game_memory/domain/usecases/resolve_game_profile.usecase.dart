@@ -4,7 +4,7 @@ import 'package:ludava/features/game_memory/domain/profiles/game_profile_catalog
 import 'package:ludava/features/game_memory/domain/usecases/params/resolve_game_profile.params.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
-/// Resolves confirmed game identity evidence to a registered profile.
+/// Resolves a confirmed title, executable name, and measured hash to a profile.
 class ResolveGameProfileUseCase {
   /// Resolves [params] against Ludava's registered game profiles.
   GameDetectionResult execute(ResolveGameProfileParams params) {

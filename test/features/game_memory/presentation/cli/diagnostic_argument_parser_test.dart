@@ -7,11 +7,12 @@ void main() {
     test('Property usage reports live RC2 evidence and its limits', () {
       expect(
         DiagnosticArgumentParser.usage,
-        contains('The owner tested RC2 bolt reading and writing'),
+        contains('The owner tested bolt reading'),
       );
+      expect(DiagnosticArgumentParser.usage, contains('Compatibility beyond'));
       expect(
         DiagnosticArgumentParser.usage,
-        contains('Compatibility across RPCS3 versions and game builds'),
+        contains('the measured RPCS3 build and PPU hashes'),
       );
       expect(
         DiagnosticArgumentParser.usage,
@@ -43,6 +44,27 @@ void main() {
         expect(arguments.memoryBase, 0x300000000);
         expect(arguments.value, isNull);
         expect(arguments.confirmed, isFalse);
+        expect(arguments.requireCurrentIdentity, isFalse);
+      },
+    );
+
+    test(
+      'Method parse() requires current identity when requested for a read',
+      () {
+        final arguments = DiagnosticArgumentParser.parse([
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--require-current-identity',
+        ]);
+
+        expect(arguments.requireCurrentIdentity, isTrue);
       },
     );
 
@@ -187,6 +209,35 @@ void main() {
         ]),
         throwsFormatException,
       );
+    });
+
+    test('Method parse() rejects an unknown command', () {
+      expect(
+        () => DiagnosticArgumentParser.parse(['inspect']),
+        throwsFormatException,
+      );
+    });
+
+    test('Method parse() rejects missing option values', () {
+      final baseArguments = [
+        'read',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+      ];
+
+      for (final arguments in [
+        [...baseArguments, '--memory-base'],
+        [...baseArguments, '--memory-base', '--field'],
+      ]) {
+        expect(
+          () => DiagnosticArgumentParser.parse(arguments),
+          throwsFormatException,
+        );
+      }
     });
 
     test(

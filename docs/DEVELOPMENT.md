@@ -14,7 +14,7 @@ The project's own development work follows these rules:
 2. Each task records problem, evidence, implementation scope, test results and limitations.
 3. Test behavior where it belongs using fake or mocked dependencies; exercise a small set of important integrations.
 4. Do not label a game/build compatible without reproducible real-game validation.
-5. Enable writes only for fields whose profile records research-confirmed or verified evidence. Keep Ludava's live-runtime validation status distinct from external research, and report that process discovery and profile selection do not identify the active game/build.
+5. Enable writes only for fields whose profile records research-confirmed or verified evidence. Keep Ludava's live-runtime validation status distinct from external research; process discovery or manual profile selection alone does not identify the active game/build.
 6. Prefer simple, well-separated responsibilities and incremental refactors.
 
 ## Source and test conventions
