@@ -8,11 +8,12 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method execute() behaves correctly', () {
-    test('Method execute() matches RC2 from a unique current executable', () {
+    test('Method execute() matches RC2 from its measured PPU hash', () {
       final result = ResolveGameProfileUseCase().execute(
         _params(
           titleId: 'BCUS98282',
           executable: 'RC2.ppu.self',
+          executableHash: Rc2CollectionProfile.profile.executableHash,
           confidence: GameIdentityConfidence.confirmed,
         ),
       );
@@ -20,7 +21,34 @@ void main() {
       expect(result.status, GameDetectionStatus.supportedGame);
       expect(result.profile, same(Rc2CollectionProfile.profile));
       expect(result.confidence, GameIdentityConfidence.confirmed);
+      expect(
+        result.executableHash,
+        Rc2CollectionProfile.profile.executableHash,
+      );
       expect(result.availableFields.map((field) => field.id), ['bolts']);
+    });
+
+    test('Method execute() matches each game from its measured PPU hash', () {
+      final profiles = [
+        Rc1CollectionProfile.profile,
+        Rc2CollectionProfile.profile,
+        Rc3CollectionProfile.profile,
+      ];
+
+      for (final profile in profiles) {
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: 'BCUS98282',
+            executable: profile.executable,
+            executableHash: profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.supportedGame);
+        expect(result.profile, same(profile));
+        expect(result.confidence, GameIdentityConfidence.confirmed);
+      }
     });
 
     test('Method execute() leaves the shared Collection ID ambiguous', () {
@@ -28,6 +56,7 @@ void main() {
         _params(
           titleId: 'BCUS98282',
           executable: null,
+          executableHash: null,
           confidence: GameIdentityConfidence.confirmed,
         ),
       );
@@ -38,41 +67,37 @@ void main() {
       expect(result.gameTitle, 'Ratchet & Clank Collection');
     });
 
-    test(
-      'Method execute() keeps RC1 ambiguous without an established executable',
-      () {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: 'BCUS98282',
-            executable: null,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
+    test('Method execute() keeps RC1 ambiguous without its measured hash', () {
+      final result = ResolveGameProfileUseCase().execute(
+        _params(
+          titleId: 'BCUS98282',
+          executable: Rc1CollectionProfile.profile.executable,
+          executableHash: null,
+          confidence: GameIdentityConfidence.confirmed,
+        ),
+      );
 
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-        expect(Rc1CollectionProfile.profile.executable, isEmpty);
-      },
-    );
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.uncertain);
+      expect(Rc1CollectionProfile.profile.executableHash, isNotNull);
+    });
 
-    test(
-      'Method execute() keeps RC3 ambiguous without an established executable',
-      () {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: 'BCUS98282',
-            executable: null,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
+    test('Method execute() keeps RC3 ambiguous without its measured hash', () {
+      final result = ResolveGameProfileUseCase().execute(
+        _params(
+          titleId: 'BCUS98282',
+          executable: Rc3CollectionProfile.profile.executable,
+          executableHash: null,
+          confidence: GameIdentityConfidence.confirmed,
+        ),
+      );
 
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-        expect(Rc3CollectionProfile.profile.executable, isEmpty);
-      },
-    );
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.uncertain);
+      expect(Rc3CollectionProfile.profile.executableHash, isNotNull);
+    });
 
     test(
       'Method execute() reports a confirmed unknown title as unsupported',
@@ -82,6 +107,7 @@ void main() {
             titleId: 'UNKNOWN123',
             gameTitle: 'Unregistered game',
             executable: 'GAME.self',
+            executableHash: 'PPU-unknown',
             confidence: GameIdentityConfidence.confirmed,
           ),
         );
@@ -98,6 +124,7 @@ void main() {
         _params(
           titleId: 'BCUS98282',
           executable: 'RC2.ppu.self',
+          executableHash: Rc2CollectionProfile.profile.executableHash,
           confidence: GameIdentityConfidence.uncertain,
         ),
       );
@@ -113,6 +140,7 @@ void main() {
           _params(
             titleId: titleId,
             executable: 'RC2.ppu.self',
+            executableHash: Rc2CollectionProfile.profile.executableHash,
             confidence: GameIdentityConfidence.confirmed,
           ),
         );
@@ -127,6 +155,7 @@ void main() {
         _params(
           titleId: ' bcus98282 ',
           executable: ' rc2.PPU.SELF ',
+          executableHash: ' ppu-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9 ',
           confidence: GameIdentityConfidence.confirmed,
         ),
       );
@@ -135,9 +164,64 @@ void main() {
       expect(result.profile, same(Rc2CollectionProfile.profile));
     });
 
+    test(
+      'Method execute() leaves the shared title ID ambiguous for an unknown hash',
+      () {
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: 'BCUS98282',
+            executable: 'RC2.ppu.self',
+            executableHash: 'PPU-unknown',
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test(
+      'Method execute() keeps a matching hash ambiguous without an executable name',
+      () {
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: 'BCUS98282',
+            executable: null,
+            executableHash: Rc2CollectionProfile.profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test('Method execute() rejects a hash paired with another executable', () {
+      final result = ResolveGameProfileUseCase().execute(
+        _params(
+          titleId: 'BCUS98282',
+          executable: 'RC1.ppu.self',
+          executableHash: Rc2CollectionProfile.profile.executableHash,
+          confidence: GameIdentityConfidence.confirmed,
+        ),
+      );
+
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.uncertain);
+    });
+
     test('Method execute() records a deliberate manual profile selection', () {
       final result = ResolveGameProfileUseCase().execute(
         _params(
+          titleId: 'BCUS98282',
+          gameTitle: 'Ratchet & Clank 2',
+          executable: 'RC2.ppu.self',
+          executableHash: Rc2CollectionProfile.profile.executableHash,
           confidence: GameIdentityConfidence.manuallySelected,
           manualProfileId: Rc3CollectionProfile.id,
         ),
@@ -146,7 +230,9 @@ void main() {
       expect(result.status, GameDetectionStatus.supportedGame);
       expect(result.profile, same(Rc3CollectionProfile.profile));
       expect(result.confidence, GameIdentityConfidence.manuallySelected);
+      expect(result.titleId, Rc3CollectionProfile.profile.buildId);
       expect(result.gameTitle, 'Ratchet & Clank 3');
+      expect(result.executable, 'RC3.ppu.self');
     });
 
     test('Method execute() rejects an unknown manual profile selection', () {
@@ -178,6 +264,7 @@ void main() {
             processId: processId,
             titleId: 'BCUS98282',
             executable: 'RC2.ppu.self',
+            executableHash: Rc2CollectionProfile.profile.executableHash,
             confidence: GameIdentityConfidence.confirmed,
           ),
         );
@@ -195,6 +282,7 @@ ResolveGameProfileParams _params({
   String? titleId = 'BCUS98282',
   String? gameTitle = 'Ratchet & Clank Collection',
   String? executable,
+  String? executableHash,
   GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
   String? manualProfileId,
 }) => ResolveGameProfileParams(
@@ -202,6 +290,7 @@ ResolveGameProfileParams _params({
   titleId: titleId,
   gameTitle: gameTitle,
   executable: executable,
+  executableHash: executableHash,
   confidence: confidence,
   manualProfileId: manualProfileId,
   evidenceDescription: 'Current RPCS3 identity evidence.',

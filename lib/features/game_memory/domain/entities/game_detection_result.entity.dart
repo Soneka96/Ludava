@@ -19,6 +19,9 @@ class GameDetectionResult {
   /// Active executable name when available.
   final String? executable;
 
+  /// Active executable hash when it was observed in current-session evidence.
+  final String? executableHash;
+
   /// Evidence confidence, including whether a profile was chosen manually.
   final GameIdentityConfidence confidence;
 
@@ -34,6 +37,7 @@ class GameDetectionResult {
     required this.titleId,
     required this.gameTitle,
     required this.executable,
+    required this.executableHash,
     required this.confidence,
     required this.profile,
     required this.evidenceDescription,
@@ -46,6 +50,7 @@ class GameDetectionResult {
     String? titleId,
     String? gameTitle,
     String? executable,
+    String? executableHash,
     required GameIdentityConfidence confidence,
     GameProfile? profile,
     required String evidenceDescription,
@@ -75,6 +80,7 @@ class GameDetectionResult {
       titleId: titleId,
       gameTitle: gameTitle,
       executable: executable,
+      executableHash: executableHash,
       confidence: confidence,
       profile: profile,
       evidenceDescription: evidenceDescription,

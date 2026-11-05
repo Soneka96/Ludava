@@ -12,7 +12,11 @@ void main() {
       expect(profile.id, Rc1CollectionProfile.id);
       expect(profile.gameName, 'Ratchet & Clank');
       expect(profile.buildId, 'BCUS98282');
-      expect(profile.executable, isEmpty);
+      expect(profile.executable, 'RC1.ppu.self');
+      expect(
+        profile.executableHash,
+        'PPU-3de6ba9344eb2079d5afda4552e831826af4bd09',
+      );
       expect(profile.readStatus, VerificationStatus.experimental);
       expect(profile.writeStatus, VerificationStatus.researchConfirmed);
       expect(profile.canRead, isTrue);

@@ -14,6 +14,7 @@ void main() {
           titleId: 'BCUS98282',
           gameTitle: 'Ratchet & Clank 2',
           executable: 'RC2.ppu.self',
+          executableHash: 'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9',
           confidence: GameIdentityConfidence.confirmed,
           profile: Rc2CollectionProfile.profile,
           evidenceDescription: 'Current RPCS3 identity evidence.',
@@ -24,6 +25,10 @@ void main() {
         expect(result.titleId, 'BCUS98282');
         expect(result.gameTitle, 'Ratchet & Clank 2');
         expect(result.executable, 'RC2.ppu.self');
+        expect(
+          result.executableHash,
+          'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9',
+        );
         expect(result.confidence, GameIdentityConfidence.confirmed);
         expect(result.profile, same(Rc2CollectionProfile.profile));
         expect(result.evidenceDescription, 'Current RPCS3 identity evidence.');

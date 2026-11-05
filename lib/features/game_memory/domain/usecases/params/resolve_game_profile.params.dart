@@ -14,6 +14,9 @@ class ResolveGameProfileParams {
   /// Active executable name observed for the game.
   final String? executable;
 
+  /// Measured PPU executable hash observed for the game.
+  final String? executableHash;
+
   /// Confidence assigned by the identity source.
   final GameIdentityConfidence confidence;
 
@@ -29,6 +32,7 @@ class ResolveGameProfileParams {
     this.titleId,
     this.gameTitle,
     this.executable,
+    this.executableHash,
     required this.confidence,
     this.manualProfileId,
     required this.evidenceDescription,

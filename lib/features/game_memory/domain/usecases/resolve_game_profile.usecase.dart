@@ -71,7 +71,8 @@ class ResolveGameProfileUseCase {
     }
 
     final executable = _normalize(params.executable);
-    if (executable == null) {
+    final executableHash = _normalize(params.executableHash);
+    if (executable == null || executableHash == null) {
       return _result(
         params,
         status: GameDetectionStatus.ambiguous,
@@ -80,7 +81,11 @@ class ResolveGameProfileUseCase {
     }
 
     final matches = candidates
-        .where((profile) => _normalize(profile.executable) == executable)
+        .where(
+          (profile) =>
+              _normalize(profile.executable) == executable &&
+              _normalize(profile.executableHash) == executableHash,
+        )
         .toList(growable: false);
     if (matches.length != 1) {
       return _result(
@@ -99,6 +104,7 @@ class ResolveGameProfileUseCase {
       titleId: profile.buildId,
       gameTitle: profile.gameName,
       executable: profile.executable,
+      executableHash: params.executableHash,
     );
   }
 
@@ -110,6 +116,7 @@ class ResolveGameProfileUseCase {
     String? titleId,
     String? gameTitle,
     String? executable,
+    String? executableHash,
     String? evidenceDescription,
   }) => GameDetectionResult(
     status: status,
@@ -120,6 +127,7 @@ class ResolveGameProfileUseCase {
     titleId: titleId ?? params.titleId,
     gameTitle: gameTitle ?? params.gameTitle,
     executable: executable ?? params.executable,
+    executableHash: executableHash ?? params.executableHash,
     confidence: confidence,
     profile: profile,
     evidenceDescription: evidenceDescription ?? params.evidenceDescription,
