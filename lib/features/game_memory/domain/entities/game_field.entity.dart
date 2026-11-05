@@ -78,7 +78,9 @@ class GameField {
       readStatus == VerificationStatus.verified;
 
   /// Whether recorded evidence permits writing this field.
-  bool get canWrite => writeStatus == VerificationStatus.verified;
+  bool get canWrite =>
+      writeStatus == VerificationStatus.researchConfirmed ||
+      writeStatus == VerificationStatus.verified;
 
   static void _validateBounds(int? minimumValue, int? maximumValue) {
     if (minimumValue != null &&

@@ -15,14 +15,17 @@ void main() {
       expect(profile.buildId, 'BCUS98282');
       expect(profile.executable, 'RC2.ppu.self');
       expect(profile.readStatus, VerificationStatus.experimental);
-      expect(profile.writeStatus, VerificationStatus.none);
+      expect(profile.writeStatus, VerificationStatus.researchConfirmed);
       expect(profile.canRead, isTrue);
-      expect(profile.canWrite, isFalse);
+      expect(profile.canWrite, isTrue);
       expect(field?.guestOffset, 0x01329e80);
       expect(field?.valueType, MemoryValueType.unsigned32);
       expect(field?.byteOrder, ByteOrder.big);
       expect(field?.readStatus, VerificationStatus.experimental);
-      expect(field?.canWrite, isFalse);
+      expect(field?.writeStatus, VerificationStatus.researchConfirmed);
+      expect(field?.minimumValue, 0);
+      expect(field?.maximumValue, 0xffffffff);
+      expect(field?.canWrite, isTrue);
     });
   });
 }

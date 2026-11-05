@@ -15,6 +15,20 @@ void main() {
     });
   });
 
+  group('Enum VerificationStatus evidence labels', () {
+    test('VerificationStatus includes distinct research-confirmed evidence',
+        () {
+      expect(
+        VerificationStatus.values,
+        contains(VerificationStatus.researchConfirmed),
+      );
+      expect(
+        VerificationStatus.researchConfirmed,
+        isNot(VerificationStatus.verified),
+      );
+    });
+  });
+
   group('Property byteLength behaves correctly', () {
     test('Property byteLength returns null when type is none', () {
       expect(MemoryValueType.none.byteLength, isNull);

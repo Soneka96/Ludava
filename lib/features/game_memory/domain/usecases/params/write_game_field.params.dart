@@ -15,9 +15,6 @@ class WriteGameFieldParams {
   /// Value requested for the selected field.
   final int value;
 
-  /// Whether the active process was independently matched to this profile.
-  final bool activeBuildVerified;
-
   /// Whether the user explicitly confirmed this write request.
   final bool confirmed;
 
@@ -27,7 +24,6 @@ class WriteGameFieldParams {
     required this.fieldId,
     required this.memoryBase,
     required this.value,
-    required this.activeBuildVerified,
     required this.confirmed,
   });
 }

@@ -10,19 +10,6 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method execute() behaves correctly', () {
-    test('Method execute() rejects an unverified active build before writing',
-        () {
-      final repository = _WriteGameFieldTestRepository();
-
-      final result = WriteGameFieldUseCase(repository).execute(
-        _WriteGameFieldTestRepository.params(activeBuildVerified: false),
-      );
-
-      expect(result.status, GameWriteStatus.unverifiedBuild);
-      expect(repository.writeCalls, 0);
-      expect(repository.readCalls, 0);
-    });
-
     test('Method execute() requires explicit confirmation before writing', () {
       final repository = _WriteGameFieldTestRepository();
 
@@ -77,6 +64,25 @@ void main() {
       expect(repository.writeCalls, 0);
     });
 
+    test('Method execute() accepts research-confirmed profile and field', () {
+      final repository = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.complete,
+          bytes: [0, 0, 0, 42],
+          bytesRead: 4,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(),
+      );
+
+      expect(result.status, GameWriteStatus.success);
+      expect(repository.writeCalls, 1);
+      expect(repository.readCalls, 1);
+    });
+
     test('Method execute() rejects invalid mappings before writing', () {
       final repository = _WriteGameFieldTestRepository();
 
@@ -117,6 +123,46 @@ void main() {
       expect(partialRepository.readCalls, 0);
     });
 
+    test('Method execute() maps an invalid write address before read-back', () {
+      final repository = _WriteGameFieldTestRepository(
+        writeResult: const MemoryWriteResult(
+          status: MemoryWriteStatus.invalidAddress,
+          bytesWritten: 0,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(),
+      );
+
+      expect(result.status, GameWriteStatus.invalidMapping);
+      expect(repository.readCalls, 0);
+    });
+
+    test('Method execute() rejects non-transfer write results', () {
+      for (final status in [
+        MemoryWriteStatus.none,
+        MemoryWriteStatus.invalidRequest,
+        MemoryWriteStatus.invalidByteCount,
+      ]) {
+        final repository = _WriteGameFieldTestRepository(
+          writeResult: MemoryWriteResult(
+            status: status,
+            bytesWritten: 0,
+            requestedBytes: 4,
+          ),
+        );
+
+        final result = WriteGameFieldUseCase(repository).execute(
+          _WriteGameFieldTestRepository.params(),
+        );
+
+        expect(result.status, GameWriteStatus.invalidWriteResult);
+        expect(repository.readCalls, 0);
+      }
+    });
+
     test('Method execute() rejects impossible native write results', () {
       final repository = _WriteGameFieldTestRepository(
         writeResult: const MemoryWriteResult(
@@ -152,6 +198,14 @@ void main() {
           requestedBytes: 4,
         ),
       );
+      final invalidAddressReadBack = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.invalidAddress,
+          bytes: [],
+          bytesRead: 0,
+          requestedBytes: 4,
+        ),
+      );
       final mismatch = _WriteGameFieldTestRepository(
         readResult: MemoryReadResult(
           status: MemoryReadStatus.complete,
@@ -164,11 +218,14 @@ void main() {
 
       final failed = WriteGameFieldUseCase(failedReadBack).execute(params);
       final partial = WriteGameFieldUseCase(partialReadBack).execute(params);
+      final invalidAddress =
+          WriteGameFieldUseCase(invalidAddressReadBack).execute(params);
       final mismatched = WriteGameFieldUseCase(mismatch).execute(params);
 
       expect(failed.status, GameWriteStatus.readBackFailed);
       expect(failed.errorCode, 299);
       expect(partial.status, GameWriteStatus.readBackFailed);
+      expect(invalidAddress.status, GameWriteStatus.readBackFailed);
       expect(mismatched.status, GameWriteStatus.readBackMismatch);
       expect(mismatched.readBackValue, 41);
     });
@@ -190,16 +247,28 @@ void main() {
           requestedBytes: 4,
         ),
       );
+      final invalidByteCount = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.invalidByteCount,
+          bytes: [],
+          bytesRead: 5,
+          requestedBytes: 4,
+        ),
+      );
       final params = _WriteGameFieldTestRepository.params(value: 42);
 
       final invalid = WriteGameFieldUseCase(invalidRequest).execute(params);
       final inconsistent =
           WriteGameFieldUseCase(impossibleCount).execute(params);
+      final invalidCount =
+          WriteGameFieldUseCase(invalidByteCount).execute(params);
 
       expect(invalid.status, GameWriteStatus.invalidWriteResult);
       expect(inconsistent.status, GameWriteStatus.invalidWriteResult);
+      expect(invalidCount.status, GameWriteStatus.invalidWriteResult);
       expect(invalidRequest.writeCalls, 1);
       expect(impossibleCount.writeCalls, 1);
+      expect(invalidByteCount.writeCalls, 1);
     });
 
     test('Method execute() succeeds only after a matching read-back', () {
@@ -294,13 +363,12 @@ class _WriteGameFieldTestRepository implements IGameMemoryRepository {
   final MemoryWriteResult _writeResult;
 
   static WriteGameFieldParams params({
-    VerificationStatus profileStatus = VerificationStatus.verified,
-    VerificationStatus fieldStatus = VerificationStatus.verified,
+    VerificationStatus profileStatus = VerificationStatus.researchConfirmed,
+    VerificationStatus fieldStatus = VerificationStatus.researchConfirmed,
     int? minimumValue = 0,
     int? maximumValue = 100,
     int value = 42,
     int memoryBase = 0x300000000,
-    bool activeBuildVerified = true,
     bool confirmed = true,
   }) =>
       WriteGameFieldParams(
@@ -309,7 +377,7 @@ class _WriteGameFieldTestRepository implements IGameMemoryRepository {
           gameName: 'Test game',
           buildId: 'TEST',
           executable: 'test.exe',
-          readStatus: profileStatus,
+          readStatus: VerificationStatus.verified,
           writeStatus: profileStatus,
           fields: {
             'bolts': GameField(
@@ -328,7 +396,6 @@ class _WriteGameFieldTestRepository implements IGameMemoryRepository {
         fieldId: 'bolts',
         memoryBase: memoryBase,
         value: value,
-        activeBuildVerified: activeBuildVerified,
         confirmed: confirmed,
       );
 

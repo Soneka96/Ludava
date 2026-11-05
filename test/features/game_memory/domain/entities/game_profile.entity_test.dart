@@ -75,6 +75,16 @@ void main() {
       );
     });
 
+    test('Property canWrite returns true when status is research-confirmed',
+        () {
+      expect(
+        _GameProfileTestData.build(
+          writeStatus: VerificationStatus.researchConfirmed,
+        ).canWrite,
+        isTrue,
+      );
+    });
+
     test('Property canWrite returns false when status is not verified', () {
       for (final status in [
         VerificationStatus.none,

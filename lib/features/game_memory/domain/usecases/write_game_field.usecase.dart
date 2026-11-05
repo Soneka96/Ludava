@@ -10,7 +10,7 @@ import 'package:ludava/features/game_memory/domain/utils/value_decoder.dart';
 import 'package:ludava/features/game_memory/domain/utils/value_encoder.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
-/// Writes one verified [GameField] and requires matching read-back evidence.
+/// Writes one eligible [GameField] and requires matching read-back evidence.
 class WriteGameFieldUseCase {
   /// Creates the use case with its memory repository.
   WriteGameFieldUseCase(this._repository);
@@ -19,13 +19,6 @@ class WriteGameFieldUseCase {
 
   /// Validates [params], writes the value, then reads it back for comparison.
   GameWriteResult execute(WriteGameFieldParams params) {
-    if (!params.activeBuildVerified) {
-      return GameWriteResult(
-        status: GameWriteStatus.unverifiedBuild,
-        fieldId: params.fieldId,
-        requestedValue: params.value,
-      );
-    }
     if (!params.confirmed) {
       return GameWriteResult(
         status: GameWriteStatus.confirmationRequired,

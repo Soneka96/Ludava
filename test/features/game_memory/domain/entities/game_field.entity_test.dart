@@ -115,6 +115,15 @@ void main() {
       expect(field.canWrite, isTrue);
     });
 
+    test('Property canWrite returns true when status is research-confirmed',
+        () {
+      final field = _GameFieldTestData.build(
+        writeStatus: VerificationStatus.researchConfirmed,
+      );
+
+      expect(field.canWrite, isTrue);
+    });
+
     test('Property canWrite returns false when status is not verified', () {
       for (final status in [
         VerificationStatus.none,

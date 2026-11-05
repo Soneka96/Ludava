@@ -10,7 +10,6 @@ void main() {
         fieldId: 'bolts',
         memoryBase: 0x300000000,
         value: 42,
-        activeBuildVerified: true,
         confirmed: true,
       );
 
@@ -18,7 +17,6 @@ void main() {
       expect(params.fieldId, 'bolts');
       expect(params.memoryBase, 0x300000000);
       expect(params.value, 42);
-      expect(params.activeBuildVerified, isTrue);
       expect(params.confirmed, isTrue);
     });
   });

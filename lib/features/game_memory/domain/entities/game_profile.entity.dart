@@ -70,7 +70,9 @@ class GameProfile {
       readStatus == VerificationStatus.verified;
 
   /// Whether recorded evidence permits writing this profile.
-  bool get canWrite => writeStatus == VerificationStatus.verified;
+  bool get canWrite =>
+      writeStatus == VerificationStatus.researchConfirmed ||
+      writeStatus == VerificationStatus.verified;
 
   /// Finds a field by [fieldId].
   GameField? findField(String fieldId) => fields[fieldId];
