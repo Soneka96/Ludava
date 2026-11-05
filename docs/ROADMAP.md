@@ -29,7 +29,7 @@ Milestones describe verified outcomes, not completed code alone.
 - [ ] Validate Ludava reads against two live in-game bolt counts and record the exact RPCS3 session.
 - [ ] Verify one deliberate Ludava edit in-game and document the result and recovery steps.
 
-**Current limit:** Ludava's Dart implementation has not been tested against a live RPCS3 session; the user must select the intended process, profile, and session base.
+**Current limit:** The owner reports a successful live RC2 bolt read using Ludava on November 5, 2026. A live Ludava write and the complete compatibility evidence remain pending; the user must still select the intended process, profile, and session base.
 
 **Exit:** one Ludava edit is validated end to end, with its runtime assumptions documented and unknown fields still disabled.
 
