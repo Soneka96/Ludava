@@ -7,6 +7,20 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method run() behaves correctly', () {
+    test('Method run() accepts menu choices with surrounding whitespace', () {
+      final harness = _InteractiveHarness()
+        ..processResults = [[42]]
+        ..inputs = [' 1 ', ' 1 ', ' 3 ', ' 3 ', ' 0 '];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.readCommands, hasLength(2));
+      expect(harness.readCommands.first, containsAll(['--game', 'rc1-collection']));
+      expect(harness.readCommands.last, containsAll(['--game', 'rc3-collection']));
+      expect(output.toString(), isNot(contains('Choose one of the listed options.')));
+    });
+
     test('Method run() lists all three Collection games in order', () {
       final harness = _InteractiveHarness()
         ..processResults = [[42]]
