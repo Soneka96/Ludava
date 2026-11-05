@@ -381,7 +381,7 @@ void main() {
     );
 
     test(
-      'Method run() keeps bolts unavailable when a successful read has no value',
+      'Method run() explains unavailable game data without assuming the cause',
       () {
         final harness =
             _InteractiveHarness()
@@ -389,14 +389,68 @@ void main() {
                 [42],
               ]
               ..omitReadValue = true
-              ..inputs = ['1', '1', '0'];
+              ..inputs = ['1', '1', '4', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
 
-        expect(output.toString(), contains('RPCS3 found — bolts unavailable'));
-        expect(output.toString(), contains('The value could not be read.'));
+        expect(output.toString(), contains('RPCS3 process found'));
+        expect(output.toString(), contains('  Not available'));
+        expect(output.toString(), contains('Game data is not available.'));
+        expect(output.toString(), contains('Start Ratchet & Clank 2 in RPCS3'));
+        expect(output.toString(), contains('then select Refresh bolts.'));
+        expect(output.toString(), contains('check Connection details.'));
+        expect(output.toString(), contains('Connection Details'));
+        expect(
+          output.toString(),
+          contains('Last read: The value could not be read.'),
+        );
         expect(output.toString(), isNot(contains('  101')));
+      },
+    );
+
+    test('Method run() refreshes after an initial field read fails', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..readExitCodes = [1, 0]
+            ..boltValues = [0, 110]
+            ..inputs = ['1', '1', '1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.readCommands, hasLength(2));
+      expect(harness.writeCommands, isEmpty);
+      expect(output.toString(), contains('Game data is not available.'));
+      expect(output.toString(), contains('Bolts refreshed.'));
+      expect(output.toString(), contains('  110'));
+    });
+
+    test(
+      'Method run() explains an initial read failure in connection details',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..readExitCode = 1
+              ..inputs = ['1', '1', '4', '1', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(output.toString(), contains('Game data is not available.'));
+        expect(output.toString(), contains('Start Ratchet & Clank 2 in RPCS3'));
+        expect(output.toString(), contains('If the game is already running'));
+        expect(output.toString(), contains('Connection Details'));
+        expect(
+          output.toString(),
+          contains('Last read: The memory read failed.'),
+        );
       },
     );
 
@@ -521,7 +575,7 @@ void main() {
           output.toString(),
           contains('The confirmed value did not match'),
         );
-        expect(output.toString(), contains('The memory read failed.'));
+        expect(output.toString(), contains('Game data is not available.'));
         expect(errorOutput.toString(), contains('simulated write error'));
         expect(errorOutput.toString(), contains('simulated refresh error'));
         expect(harness.readCommands, hasLength(3));

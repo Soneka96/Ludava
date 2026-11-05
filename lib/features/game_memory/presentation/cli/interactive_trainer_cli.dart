@@ -436,7 +436,7 @@ class InteractiveTrainerCli {
     output.writeln('================================');
     output.writeln();
     output.writeln(
-      '  ${_boltCount == null ? 'RPCS3 found — bolts unavailable' : 'Connected to RPCS3'}',
+      '  ${_boltCount == null ? 'RPCS3 process found' : 'Connected to RPCS3'}',
     );
     output.writeln();
     output.writeln('  ${profile.gameName}');
@@ -445,8 +445,16 @@ class InteractiveTrainerCli {
     output.writeln('  BOLTS');
     final count = _boltCount;
     output.writeln(
-      '  ${count == null ? _boltReadError ?? 'Not available' : _formatNumber(count)}',
+      '  ${count == null ? 'Not available' : _formatNumber(count)}',
     );
+    if (count == null) {
+      output.writeln();
+      output.writeln('  Game data is not available.');
+      output.writeln('  Start Ratchet & Clank 2 in RPCS3,');
+      output.writeln('  then select Refresh bolts.');
+      output.writeln('  If the game is already running,');
+      output.writeln('  check Connection details.');
+    }
     output.writeln();
     output.writeln('--------------------------------');
   }
@@ -473,6 +481,10 @@ class InteractiveTrainerCli {
       output.writeln(
         'Runtime verification: Ludava cannot confirm the active game or build.',
       );
+      final readError = _boltReadError;
+      if (_boltCount == null && readError != null) {
+        output.writeln('Last read: $readError');
+      }
       output.writeln('1. Return to the trainer');
       output.writeln('2. Change RPCS3 process');
       output.writeln('0. Exit');
@@ -492,6 +504,8 @@ class InteractiveTrainerCli {
     return switch (status) {
       'native memory read failed' => 'The memory read failed.',
       'incomplete memory read' => 'The memory read was incomplete.',
+      'preliminary memory read failed' =>
+        'The current value could not be read, so no write was attempted.',
       'native memory write failed' => 'The memory write failed.',
       'incomplete memory write' => 'The memory write was incomplete.',
       'read-back did not match the requested value' ||
