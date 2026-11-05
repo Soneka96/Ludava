@@ -53,7 +53,7 @@ unverified against a live Ludava session. Repeat the read command to refresh.'''
         case '--pid':
           processId = _parseProcessId(optionValue);
         case '--memory-base':
-          memoryBase = _parseMemoryBase(optionValue);
+          memoryBase = parseMemoryBase(optionValue);
         case '--value':
           value = _parseInteger(optionValue, option);
         default:
@@ -106,7 +106,8 @@ unverified against a live Ludava session. Repeat the read command to refresh.'''
     return processId;
   }
 
-  static int _parseMemoryBase(String value) {
+  /// Parses a hexadecimal memory base with the same bounds as CLI options.
+  static int parseMemoryBase(String value) {
     if (!RegExp(r'^0[xX][0-9a-fA-F]+$').hasMatch(value)) {
       throw const FormatException(
         '--memory-base requires a hexadecimal value prefixed with 0x.',
@@ -115,7 +116,8 @@ unverified against a live Ludava session. Repeat the read command to refresh.'''
     final memoryBase = int.tryParse(value.substring(2), radix: 16);
     if (memoryBase == null || memoryBase < 0) {
       throw const FormatException(
-          '--memory-base is outside the address range.');
+        '--memory-base is outside the address range.',
+      );
     }
     return memoryBase;
   }
