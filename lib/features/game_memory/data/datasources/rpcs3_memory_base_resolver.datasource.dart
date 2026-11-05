@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/data/models/rpcs3_memory_base_candidate.model.dart';
-import 'package:ludava/features/game_memory/data/models/rpcs3_process_metadata.model.dart';
+import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
+import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
 
 /// Finds a recent guest memory base in log files beside the selected RPCS3 app.
 class Rpcs3MemoryBaseResolverDataSource {

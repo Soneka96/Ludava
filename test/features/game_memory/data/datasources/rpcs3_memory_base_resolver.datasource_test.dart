@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:ludava/features/game_memory/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
-import 'package:ludava/features/game_memory/data/models/rpcs3_process_metadata.model.dart';
+import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:test/test.dart';
 
 void main() {

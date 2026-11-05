@@ -1,4 +1,4 @@
-/// Identifies the selected RPCS3 executable and when its process started.
+/// Describes the selected RPCS3 process information used for log matching.
 class Rpcs3ProcessMetadata {
   /// Full path to the selected process's executable image.
   final String executablePath;
