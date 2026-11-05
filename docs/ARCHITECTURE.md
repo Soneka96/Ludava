@@ -72,7 +72,7 @@ The executable entry point `bin/ludava.dart` delegates to `bin/ludava_cli.dart`,
 ## Dart documentation
 
 - Add concise `///` documentation to every public class, method, and property. Explain the contract, constraints, or non-obvious reason; do not narrate an obvious implementation.
-- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.canReadExperimentally]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
+- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.canRead]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
 - Import a referenced symbol when needed for IDE completion and navigation. An import used only in a doc comment creates no runtime dependency; it must not be used by executable code. Architecture checks judge dependency direction from executable imports and usage, while allowing imports that exist only to resolve doc links.
 - Use `[Class]` and `[Class.member]` rather than plain-text names when referring to code. Keep comments aligned with what the symbol guarantees, especially compatibility and memory-write safety.
 
