@@ -2,7 +2,7 @@
 
 > A Windows game-memory trainer with an interactive, profile-driven PS3 Collection bolt CLI.
 
-**Status:** Ludava RC2 Collection bolt reading and writing were owner-tested live on November 5, 2026. RC1 and RC3 Collection bolt profiles are implemented from owner-confirmed RatchetHax research but require separate Ludava live tests. Compatibility across RPCS3 versions/builds and ROG Ally validation remain unestablished.
+**Status:** The owner successfully tested bolt reading and writing in Ludava for all three games in the PS3 Ratchet & Clank Collection on November 5, 2026. RC1 and RC3 writes were confirmed against HUD screenshots. Exact executable fingerprints, broader RPCS3/build compatibility, and ROG Ally validation are not yet established.
 
 ## Start here
 
@@ -22,7 +22,7 @@ Each Collection profile stores a separate big-endian unsigned 32-bit bolt offset
 
 ## Diagnostic commands
 
-Use `--game rc1-collection`, `--game rc2-collection`, or `--game rc3-collection` to select the matching embedded game. The examples below use the live-tested RC2 profile; RC1 and RC3 require live Ludava validation.
+Use `--game rc1-collection`, `--game rc2-collection`, or `--game rc3-collection` to select the matching embedded game. The examples below use RC2. RC1 and RC3 have also been owner-tested live with matching write/read-back and HUD confirmation in the reported environment.
 
 The existing explicit commands remain available for troubleshooting and automation. Read the current bolt count:
 
