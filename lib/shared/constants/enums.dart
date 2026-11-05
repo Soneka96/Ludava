@@ -29,9 +29,9 @@ enum MemoryValueType {
 
   /// Byte length of this value representation, or `null` for [none].
   int? get byteLength => switch (this) {
-        MemoryValueType.none => null,
-        MemoryValueType.unsigned32 => 4,
-      };
+    MemoryValueType.none => null,
+    MemoryValueType.unsigned32 => 4,
+  };
 }
 
 /// Describes the byte order used to encode a value.
@@ -155,6 +155,9 @@ enum GameWriteStatus {
 
   /// The profile's address mapping is invalid.
   invalidMapping,
+
+  /// The selected field could not be completely read before writing.
+  preliminaryReadFailed,
 
   /// The native process write failed.
   writeFailed,

@@ -23,11 +23,9 @@ void main() {
       final output = StringBuffer();
       final errorOutput = StringBuffer();
 
-      final exitCode = LudavaCli(interactiveCli: interactiveCli).run(
-        [],
-        output: output,
-        errorOutput: errorOutput,
-      );
+      final exitCode = LudavaCli(
+        interactiveCli: interactiveCli,
+      ).run([], output: output, errorOutput: errorOutput);
 
       expect(exitCode, 0);
       expect(output.toString(), contains('LUDAVA'));
@@ -36,33 +34,33 @@ void main() {
       expect(errorOutput.toString(), isEmpty);
     });
 
-    test('Method run() rejects interactive mode when input is not a terminal',
-        () {
-      var discoveryCalls = 0;
-      final interactiveCli = InteractiveTrainerCli(
-        discoverProcessIds: () {
-          discoveryCalls++;
-          return const [];
-        },
-        readProcessMetadata: (_) => throw StateError('not reached'),
-        resolveMemoryBaseCandidate: (_) => null,
-        runCommand: (_, __, ___) => 0,
-        readLine: () => throw StateError('must not read input'),
-        hasTerminal: false,
-      );
-      final output = StringBuffer();
-      final errorOutput = StringBuffer();
+    test(
+      'Method run() rejects interactive mode when input is not a terminal',
+      () {
+        var discoveryCalls = 0;
+        final interactiveCli = InteractiveTrainerCli(
+          discoverProcessIds: () {
+            discoveryCalls++;
+            return const [];
+          },
+          readProcessMetadata: (_) => throw StateError('not reached'),
+          resolveMemoryBaseCandidate: (_) => null,
+          runCommand: (_, __, ___) => 0,
+          readLine: () => throw StateError('must not read input'),
+          hasTerminal: false,
+        );
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
 
-      final exitCode = LudavaCli(interactiveCli: interactiveCli).run(
-        [],
-        output: output,
-        errorOutput: errorOutput,
-      );
+        final exitCode = LudavaCli(
+          interactiveCli: interactiveCli,
+        ).run([], output: output, errorOutput: errorOutput);
 
-      expect(exitCode, 2);
-      expect(errorOutput.toString(), contains('requires a terminal'));
-      expect(discoveryCalls, 0);
-    });
+        expect(exitCode, 2);
+        expect(errorOutput.toString(), contains('requires a terminal'));
+        expect(discoveryCalls, 0);
+      },
+    );
 
     test('Method run() prints help without opening a process', () {
       final output = StringBuffer();
@@ -88,53 +86,55 @@ void main() {
       expect(api.openCalls, 0);
     });
 
-    test('Method run() reads the selected field through the generic profile',
-        () {
-      final output = StringBuffer();
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
+    test(
+      'Method run() reads the selected field through the generic profile',
+      () {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
 
-      final exitCode = LudavaCli(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run(
-        [
-          'read',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-        ],
-        output: output,
-        errorOutput: errorOutput,
-      );
+        final exitCode = LudavaCli(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+        ).run(
+          [
+            'read',
+            '--game',
+            'rc2-collection',
+            '--field',
+            'bolts',
+            '--pid',
+            '42',
+            '--memory-base',
+            '0x300000000',
+          ],
+          output: output,
+          errorOutput: errorOutput,
+        );
 
-      expect(exitCode, 0);
-      expect(output.toString(), contains('Field: bolts'));
-      expect(output.toString(), contains('Value: 42'));
-      expect(errorOutput.toString(), isEmpty);
-      expect(api.requestedAccess, 0x0010);
-      expect(api.readAddress, 0x301329e80);
-      expect(api.writeCalls, 0);
-      expect(api.closeCalls, 1);
-    });
+        expect(exitCode, 0);
+        expect(output.toString(), contains('Field: bolts'));
+        expect(output.toString(), contains('Value: 42'));
+        expect(errorOutput.toString(), isEmpty);
+        expect(api.requestedAccess, 0x0010);
+        expect(api.readAddress, 0x301329e80);
+        expect(api.writeCalls, 0);
+        expect(api.closeCalls, 1);
+      },
+    );
 
-    test('Method run() reports an unknown profile before opening a process',
-        () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
+    test(
+      'Method run() reports an unknown profile before opening a process',
+      () {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
 
-      final exitCode = LudavaCli(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run(
-        [
+        final exitCode = LudavaCli(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+        ).run([
           'read',
           '--game',
           'unknown',
@@ -144,26 +144,25 @@ void main() {
           '42',
           '--memory-base',
           '0x1',
-        ],
-        errorOutput: errorOutput,
-      );
+        ], errorOutput: errorOutput);
 
-      expect(exitCode, 2);
-      expect(errorOutput.toString(), contains('Unknown game profile'));
-      expect(api.openCalls, 0);
-    });
+        expect(exitCode, 2);
+        expect(errorOutput.toString(), contains('Unknown game profile'));
+        expect(api.openCalls, 0);
+      },
+    );
 
-    test('Method run() reports an unavailable field before opening a process',
-        () {
-      final output = StringBuffer();
-      final api = FakeWindowsMemoryApi();
+    test(
+      'Method run() reports an unavailable field before opening a process',
+      () {
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi();
 
-      final exitCode = LudavaCli(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run(
-        [
+        final exitCode = LudavaCli(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+        ).run([
           'read',
           '--game',
           'rc2-collection',
@@ -173,74 +172,117 @@ void main() {
           '42',
           '--memory-base',
           '0x1',
-        ],
-        output: output,
-      );
+        ], output: output);
 
-      expect(exitCode, 1);
-      expect(output.toString(), contains('field is not approved for reading'));
-      expect(api.openCalls, 0);
-    });
+        expect(exitCode, 1);
+        expect(
+          output.toString(),
+          contains('field is not approved for reading'),
+        );
+        expect(api.openCalls, 0);
+      },
+    );
 
-    test('Method run() writes bolts and reports a matching native read-back',
-        () {
+    test(
+      'Method run() writes bolts and reports a matching native read-back',
+      () {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 50];
+
+        final exitCode = LudavaCli(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+        ).run(
+          [
+            'write',
+            '--game',
+            'rc2-collection',
+            '--field',
+            'bolts',
+            '--pid',
+            '42',
+            '--memory-base',
+            '0x300000000',
+            '--value',
+            '50',
+            '--confirm-write',
+          ],
+          output: output,
+          errorOutput: errorOutput,
+        );
+
+        expect(exitCode, 0);
+        expect(
+          output.toString(),
+          contains('Profile status: researchConfirmed'),
+        );
+        expect(output.toString(), contains('Requested value: 50'));
+        expect(output.toString(), contains('Read-back value: 50'));
+        expect(
+          output.toString(),
+          contains('Status: write and read-back complete'),
+        );
+        expect(output.toString(), contains('does not verify the active game'));
+        expect(errorOutput.toString(), isEmpty);
+        expect(api.requestedAccess, 0x0038);
+        expect(api.writeAddress, 0x301329e80);
+        expect(api.writtenBytes, [0, 0, 0, 50]);
+        expect(api.readCalls, 2);
+        expect(api.readAddress, 0x301329e80);
+        expect(api.closeCalls, 1);
+      },
+    );
+
+    test('Method run() prevents a write when the preliminary read fails', () {
       final output = StringBuffer();
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 50];
+      final api =
+          FakeWindowsMemoryApi()
+            ..readReturnValue = 0
+            ..errorCode = 299;
 
       final exitCode = LudavaCli(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
-      ).run(
-        [
-          'write',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-          '--value',
-          '50',
-          '--confirm-write',
-        ],
-        output: output,
-        errorOutput: errorOutput,
-      );
+      ).run([
+        'write',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+        '--value',
+        '50',
+        '--confirm-write',
+      ], output: output);
 
-      expect(exitCode, 0);
-      expect(output.toString(), contains('Profile status: researchConfirmed'));
-      expect(output.toString(), contains('Requested value: 50'));
-      expect(output.toString(), contains('Read-back value: 50'));
+      expect(exitCode, 1);
       expect(
-          output.toString(), contains('Status: write and read-back complete'));
-      expect(output.toString(), contains('does not verify the active game'));
-      expect(errorOutput.toString(), isEmpty);
-      expect(api.requestedAccess, 0x0038);
-      expect(api.writeAddress, 0x301329e80);
-      expect(api.writtenBytes, [0, 0, 0, 50]);
+        output.toString(),
+        contains('Status: preliminary memory read failed'),
+      );
+      expect(output.toString(), contains('Windows error: 299'));
       expect(api.readCalls, 1);
-      expect(api.readAddress, 0x301329e80);
+      expect(api.writeCalls, 0);
       expect(api.closeCalls, 1);
     });
 
-    test('Method run() reports native write failures and closes the handle',
-        () {
-      final output = StringBuffer();
-      final api = FakeWindowsMemoryApi()
-        ..writeReturnValue = 0
-        ..reportedWriteBytes = 0
-        ..errorCode = 5;
+    test(
+      'Method run() prevents a write after an incomplete preliminary read',
+      () {
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi()..reportedReadBytes = 2;
 
-      final exitCode = LudavaCli(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run(
-        [
+        final exitCode = LudavaCli(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+        ).run([
           'write',
           '--game',
           'rc2-collection',
@@ -253,16 +295,57 @@ void main() {
           '--value',
           '50',
           '--confirm-write',
-        ],
-        output: output,
-      );
+        ], output: output);
 
-      expect(exitCode, 1);
-      expect(output.toString(), contains('Status: native memory write failed'));
-      expect(output.toString(), contains('Windows error: 5'));
-      expect(api.readCalls, 0);
-      expect(api.closeCalls, 1);
-    });
+        expect(exitCode, 1);
+        expect(
+          output.toString(),
+          contains('Status: preliminary memory read failed'),
+        );
+        expect(api.readCalls, 1);
+        expect(api.writeCalls, 0);
+      },
+    );
+
+    test(
+      'Method run() reports native write failures and closes the handle',
+      () {
+        final output = StringBuffer();
+        final api =
+            FakeWindowsMemoryApi()
+              ..writeReturnValue = 0
+              ..reportedWriteBytes = 0
+              ..errorCode = 5;
+
+        final exitCode = LudavaCli(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+        ).run([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '50',
+          '--confirm-write',
+        ], output: output);
+
+        expect(exitCode, 1);
+        expect(
+          output.toString(),
+          contains('Status: native memory write failed'),
+        );
+        expect(output.toString(), contains('Windows error: 5'));
+        expect(api.readCalls, 1);
+        expect(api.closeCalls, 1);
+      },
+    );
 
     test('Method run() reports partial writes without reading back', () {
       final output = StringBuffer();
@@ -272,27 +355,24 @@ void main() {
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
-      ).run(
-        [
-          'write',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-          '--value',
-          '50',
-          '--confirm-write',
-        ],
-        output: output,
-      );
+      ).run([
+        'write',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+        '--value',
+        '50',
+        '--confirm-write',
+      ], output: output);
 
       expect(exitCode, 1);
       expect(output.toString(), contains('Status: incomplete memory write'));
-      expect(api.readCalls, 0);
+      expect(api.readCalls, 1);
       expect(api.closeCalls, 1);
     });
 
@@ -304,27 +384,26 @@ void main() {
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
-      ).run(
-        [
-          'write',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-          '--value',
-          '4294967296',
-          '--confirm-write',
-        ],
-        output: output,
-      );
+      ).run([
+        'write',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+        '--value',
+        '4294967296',
+        '--confirm-write',
+      ], output: output);
 
       expect(exitCode, 1);
-      expect(output.toString(),
-          contains('Status: value is outside the field range'));
+      expect(
+        output.toString(),
+        contains('Status: value is outside the field range'),
+      );
       expect(api.writeCalls, 0);
       expect(api.readCalls, 0);
       expect(api.closeCalls, 1);
@@ -338,65 +417,60 @@ void main() {
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
-      ).run(
-        [
-          'write',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-          '--value',
-          '50',
-          '--confirm-write',
-        ],
-        output: output,
-      );
+      ).run([
+        'write',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+        '--value',
+        '50',
+        '--confirm-write',
+      ], output: output);
 
       expect(exitCode, 1);
       expect(output.toString(), contains('Status: read-back did not match'));
       expect(output.toString(), contains('Requested value: 50'));
       expect(output.toString(), contains('Read-back value: 49'));
-      expect(api.readCalls, 1);
+      expect(api.readCalls, 2);
       expect(api.closeCalls, 1);
     });
 
     test('Method run() reports read-back failures after a complete write', () {
       final output = StringBuffer();
-      final api = FakeWindowsMemoryApi()
-        ..readReturnValue = 0
-        ..errorCode = 299;
+      final api =
+          FakeWindowsMemoryApi()
+            ..readReturnValues = [1, 0]
+            ..errorCode = 299;
 
       final exitCode = LudavaCli(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
-      ).run(
-        [
-          'write',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-          '--value',
-          '50',
-          '--confirm-write',
-        ],
-        output: output,
-      );
+      ).run([
+        'write',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+        '--value',
+        '50',
+        '--confirm-write',
+      ], output: output);
 
       expect(exitCode, 1);
       expect(output.toString(), contains('Status: write read-back failed'));
       expect(output.toString(), contains('Windows error: 299'));
       expect(api.writeCalls, 1);
-      expect(api.readCalls, 1);
+      expect(api.readCalls, 2);
       expect(api.closeCalls, 1);
     });
 
@@ -408,20 +482,17 @@ void main() {
         api: api.adapter,
         isWindows: false,
         pointerSize: 8,
-      ).run(
-        [
-          'read',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-        ],
-        errorOutput: errorOutput,
-      );
+      ).run([
+        'read',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+      ], errorOutput: errorOutput);
 
       expect(exitCode, 1);
       expect(errorOutput.toString(), contains('Windows only'));
@@ -437,20 +508,17 @@ void main() {
         api: api.adapter,
         isWindows: true,
         pointerSize: 4,
-      ).run(
-        [
-          'read',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-        ],
-        errorOutput: errorOutput,
-      );
+      ).run([
+        'read',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+      ], errorOutput: errorOutput);
 
       expect(exitCode, 1);
       expect(errorOutput.toString(), contains('requires 64-bit Windows'));
@@ -460,10 +528,11 @@ void main() {
     test('Method run() reports handle-close failures after a read', () {
       final output = StringBuffer();
       final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi()
-        ..readBytes = [0, 0, 0, 42]
-        ..closeReturnValue = 0
-        ..errorCode = 6;
+      final api =
+          FakeWindowsMemoryApi()
+            ..readBytes = [0, 0, 0, 42]
+            ..closeReturnValue = 0
+            ..errorCode = 6;
 
       final exitCode = LudavaCli(
         api: api.adapter,
@@ -500,23 +569,20 @@ void main() {
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
-      ).run(
-        [
-          'write',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'health',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-          '--value',
-          '50',
-          '--confirm-write',
-        ],
-        output: output,
-      );
+      ).run([
+        'write',
+        '--game',
+        'rc2-collection',
+        '--field',
+        'health',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x300000000',
+        '--value',
+        '50',
+        '--confirm-write',
+      ], output: output);
 
       expect(exitCode, 1);
       expect(output.toString(), contains('field is not approved for writing'));
@@ -524,17 +590,17 @@ void main() {
       expect(api.writeCalls, 0);
     });
 
-    test('Method run() reports inaccessible processes with the Windows error',
-        () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
+    test(
+      'Method run() reports inaccessible processes with the Windows error',
+      () {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
 
-      final exitCode = LudavaCli(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run(
-        [
+        final exitCode = LudavaCli(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+        ).run([
           'read',
           '--game',
           'rc2-collection',
@@ -544,14 +610,13 @@ void main() {
           '42',
           '--memory-base',
           '0x300000000',
-        ],
-        errorOutput: errorOutput,
-      );
+        ], errorOutput: errorOutput);
 
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('Windows error 5'));
-      expect(api.lastErrorCalls, 1);
-    });
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Windows error 5'));
+        expect(api.lastErrorCalls, 1);
+      },
+    );
 
     test('Method run() returns an argument error before opening a process', () {
       final errorOutput = StringBuffer();

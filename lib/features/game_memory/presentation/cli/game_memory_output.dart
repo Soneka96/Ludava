@@ -56,9 +56,11 @@ abstract final class GameMemoryOutput {
     ];
     switch (result.status) {
       case GameWriteStatus.success:
-        lines.add(result.succeeded
-            ? 'Status: write and read-back complete'
-            : 'Status: invalid write result');
+        lines.add(
+          result.succeeded
+              ? 'Status: write and read-back complete'
+              : 'Status: invalid write result',
+        );
       case GameWriteStatus.none:
         lines.add('Status: no write attempted');
       case GameWriteStatus.unsupportedProfile:
@@ -71,6 +73,8 @@ abstract final class GameMemoryOutput {
         lines.add('Status: value is outside the field range');
       case GameWriteStatus.invalidMapping:
         lines.add('Status: invalid memory mapping');
+      case GameWriteStatus.preliminaryReadFailed:
+        lines.add('Status: preliminary memory read failed');
       case GameWriteStatus.writeFailed:
         lines.add('Status: native memory write failed');
       case GameWriteStatus.incompleteWrite:

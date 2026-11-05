@@ -17,15 +17,8 @@ class WriteGameFieldUseCase {
 
   final IGameMemoryRepository _repository;
 
-  /// Validates [params], writes the value, then reads it back for comparison.
+  /// Validates [params], reads the field, writes the value, and verifies it.
   GameWriteResult execute(WriteGameFieldParams params) {
-    if (!params.confirmed) {
-      return GameWriteResult(
-        status: GameWriteStatus.confirmationRequired,
-        fieldId: params.fieldId,
-        requestedValue: params.value,
-      );
-    }
     if (!params.profile.canWrite) {
       return GameWriteResult(
         status: GameWriteStatus.unsupportedProfile,
@@ -64,6 +57,48 @@ class WriteGameFieldUseCase {
       return _failure(GameWriteStatus.invalidMapping, field.id, params.value);
     }
 
+    if (!params.confirmed) {
+      return GameWriteResult(
+        status: GameWriteStatus.confirmationRequired,
+        fieldId: field.id,
+        requestedValue: params.value,
+      );
+    }
+
+    final preliminaryRead = _repository.read(address, byteLength);
+    if (preliminaryRead.status != MemoryReadStatus.complete ||
+        !preliminaryRead.isComplete ||
+        preliminaryRead.bytes.length != byteLength ||
+        preliminaryRead.bytes.any((byte) => byte < 0 || byte > 0xff)) {
+      return GameWriteResult(
+        status: GameWriteStatus.preliminaryReadFailed,
+        fieldId: field.id,
+        requestedValue: params.value,
+        errorCode: preliminaryRead.errorCode,
+      );
+    }
+
+    late final int currentValue;
+    try {
+      currentValue = ValueDecoder.decodeUnsigned32(
+        Uint8List.fromList(preliminaryRead.bytes),
+        field.byteOrder,
+      );
+    } on ArgumentError {
+      return _failure(
+        GameWriteStatus.preliminaryReadFailed,
+        field.id,
+        params.value,
+      );
+    }
+    if (!_isAllowedValue(field, currentValue)) {
+      return _failure(
+        GameWriteStatus.preliminaryReadFailed,
+        field.id,
+        params.value,
+      );
+    }
+
     late final List<int> bytes;
     try {
       bytes = ValueEncoder.encodeUnsigned32(params.value, field.byteOrder);
@@ -88,7 +123,10 @@ class WriteGameFieldUseCase {
     }
     if (!readBack.isComplete || readBack.bytes.length != byteLength) {
       return _failure(
-          GameWriteStatus.invalidWriteResult, field.id, params.value);
+        GameWriteStatus.invalidWriteResult,
+        field.id,
+        params.value,
+      );
     }
 
     late final int actualValue;
@@ -99,7 +137,10 @@ class WriteGameFieldUseCase {
       );
     } on ArgumentError {
       return _failure(
-          GameWriteStatus.invalidWriteResult, field.id, params.value);
+        GameWriteStatus.invalidWriteResult,
+        field.id,
+        params.value,
+      );
     }
     if (actualValue != params.value) {
       return GameWriteResult(
@@ -139,8 +180,7 @@ class WriteGameFieldUseCase {
       MemoryWriteStatus.invalidAddress => GameWriteStatus.invalidMapping,
       MemoryWriteStatus.none ||
       MemoryWriteStatus.invalidRequest ||
-      MemoryWriteStatus.invalidByteCount =>
-        GameWriteStatus.invalidWriteResult,
+      MemoryWriteStatus.invalidByteCount => GameWriteStatus.invalidWriteResult,
       MemoryWriteStatus.complete => GameWriteStatus.invalidWriteResult,
     };
     return GameWriteResult(
@@ -152,9 +192,5 @@ class WriteGameFieldUseCase {
   }
 
   GameWriteResult _failure(GameWriteStatus status, String fieldId, int value) =>
-      GameWriteResult(
-        status: status,
-        fieldId: fieldId,
-        requestedValue: value,
-      );
+      GameWriteResult(status: status, fieldId: fieldId, requestedValue: value);
 }
