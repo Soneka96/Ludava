@@ -1,11 +1,11 @@
 # Compatibility and verification matrix
 
-**Ludava's RC2 Collection read/write implementation is not live-verified.** The bolt mapping has owner-confirmed read/write research in RatchetHax, but Ludava has not been run against RPCS3. The CLI requires the user to select the process, profile, and guest base manually and does not prove the active game identity.
+**Ludava RC2 read: owner-tested live. Ludava RC2 write: implemented, not yet owner-tested live.** The bolt mapping has owner-confirmed read/write research in RatchetHax, and the owner reports a successful Ludava read against RPCS3 on November 5, 2026, using PID `20992` and guest base `0x300000000`. The displayed bolt count and executable fingerprint were not supplied, so this does not complete the formal two-value read-verification gate. The CLI requires the user to select the process, profile, and guest base manually and does not prove the active game identity.
 
 | Game/edition | Identifier | Environment | Capability | Status |
 | --- | --- | --- | --- | --- |
-| Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / 64-bit Windows | `bolts` read | Implemented in Ludava; mapping is owner-confirmed research; Ludava live runtime unverified |
-| Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / 64-bit Windows | `bolts` write | Enabled for the research-confirmed profile with explicit confirmation and read-back; Ludava live runtime unverified |
+| Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / 64-bit Windows | `bolts` read | Implemented; owner reports successful live RC2 read on 2026-11-05; formal two-value verification pending |
+| Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / 64-bit Windows | `bolts` write | Implemented with explicit confirmation and read-back; Ludava live write not yet reported |
 | Ratchet & Clank 2 — standalone PS3 | `NPUA80644` | RPCS3 / Windows | Read/write bolts | Not supported by this Collection profile |
 
 ## RC2 Collection mapping
