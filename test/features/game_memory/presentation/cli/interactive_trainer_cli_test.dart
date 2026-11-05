@@ -81,7 +81,7 @@ void main() {
               [],
               [42],
             ]
-            ..inputs = ['1', '1', '1', '0'];
+            ..inputs = ['1', '1', '2', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -99,7 +99,7 @@ void main() {
               [42],
             ]
             ..discoveryError = Exception('temporary discovery issue')
-            ..inputs = ['1', '1', '1', '0'];
+            ..inputs = ['1', '1', '2', '0'];
       final errorOutput = StringBuffer();
 
       harness.run(StringBuffer(), errorOutput);
@@ -184,7 +184,7 @@ void main() {
             ..processResults = [
               [101, 202],
             ]
-            ..inputs = ['2', '1', '1', '0'];
+            ..inputs = ['2', '1', '2', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -204,7 +204,7 @@ void main() {
               memoryBase: 0x400000000,
               logPath: r'C:\RPCS3\log\RPCS3.log',
             )
-            ..inputs = ['1', '1', '0'];
+            ..inputs = ['1', '2', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -221,7 +221,7 @@ void main() {
               ..processResults = [
                 [42],
               ]
-              ..inputs = ['2', 'not-hex', '0x400000000', '1', '0'];
+              ..inputs = ['2', 'not-hex', '0x400000000', '2', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -244,7 +244,7 @@ void main() {
                 logPath: r'C:\RPCS3\log\RPCS3.log',
               ),
             ]
-            ..inputs = ['3', '1', '1', '0'];
+            ..inputs = ['3', '1', '2', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -339,7 +339,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1'];
+            ..inputs = ['1', '2'];
 
       final exitCode = harness.run(StringBuffer(), StringBuffer());
 
@@ -354,7 +354,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '1', '0'];
+            ..inputs = ['1', '2', '1', '0'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -369,7 +369,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '1', '0']
+            ..inputs = ['1', '2', '1', '0']
             ..clearScreen = () {
               clearCalls++;
               return true;
@@ -391,7 +391,7 @@ void main() {
               [42],
             ]
             ..boltValues = [293930]
-            ..inputs = ['1', '1', '0'];
+            ..inputs = ['1', '2', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -419,7 +419,7 @@ void main() {
               ..processResults = [
                 [42],
               ]
-              ..inputs = ['1', '1', '4', '1', '0'];
+              ..inputs = ['1', '2', '4', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -444,7 +444,7 @@ void main() {
                 [42],
               ]
               ..omitReadValue = true
-              ..inputs = ['1', '1', '4', '1', '0'];
+              ..inputs = ['1', '2', '4', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -472,7 +472,7 @@ void main() {
             ]
             ..readExitCodes = [1, 0]
             ..boltValues = [0, 110]
-            ..inputs = ['1', '1', '1', '0'];
+            ..inputs = ['1', '2', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -493,7 +493,7 @@ void main() {
                 [42],
               ]
               ..readExitCode = 1
-              ..inputs = ['1', '1', '4', '1', '0'];
+              ..inputs = ['1', '2', '4', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -515,7 +515,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '2', '999999', 'n', '0'];
+            ..inputs = ['1', '2', '2', '999999', 'n', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -531,7 +531,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '2', '4294967296', '0'];
+            ..inputs = ['1', '2', '2', '4294967296', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -549,7 +549,7 @@ void main() {
                 ..processResults = [
                   [42],
                 ]
-                ..inputs = ['1', '1', '2', value, '0'];
+                ..inputs = ['1', '2', '2', value, '0'];
           final output = StringBuffer();
 
           harness.run(output, StringBuffer());
@@ -566,7 +566,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '2'];
+            ..inputs = ['1', '2', '2'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -579,7 +579,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '2', '999'];
+            ..inputs = ['1', '2', '2', '999'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -592,7 +592,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '2', '999999', 'Y', '0'];
+            ..inputs = ['1', '2', '2', '999999', 'Y', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -619,7 +619,7 @@ void main() {
               ..readExitCodes = [0, 0, 1]
               ..writeErrorOutput = 'simulated write error'
               ..readErrorOutput = 'simulated refresh error'
-              ..inputs = ['1', '1', '2', '5', 'y', '0'];
+              ..inputs = ['1', '2', '2', '5', 'y', '0'];
         final output = StringBuffer();
         final errorOutput = StringBuffer();
 
@@ -646,7 +646,7 @@ void main() {
                 [42],
               ]
               ..readExitCode = 1
-              ..inputs = ['1', '1', '2', '0'];
+              ..inputs = ['1', '2', '2', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -662,7 +662,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '1', '3', '1', '0'];
+            ..inputs = ['1', '2', '3', '3', '0'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -682,7 +682,7 @@ void main() {
                 logPath: r'C:\RPCS3\log\RPCS3.log',
               );
             }
-            ..inputs = ['1', '1', '4', '2', '1', '1', '2', '5', 'y', '0'];
+            ..inputs = ['1', '2', '4', '2', '1', '2', '2', '5', 'y', '0'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -703,7 +703,7 @@ void main() {
               ]
               ..metadataError = Exception('process exited before lookup')
               ..readExitCode = 1
-              ..inputs = ['1', '1', '0'];
+              ..inputs = ['1', '2', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
