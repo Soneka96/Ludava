@@ -1,6 +1,6 @@
 # MVP — RC2 bolt trainer
 
-**Current status:** the profile-driven Windows CLI can read and write RC2 Collection bolts using owner-confirmed research. Ludava has not yet been tested against a live RPCS3 session, and it does not identify the active game/build automatically.
+**Current status:** the profile-driven Windows CLI can read and write RC2 Collection bolts using owner-confirmed research. The owner successfully tested a live RC2 bolt read with Ludava on November 5, 2026; a live Ludava write and full two-value read-verification evidence are still pending. Ludava does not identify the active game/build automatically.
 
 ## Objective
 
