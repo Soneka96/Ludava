@@ -2,7 +2,7 @@
 
 > A Windows game-memory trainer with a small, profile-driven RC2 bolt read/write CLI.
 
-**Status:** the CLI reads and writes the RC2 Collection bolt field using owner-confirmed research. Ludava itself has not been tested against a live RPCS3 session, so this is not a Ludava compatibility claim.
+**Status:** the CLI reads and writes the RC2 Collection bolt field using owner-confirmed research. The owner has successfully tested the Dart RC2 bolt read command against a live RPCS3 session. A Ludava write and full cross-build compatibility are not yet confirmed.
 
 ## Start here
 
@@ -57,7 +57,7 @@ Technical references: [Dart native interop](https://dart.dev/interop/c-interop),
 
 ## Repository status
 
-The RC2 profile uses guest offset `0x01329E80`, an unsigned 32-bit big-endian field, with write eligibility marked `researchConfirmed`. The tested research session used guest base `0x300000000`; the base can vary. Ludava's code has not been run against RPCS3 and does not identify the active game build.
+The RC2 profile uses guest offset `0x01329E80`, an unsigned 32-bit big-endian field, with write eligibility marked `researchConfirmed`. The tested research session used guest base `0x300000000`; the base can vary. The owner reports a successful live RPCS3 bolt read with Ludava. The write operation still requires live validation, and the CLI does not identify the active game build.
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 
