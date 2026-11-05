@@ -8,7 +8,7 @@ Milestones describe verified outcomes, not completed code alone.
 - [x] Initialize the repository with project scope, architecture, and safety documentation.
 - [x] State proprietary ownership and the no-external-contributions policy.
 - [ ] Decide whether to change the currently public repository visibility before implementation or distribution.
-- [x] Review RatchetHax PR #1 and record its validation limits.
+- [x] Review merged RatchetHax PR #1 and record its owner-confirmed RC2 bolt findings and limits.
 
 **Exit:** evidence-backed scope for one read-only field in one investigated game build.
 
@@ -24,14 +24,14 @@ Milestones describe verified outcomes, not completed code alone.
 
 ## M2 — One guarded edit
 
-- [x] Implement a write use case that checks profile and field status, active-build verification, confirmation, value bounds, complete transfer, and read-back.
-- [ ] Implement active-game/build identification from reliable process/game evidence.
-- [ ] Verify the exact build and field for writing, then enable the CLI write path.
-- [ ] Verify one deliberate edit in-game with a backed-up save and document recovery steps.
+- [x] Implement the write use case with profile/field status, explicit confirmation, value bounds, complete transfer, and read-back checks.
+- [x] Enable RC2 bolt writes from the explicitly selected research-confirmed profile; report that Ludava does not identify the active build.
+- [ ] Validate Ludava reads against two live in-game bolt counts and record the exact RPCS3 session.
+- [ ] Verify one deliberate Ludava edit in-game and document the result and recovery steps.
 
-**Current limit:** the CLI rejects every write request because active-build identification is not implemented.
+**Current limit:** Ludava's Dart implementation has not been tested against a live RPCS3 session; the user must select the intended process, profile, and session base.
 
-**Exit:** one edit is validated end to end without enabling unknown or unverified fields.
+**Exit:** one Ludava edit is validated end to end, with its runtime assumptions documented and unknown fields still disabled.
 
 ## M3 — Minimal Flutter desktop interface
 

@@ -29,6 +29,16 @@ void main() {
     });
   });
 
+  group('Enum GameWriteStatus enabled outcomes', () {
+    test('GameWriteStatus distinguishes incomplete and verified writes', () {
+      expect(GameWriteStatus.values, contains(GameWriteStatus.incompleteWrite));
+      expect(
+          GameWriteStatus.values, contains(GameWriteStatus.readBackMismatch));
+      expect(GameWriteStatus.values, contains(GameWriteStatus.success));
+      expect(GameWriteStatus.values, isNot(contains('unverifiedBuild')));
+    });
+  });
+
   group('Property byteLength behaves correctly', () {
     test('Property byteLength returns null when type is none', () {
       expect(MemoryValueType.none.byteLength, isNull);

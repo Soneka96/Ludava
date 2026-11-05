@@ -4,9 +4,9 @@ This document defines the target architecture for new and materially changed cod
 
 ## Feature ownership
 
-The first capability is `game_memory`: reading a selected game value through a profile, and later writing a value only when the exact build and field are independently verified. A game or build is profile data, not a separate feature. Adding RC1 should add its profile and fields with their actual evidence status; it should reuse the same reader and writer use cases. Do not label an experimental profile verified just to make it selectable.
+The first capability is `game_memory`: reading and writing selected game values through profiles. A game or build is profile data, not a separate feature. Adding a game should add its researched profile and fields with their actual evidence status; it should reuse the same reader and writer use cases. `researchConfirmed` means owner-confirmed external research supports an operation; it does not mean Ludava was tested against a live game session.
 
-Keep game-specific offsets, value types, endianness, and verification status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic read logic for every game. A field that has not been verified for writing remains read-only.
+Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires explicit confirmation and matching read-back.
 
 ## Layers and dependency direction
 
@@ -89,11 +89,11 @@ The executable entry point `bin/ludava.dart` delegates to `bin/ludava_cli.dart`,
 
 ## Safety invariants
 
-1. Unknown or unverified game builds and fields cannot be written.
+1. Only an explicitly selected profile and a field with `researchConfirmed` or `verified` write evidence can be written; report when Ludava has not checked the live runtime identity.
 2. Preserve 64-bit host addresses and validate the complete requested memory range.
 3. Require native success and the exact byte count before decoding or reporting a value.
 4. A failed read is never reported as numeric zero.
-5. A write requires an explicitly verified field, a valid value range, a deliberate request, a complete write, and a matching read-back. Live-game validation is still required before claiming write support.
+5. A write requires a research-confirmed or verified field, a valid value range, a deliberate request, a complete native transfer, and a matching read-back. Live-game validation is required before claiming Ludava compatibility.
 6. Surface process and native errors; do not silently retry writes.
 
 ## Compatibility evidence
@@ -102,4 +102,4 @@ Compatibility is recorded per exact game/build and capability. Keep experimental
 
 ## Current implementation
 
-The implementation now uses `lib/features/game_memory` with generic read/write use cases, a profile catalog, and a Windows process-memory data source. The RC2 profile is still experimental and read-only. The writer use case checks the active-build flag, profile/field status, explicit confirmation, field bounds, complete native transfer, and matching read-back. The CLI deliberately does not set the active-build verification flag, so it rejects all write requests before opening a process. No game/build is verified against a live RPCS3 session yet.
+The implementation uses `lib/features/game_memory` with generic read/write use cases, a profile catalog, and a Windows process-memory data source. The RC2 bolt field has research-confirmed read/write eligibility. The CLI requires manual process/profile/base selection and explicit write confirmation, then checks the complete native transfer and matching read-back. Ludava has not been run against a live RPCS3 session, and no build is identified automatically.

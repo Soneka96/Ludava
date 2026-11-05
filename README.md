@@ -1,22 +1,30 @@
 # Ludava
 
-> An independent game companion for reading, and eventually safely editing, verified game-state values.
+> A Windows game-memory trainer with a small, profile-driven RC2 bolt read/write CLI.
 
-**Status:** profile-driven Windows reader and CLI implemented. The only included profile is experimental RC2; no game build has been verified against a live Ludava read. The CLI rejects write requests until Ludava can verify the active game build.
+**Status:** the CLI reads and writes the RC2 Collection bolt field using owner-confirmed research. Ludava itself has not been tested against a live RPCS3 session, so this is not a Ludava compatibility claim.
 
 ## Start here
 
-The first investigation target is Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`) running in RPCS3 on 64-bit Windows 11. Its bolt field is an experimental profile entry, not a compatibility claim.
+The included profile targets Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`) running in RPCS3 on 64-bit Windows. The owner-confirmed research field is guest offset `0x01329E80`, an unsigned 32-bit big-endian value. It is not the standalone RC2 profile.
 
-The reader uses one generic flow and selects fields from a game/build profile. To read the current RC2 bolt value, supply the RPCS3 process ID and the memory base for that session:
+Select the RPCS3 process ID and supply that session's guest memory base. `0x300000000` is the base observed during the tested research session; check the current `RPCS3.log` before using a different session. Ludava does not identify the active game build, so use the RC2 profile only when RC2 is running inside the Collection.
+
+Read the current bolt count:
 
 ```powershell
-dart run bin/ludava.dart read --game rc2-collection --field bolts --pid RPCS3_PID --memory-base 0xSESSION_BASE
+dart run bin/ludava.dart read --game rc2-collection --field bolts --pid RPCS3_PID --memory-base 0x300000000
 ```
 
-The PID, memory base, and selected profile do not prove which game or build is running. Results remain labelled experimental until the build and live readings are independently verified.
+Repeat the `read` command to refresh the value. Each command opens the process for that operation and closes its handle before exiting.
 
-The CLI accepts an explicit write request with `--value <integer> --confirm-write`, but currently returns an “active game build is not verified” status before opening the process. There is no writable profile or user-facing write path yet. The guarded write use case requires a verified build and field, a bounded value, confirmation, a complete write, and matching read-back; active build detection must be implemented before the CLI can enable it.
+Write an unsigned 32-bit bolt value explicitly with `--value` and `--confirm-write`:
+
+```powershell
+dart run bin/ludava.dart write --game rc2-collection --field bolts --pid RPCS3_PID --memory-base 0x300000000 --value 244866 --confirm-write
+```
+
+The CLI writes four big-endian bytes, checks the native result and byte count, then reads the field back. It reports success only when the observed read-back equals the requested value. The process ID and chosen profile are manual inputs; Ludava does not validate the running game or RPCS3 build. RatchetHax's owner-confirmed RC2 research is separate from live validation of Ludava's Dart implementation.
 
 Run the automated checks with:
 
@@ -28,7 +36,7 @@ dart format --output=none --set-exit-if-changed lib test bin
 
 ## Architecture
 
-`lib/features/game_memory` owns shared profile-based reads and guarded writes. Games and builds are profile data; adding RC1 means adding its researched profile and registering it, not copying the reader. See [Architecture and testing](docs/ARCHITECTURE.md) for layer boundaries, class/file order, documentation links, and test naming.
+`lib/features/game_memory` owns shared profile-based reads and writes. Games and builds are profile data; adding a game means adding its researched profile and registering it, not copying the reader. See [Architecture and testing](docs/ARCHITECTURE.md) for layer boundaries, class/file order, documentation links, and test naming.
 
 - [MVP scope and acceptance gates](docs/MVP.md)
 - [Compatibility evidence matrix](docs/COMPATIBILITY.md)
@@ -43,13 +51,13 @@ Technical references: [Dart native interop](https://dart.dev/interop/c-interop),
 1. Add abstractions only for a real boundary or requirement.
 2. Keep game profiles, memory access, and CLI responsibilities separate.
 3. Test each behavior at its owner, using fakes for process-memory boundaries.
-4. A failed read is never a zero; unsupported or unverified fields stay disabled.
+4. A failed read is never a zero; fields without write-enabling research stay disabled.
 5. Automated tests and plausible values do not prove game/build compatibility.
 6. Keep work incremental and report limitations honestly.
 
 ## Repository status
 
-The experimental RC2 profile uses guest offset `0x01329E80`, an unsigned 32-bit big-endian field. The session base can vary. The code has not been run against RPCS3, and it does not yet identify the active game build.
+The RC2 profile uses guest offset `0x01329E80`, an unsigned 32-bit big-endian field, with write eligibility marked `researchConfirmed`. The tested research session used guest base `0x300000000`; the base can vary. Ludava's code has not been run against RPCS3 and does not identify the active game build.
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 

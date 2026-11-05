@@ -1,50 +1,46 @@
-# MVP — one verified feature, one verified build
+# MVP — RC2 bolt trainer
 
-**Current status:** the profile-driven read foundation and generic CLI are implemented. Gate A live verification is incomplete. The guarded write use case is implemented, but active-build identification is not, so the CLI rejects every write request and no profile is writable.
+**Current status:** the profile-driven Windows CLI can read and write RC2 Collection bolts using owner-confirmed research. Ludava has not yet been tested against a live RPCS3 session, and it does not identify the active game/build automatically.
 
 ## Objective
 
-Read and, after separate safety validation, edit a selected value for one exactly identified game build running in RPCS3 on Windows 11. The initial target is Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`).
+Read and deliberately modify the bolt value for Ratchet & Clank 2 inside the PS3 Collection (`BCUS98282`) running in RPCS3 on 64-bit Windows.
 
 ## First user-visible capability
 
-- Select a supported game profile and a named field such as `bolts`.
-- Show a value only after a complete, correctly decoded read.
-- Distinguish a real zero from access denied, failed/partial reads, disconnection, invalid mapping, and unsupported fields.
-- Reject unknown or unverified builds and fields.
-- Allow editing only after both the active build and field are verified, within a documented range, after explicit confirmation, and only report success after complete write and matching read-back.
-- Keep edit requests disabled while any precondition is missing.
+- Select the intended RPCS3 process, `rc2-collection` profile, and session guest memory base explicitly.
+- Read exactly four bytes and decode them as an unsigned big-endian 32-bit value.
+- Keep the guest offset `0x01329E80` in the RC2 profile; the observed research-session base was `0x300000000`.
+- Allow a write only for the research-confirmed bolt field, a value from 0 through 4294967295, and an explicit `--confirm-write` request.
+- Require native success and exactly four bytes written, then read back the value. Report write success only when the read-back matches.
+- Display that process/profile/base selection is manual and that Ludava has not validated the live game session.
+- Close the process handle at the end of each CLI command. Run `read` again to refresh the value.
 
-The current CLI supports generic reads. It parses a write request but rejects it before opening the process because it cannot yet identify the active game build. This limitation is intentional.
+Automated tests cover the codec, address mapping, domain write flow, CLI wiring, native errors, partial transfers, read-back, and handle lifecycle through controlled fakes and local test memory. They do not test against RPCS3.
 
 ## Out of scope
 
-Other capabilities such as health, inventory, weapons, unlock states, teleportation, repeated/frozen writes, complex dashboards, plugins, cloud services, and multi-platform backends.
+Other game fields such as health, inventory, weapons, unlock states, teleportation, repeated/frozen writes, a large Flutter UI, plugins, cloud services, and additional memory backends.
 
-## Gates
+## Validation gates
 
-### Gate A — read one verified field
+### Gate A — Ludava live reads
 
-- Generic profile/field definitions, a read use case, checked Windows memory adapter, and profile-selecting CLI exist.
-- Native reads preserve 64-bit addresses and require native success plus the exact requested byte count.
-- Typed values decode with explicit endianness; fake-based tests distinguish zero from failure.
-- Identify the exact active game/build and RPCS3 version.
-- Match at least **two different** normal in-game values against independent Ludava reads.
+- Record the exact game setup, RPCS3 version, and session base.
+- Match two distinct normal in-game bolt values against Ludava reads.
 
-Code and mocked tests do not satisfy the live verification requirement.
+### Gate B — Ludava live write
 
-### Gate B — one guarded edit
+- Use a suitable test save and record the current bolt value.
+- Make one deliberate write, confirm full transfer and matching read-back, and confirm the in-game value.
+- Record the result and recovery steps in `COMPATIBILITY.md`.
 
-- Identify the active build from process/game evidence; a PID and selected profile alone are not proof.
-- Verify the exact profile and field for writing, set an allowed range, and reject all other fields.
-- Require explicit user confirmation, a complete native write, and a matching read-back.
-- Verify one deliberate edit in-game with a backed-up save and document recovery steps.
-- Enable the CLI write path only after active-build verification is implemented.
+The write path is enabled based on the owner's confirmed RatchetHax research. These Ludava live checks are still required before claiming Ludava runtime compatibility.
 
 ### Gate C — minimal Flutter desktop interface
 
-- Show process/build status, selected field, value, and meaningful errors.
-- Enable editing only when the verified build and field are writable.
-- Test the Windows build and the real-game scenario.
+- Show process/profile status, selected field, value, and meaningful errors.
+- Preserve the explicit process/profile selection and write/read-back behavior.
+- Test the Windows build and real-game scenario.
 
-The MVP is complete only after all three gates pass. Partial milestones may be documented without claiming a usable complete release.
+The MVP is complete only after live RC2 validation and the minimal desktop interface pass their gates. Partial milestones must state their evidence limits clearly.

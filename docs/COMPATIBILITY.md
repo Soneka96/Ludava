@@ -1,36 +1,38 @@
 # Compatibility and verification matrix
 
-**Ludava currently supports no verified game builds or memory modifications.** The RC2 row is available as an experimental profile for the generic reader; it is not a compatibility claim.
+**Ludava's RC2 Collection read/write implementation is not live-verified.** The bolt mapping has owner-confirmed read/write research in RatchetHax, but Ludava has not been run against RPCS3. The CLI requires the user to select the process, profile, and guest base manually and does not prove the active game identity.
 
 | Game/edition | Identifier | Environment | Capability | Status |
 | --- | --- | --- | --- | --- |
-| Ratchet & Clank 2 — PS3 Collection | `BCUS98282` | RPCS3 / Windows 11 | Experimental read of the `bolts` field | Implemented in the generic reader; live build/runtime unverified; unsupported as a verified profile |
-| Ratchet & Clank 2 — PS3 Collection | `BCUS98282` | RPCS3 / Windows 11 | Write `bolts` | Unverified; CLI rejects writes before opening a process |
-| Ratchet & Clank 2 — standalone PS3 | `NPUA80644` | RPCS3 / Windows 11 | Read/write bolts | Not investigated for Ludava |
+| Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / 64-bit Windows | `bolts` read | Implemented in Ludava; mapping is owner-confirmed research; Ludava live runtime unverified |
+| Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / 64-bit Windows | `bolts` write | Enabled for the research-confirmed profile with explicit confirmation and read-back; Ludava live runtime unverified |
+| Ratchet & Clank 2 — standalone PS3 | `NPUA80644` | RPCS3 / Windows | Read/write bolts | Not supported by this Collection profile |
 
-A standalone profile's memory mapping must not be assumed to apply to the Collection.
+## RC2 Collection mapping
 
-The CLI requires an explicit process ID, profile ID, field ID, and session memory base. Those inputs do not identify the active game or executable build. The profile uses the research candidate offset `0x01329E80`, a four-byte unsigned big-endian value; the session base is not fixed in Ludava. No other RC2 fields or builds are included.
-
-The write use case requires verified profile/field status, an independently verified active build, explicit confirmation, an allowed value range, a complete write, and matching read-back. Active-build identification is not implemented; write requests remain disabled even if a profile is selected.
+- Collection title ID: `BCUS98282`; RC2 executable: `RC2.ppu.self`; inner app ID: `NPUA80644`.
+- Guest bolt offset: `0x01329E80`; type: unsigned 32-bit; byte order: big-endian.
+- Research-session guest base: `0x300000000`; observed host address: `0x301329E80`.
+- The guest base may differ between sessions. Check the current RPCS3 log and supply the session's base explicitly.
+- The owner-confirmed research recorded ordinary HUD changes from 244012 to 244016 and a targeted write/read-back/HUD change from 243866 to 244866.
+- These research observations do not establish that Ludava's independent Dart implementation works with every RPCS3 build or Collection revision.
+- No other RC2 field is included or supported. Do not apply the Collection offset to standalone RC2.
 
 ## Evidence vocabulary
 
-- **Unverified:** insufficient reproducible information.
-- **Documented:** source material exists; runtime behavior not verified.
-- **Investigated:** diagnostic observations exist but correlation is incomplete.
-- **Read verified:** exact build and runtime recorded; complete memory reads match two different genuine in-game values.
-- **Write verified:** read verified first; guarded write validated by full write/read-back and in-game outcome with documented precautions.
-- **Blocked/unsupported:** do not execute the feature, due to missing or negative evidence.
+- **Unverified in Ludava:** Ludava has not reproduced the behavior in a live game session.
+- **Research-confirmed:** owner-confirmed external research supports the mapping/operation; this can enable a deliberately selected profile but is not a Ludava compatibility claim.
+- **Read verified in Ludava:** exact game/runtime recorded and two distinct live values match Ludava reads.
+- **Write verified in Ludava:** read verification is complete, then a full write/read-back and in-game outcome are recorded.
+- **Unsupported:** no matching researched profile/field is available, or evidence rules it out.
 
-A connected process, successful native addon import or plausible memory value is not verification.
+A process ID, selected profile, successful native API call, automated test, or plausible value does not establish active game identity or Ludava compatibility.
 
-## Evidence required
+## Evidence still needed for Ludava
 
-- Date, Windows version, RPCS3 version, exact game/build identity method and gameplay state.
-- On-screen bolt counts **before and after an ordinary gameplay change**, with associated read-only diagnostic output.
-- Host address translation and endianness rationale, linked sources and reproducible steps.
-- Exact results, failures, partial reads, limitations and relevant PRs.
-- For writes: documented verified mapping, range, save backup, complete write, read-back and actual game effect.
+- Date, Windows version, RPCS3 version, game identity, and session guest base.
+- Two distinct HUD values that match completed Ludava reads.
+- A deliberate bolt write with complete byte count, matching read-back, and matching in-game result.
+- Relevant failures, limitations, and reproducible steps.
 
-Avoid exposing personal local paths, save data or incidental private information in public logs.
+Avoid exposing personal local paths, save data, or incidental private information in public logs.

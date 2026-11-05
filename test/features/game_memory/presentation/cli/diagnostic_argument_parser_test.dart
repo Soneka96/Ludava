@@ -87,6 +87,57 @@ void main() {
       }
     });
 
+    test('Method parse() rejects repeated write options', () {
+      for (final writeOptions in [
+        ['--value', '4', '--value', '5', '--confirm-write'],
+        ['--value', '4', '--confirm-write', '--confirm-write'],
+      ]) {
+        expect(
+          () => DiagnosticArgumentParser.parse([
+            'write',
+            '--game',
+            'rc2-collection',
+            '--field',
+            'bolts',
+            '--pid',
+            '42',
+            '--memory-base',
+            '0x1',
+            ...writeOptions,
+          ]),
+          throwsFormatException,
+        );
+      }
+    });
+
+    test('Method parse() rejects empty game and field identifiers', () {
+      final validOptions = [
+        '--game',
+        'rc2-collection',
+        '--field',
+        'bolts',
+        '--pid',
+        '42',
+        '--memory-base',
+        '0x1',
+      ];
+
+      for (final invalidOptions in [
+        ['--game', ' '],
+        ['--field', ''],
+      ]) {
+        final option = invalidOptions.first;
+        final options = List<String>.from(validOptions);
+        final optionIndex = options.indexOf(option);
+        options[optionIndex + 1] = invalidOptions.last;
+
+        expect(
+          () => DiagnosticArgumentParser.parse(['read', ...options]),
+          throwsFormatException,
+        );
+      }
+    });
+
     test('Method parse() rejects malformed pid base and values', () {
       final common = [
         'read',

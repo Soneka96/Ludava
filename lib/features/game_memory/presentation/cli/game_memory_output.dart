@@ -5,12 +5,16 @@ import 'package:ludava/shared/constants/enums.dart';
 
 /// Formats game-memory outcomes for terminal display.
 abstract final class GameMemoryOutput {
+  static const String _runtimeIdentityNote =
+      'Runtime identity: process and profile are manually selected; Ludava does not verify the active game.';
+
   /// Formats [result] for the selected [profile].
   static String readResult(GameProfile profile, GameReadResult result) {
     final lines = [
       'Game: ${profile.gameName} (${profile.id})',
       'Build: ${profile.buildId}',
       'Profile status: ${profile.readStatus.name}',
+      _runtimeIdentityNote,
     ];
     switch (result.status) {
       case GameReadStatus.success:
@@ -48,6 +52,7 @@ abstract final class GameMemoryOutput {
       'Game: ${profile.gameName} (${profile.id})',
       'Build: ${profile.buildId}',
       'Profile status: ${profile.writeStatus.name}',
+      _runtimeIdentityNote,
     ];
     switch (result.status) {
       case GameWriteStatus.success:
@@ -58,8 +63,6 @@ abstract final class GameMemoryOutput {
         lines.add('Status: no write attempted');
       case GameWriteStatus.unsupportedProfile:
         lines.add('Status: profile is not approved for writing');
-      case GameWriteStatus.unverifiedBuild:
-        lines.add('Status: active game build is not verified');
       case GameWriteStatus.confirmationRequired:
         lines.add('Status: explicit write confirmation is required');
       case GameWriteStatus.unsupportedField:

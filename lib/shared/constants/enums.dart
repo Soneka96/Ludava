@@ -144,9 +144,6 @@ enum GameWriteStatus {
   /// The profile is not approved for writing.
   unsupportedProfile,
 
-  /// The active process has not been verified against this profile.
-  unverifiedBuild,
-
   /// The user did not explicitly confirm this write.
   confirmationRequired,
 

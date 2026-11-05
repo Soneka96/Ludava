@@ -8,8 +8,7 @@ abstract interface class IGameMemoryRepository {
 
   /// Writes [bytes] starting at [address].
   ///
-  /// Only a write use case that verifies the profile, field, value range,
-  /// active build, user confirmation, and read-back may call this low-level
-  /// operation.
+  /// The write use case checks profile and field eligibility, value bounds,
+  /// explicit confirmation, native transfer, and read-back around this call.
   MemoryWriteResult write(int address, List<int> bytes);
 }
