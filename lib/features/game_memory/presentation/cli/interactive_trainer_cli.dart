@@ -40,7 +40,9 @@ class InteractiveTrainerCli {
   static const int _exitGame = 0;
   static const int _changeGame = 1;
   static const int _changeProcess = 2;
+  static const int _returnToGame = 3;
   static const int _researchTestedMemoryBase = 0x300000000;
+  static const String _collectionProfileId = 'rc2-collection';
 
   final List<int> Function() _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId) _readProcessMetadata;
@@ -59,14 +61,19 @@ class InteractiveTrainerCli {
 
   bool _inputEnded = false;
   bool _ownsTerminalOutput = false;
-  String? _lastCommandSummary;
+  int? _boltCount;
+  String? _boltReadError;
+  String? _lastFeedback;
 
   /// Runs the interactive menu and returns its process exit code.
   int run({StringSink? output, StringSink? errorOutput}) {
     final stdoutSink = output ?? stdout;
     final stderrSink = errorOutput ?? stderr;
     _ownsTerminalOutput = output == null || _clearScreenForInjectedOutput;
-    _lastCommandSummary = null;
+    _inputEnded = false;
+    _boltCount = null;
+    _boltReadError = null;
+    _lastFeedback = null;
     if (!(_hasTerminal ?? stdin.hasTerminal)) {
       stderrSink.writeln(
         'Interactive mode requires a terminal. Use --help to see commands.',
@@ -128,14 +135,13 @@ class InteractiveTrainerCli {
         continue;
       }
       if (processIds.length == 1) {
-        output.writeln('[OK] RPCS3 detected');
-        output.writeln('     Process ID: ${processIds.single}');
+        output.writeln('RPCS3 is ready.');
         return processIds.single;
       }
 
       output.writeln('\nSeveral RPCS3 processes were found:');
       for (var index = 0; index < processIds.length; index++) {
-        output.writeln('  ${index + 1}. Process ID: ${processIds[index]}');
+        output.writeln('  ${index + 1}. RPCS3 process (${processIds[index]})');
       }
       output.writeln('  R. Search again');
       output.writeln('  0. Exit');
@@ -149,7 +155,7 @@ class InteractiveTrainerCli {
         continue;
       }
       final selectedProcessId = processIds[index - 1];
-      output.writeln('[OK] Selected RPCS3 process $selectedProcessId');
+      output.writeln('RPCS3 process selected.');
       return selectedProcessId;
     }
     return null;
@@ -163,14 +169,13 @@ class InteractiveTrainerCli {
     Rpcs3MemoryBaseCandidate? candidate;
     while (!_inputEnded) {
       _beginScreen(output);
+      output.writeln('Confirm RPCS3 connection');
       candidate = null;
       try {
         final metadata = _readProcessMetadata(processId);
         candidate = _resolveMemoryBaseCandidate(metadata);
       } on Exception catch (error) {
-        output.writeln(
-          'Could not inspect RPCS3 process $processId or its log: $error',
-        );
+        output.writeln('Could not check the RPCS3 process or its log: $error');
         output.writeln(
           'The process may have exited, access may be denied, or its log may be locked.',
         );
@@ -181,24 +186,24 @@ class InteractiveTrainerCli {
 
       if (candidate == null) {
         output.writeln(
-          '\nCould not confirm the RPCS3 memory base automatically.',
+          '\nLudava could not find the memory base automatically.',
         );
         output.writeln(
-          'Research-tested base: ${_formatMemoryBase(_researchTestedMemoryBase)}',
+          'Suggested base for this session: ${_formatMemoryBase(_researchTestedMemoryBase)}',
         );
-        output.writeln('1. Use this base for the current session');
+        output.writeln('1. Use the suggested base (confirm for this session)');
         output.writeln('2. Enter another hexadecimal base');
         output.writeln('3. Retry detection');
         output.writeln('0. Cancel');
       } else {
-        output.writeln('\nRPCS3 log candidate: ${candidate.logPath}');
+        output.writeln('\nA memory base was found in an RPCS3 log.');
         output.writeln(
           'Candidate memory base: ${_formatMemoryBase(candidate.memoryBase)}',
         );
         output.writeln(
-          'The log may belong to another RPCS3 instance; confirm before use.',
+          'The log may belong to another RPCS3 instance. Confirm before use.',
         );
-        output.writeln('1. Use this candidate for the current session');
+        output.writeln('1. Use this base (confirm for this session)');
         output.writeln('2. Enter another hexadecimal base');
         output.writeln('3. Retry detection');
         output.writeln('0. Cancel');
@@ -236,12 +241,10 @@ class InteractiveTrainerCli {
 
   GameProfile? _selectGame(List<GameProfile> profiles, StringSink output) {
     _beginScreen(output);
-    output.writeln('\nSelect a game:');
+    output.writeln('\nChoose your game:');
     for (var index = 0; index < profiles.length; index++) {
       final profile = profiles[index];
-      output.writeln(
-        '  ${index + 1}. ${profile.gameName} — ${profile.buildId}',
-      );
+      output.writeln('  ${index + 1}. ${_gameTitle(profile)}');
     }
     output.writeln('  0. Exit');
     while (!_inputEnded) {
@@ -269,42 +272,31 @@ class InteractiveTrainerCli {
       output.writeln('This profile does not define the bolts field.');
       return _changeGame;
     }
-    final initialReadSucceeded = _runRead(
-      processId,
-      memoryBase,
-      profile,
-      field,
-      output,
-      errorOutput,
-    );
+    _runRead(processId, memoryBase, profile, field, errorOutput);
+    _lastFeedback = null;
     while (!_inputEnded) {
       _beginScreen(output);
-      output.writeln('========================================');
-      output.writeln('       ${profile.gameName}');
-      output.writeln('          ${profile.buildId}');
-      output.writeln('========================================');
-      output.writeln('RPCS3 process selected: PID $processId');
-      output.writeln('Memory base: ${_formatMemoryBase(memoryBase)}');
-      output.writeln(
-        'Runtime identity is unverified; the selected process may not be running ${profile.gameName}.',
-      );
-      output.writeln(
-        'Memory access: ${initialReadSucceeded ? 'available' : 'not available'}',
-      );
-      final commandSummary = _lastCommandSummary;
-      if (commandSummary != null && commandSummary.isNotEmpty) {
-        output.writeln(commandSummary);
-      }
-      output.writeln('\n1. Refresh ${field.name}');
-      output.writeln('2. Set ${field.name}');
-      output.writeln('3. Change Game');
-      output.writeln('4. Change RPCS3 Process');
+      _writeGameScreen(output, profile);
+      final feedback = _lastFeedback;
+      if (feedback != null) output.writeln('\n$feedback');
+      output.writeln('\n1. Refresh bolts');
+      output.writeln('2. Change bolts');
+      output.writeln('3. Change game');
+      output.writeln('4. Connection details');
       output.writeln('0. Exit');
       final selection = _prompt(output, 'Select an option: ');
       if (selection == null || selection == '0') return _exitGame;
       switch (selection) {
         case '1':
-          _runRead(processId, memoryBase, profile, field, output, errorOutput);
+          final refreshed = _runRead(
+            processId,
+            memoryBase,
+            profile,
+            field,
+            errorOutput,
+          );
+          _lastFeedback =
+              refreshed ? 'Bolts refreshed.' : 'Bolts could not be read.';
         case '2':
           _setFieldValue(
             processId,
@@ -317,7 +309,16 @@ class InteractiveTrainerCli {
         case '3':
           return _changeGame;
         case '4':
-          return _changeProcess;
+          final detailsAction = _connectionDetails(
+            processId,
+            memoryBase,
+            profile,
+            field,
+            output,
+          );
+          if (detailsAction == _changeProcess || detailsAction == _exitGame) {
+            return detailsAction;
+          }
         default:
           output.writeln('Choose one of the listed options.');
       }
@@ -333,8 +334,8 @@ class InteractiveTrainerCli {
     StringSink output,
     StringSink errorOutput,
   ) {
-    if (!_runRead(processId, memoryBase, profile, field, output, errorOutput)) {
-      output.writeln('A fresh value could not be read; write cancelled.');
+    if (!_runRead(processId, memoryBase, profile, field, errorOutput)) {
+      _lastFeedback = 'Bolts could not be read. Change cancelled.';
       return;
     }
 
@@ -347,54 +348,27 @@ class InteractiveTrainerCli {
     if (value == null || !_isWithinFieldRange(value, field)) {
       final minimum = field.minimumValue ?? 0;
       final maximum = field.maximumValue ?? GameMemoryConstants.maxUnsigned32;
-      output.writeln('Enter a value between $minimum and $maximum.');
+      _lastFeedback =
+          'Enter a bolt value between ${_formatNumber(minimum)} and ${_formatNumber(maximum)}.';
       return;
     }
 
+    output.writeln('You are changing bolts in ${_gameTitle(profile)}.');
     output.writeln(
-      'Write target: ${profile.gameName}, RPCS3 PID $processId, base ${_formatMemoryBase(memoryBase)}.',
+      'Ludava cannot verify which game or build is running. Check Connection details.',
     );
-    output.writeln(
-      'Ludava does not verify that this process is running the selected game.',
+    final confirmation = _prompt(
+      output,
+      'Change bolts to ${_formatNumber(value)}? (Y/N): ',
     );
-    final confirmation = _prompt(output, 'Apply $value ${field.name}? (Y/N): ');
     if (confirmation == null || confirmation.toLowerCase() != 'y') {
-      output.writeln('Write cancelled.');
+      _lastFeedback = 'Change cancelled. Your bolts were not changed.';
       return;
     }
 
     output.writeln('Writing...');
-    _runCommandAndDisplay(
-      [
-        'write',
-        '--game',
-        profile.id,
-        '--field',
-        field.id,
-        '--pid',
-        '$processId',
-        '--memory-base',
-        _formatMemoryBase(memoryBase),
-        '--value',
-        '$value',
-        '--confirm-write',
-      ],
-      output,
-      errorOutput,
-    );
-    _runRead(processId, memoryBase, profile, field, output, errorOutput);
-  }
-
-  bool _runRead(
-    int processId,
-    int memoryBase,
-    GameProfile profile,
-    GameField field,
-    StringSink output,
-    StringSink errorOutput,
-  ) => _runCommandAndDisplay(
-    [
-      'read',
+    _runCommandAndDisplay([
+      'write',
       '--game',
       profile.id,
       '--field',
@@ -403,26 +377,139 @@ class InteractiveTrainerCli {
       '$processId',
       '--memory-base',
       _formatMemoryBase(memoryBase),
-    ],
-    output,
-    errorOutput,
-  );
+      '--value',
+      '$value',
+      '--confirm-write',
+    ], errorOutput);
+    _runRead(processId, memoryBase, profile, field, errorOutput);
+  }
 
-  bool _runCommandAndDisplay(
-    List<String> arguments,
-    StringSink output,
+  bool _runRead(
+    int processId,
+    int memoryBase,
+    GameProfile profile,
+    GameField field,
     StringSink errorOutput,
-  ) {
+  ) => _runCommandAndDisplay([
+    'read',
+    '--game',
+    profile.id,
+    '--field',
+    field.id,
+    '--pid',
+    '$processId',
+    '--memory-base',
+    _formatMemoryBase(memoryBase),
+  ], errorOutput);
+
+  bool _runCommandAndDisplay(List<String> arguments, StringSink errorOutput) {
     final commandOutput = StringBuffer();
     final commandError = StringBuffer();
     final exitCode = _runCommand(arguments, commandOutput, commandError);
-    _lastCommandSummary = commandOutput.toString().trimRight();
-    if (commandOutput.isNotEmpty)
-      output.writeln(commandOutput.toString().trimRight());
     if (commandError.isNotEmpty) {
       errorOutput.writeln(commandError.toString().trimRight());
     }
+    if (arguments.first == 'read') {
+      if (exitCode == 0) {
+        final match = RegExp(
+          r'Value: (\d+)',
+        ).firstMatch(commandOutput.toString());
+        _boltCount = int.tryParse(match?.group(1) ?? '');
+        _boltReadError =
+            _boltCount == null ? 'The value could not be read.' : null;
+      } else {
+        _boltCount = null;
+        _boltReadError = _friendlyError(commandOutput.toString());
+      }
+    } else if (arguments.first == 'write') {
+      _lastFeedback =
+          exitCode == 0
+              ? 'Bolts updated successfully. The new value was confirmed.'
+              : 'Could not update bolts. ${_friendlyError(commandOutput.toString())}';
+    }
     return exitCode == 0;
+  }
+
+  void _writeGameScreen(StringSink output, GameProfile profile) {
+    output.writeln('================================');
+    output.writeln('             LUDAVA');
+    output.writeln('================================');
+    output.writeln();
+    output.writeln(
+      '  ${_boltCount == null ? 'RPCS3 found — bolts unavailable' : 'Connected to RPCS3'}',
+    );
+    output.writeln();
+    output.writeln('  ${profile.gameName}');
+    if (profile.id == _collectionProfileId) output.writeln('  PS3 Collection');
+    output.writeln();
+    output.writeln('  BOLTS');
+    final count = _boltCount;
+    output.writeln(
+      '  ${count == null ? _boltReadError ?? 'Not available' : _formatNumber(count)}',
+    );
+    output.writeln();
+    output.writeln('--------------------------------');
+  }
+
+  int _connectionDetails(
+    int processId,
+    int memoryBase,
+    GameProfile profile,
+    GameField field,
+    StringSink output,
+  ) {
+    while (!_inputEnded) {
+      _beginScreen(output);
+      output.writeln('Connection Details');
+      output.writeln('------------------');
+      output.writeln('Game profile: ${profile.gameName} (${profile.id})');
+      output.writeln('Build ID: ${profile.buildId}');
+      output.writeln('RPCS3 process ID: $processId');
+      output.writeln('Memory base: ${_formatMemoryBase(memoryBase)}');
+      output.writeln(
+        'Bolts guest offset: ${_formatMemoryBase(field.guestOffset)}',
+      );
+      output.writeln();
+      output.writeln(
+        'Runtime verification: Ludava cannot confirm the active game or build.',
+      );
+      output.writeln('1. Return to the trainer');
+      output.writeln('2. Change RPCS3 process');
+      output.writeln('0. Exit');
+      final selection = _prompt(output, 'Choose an option: ');
+      if (selection == null || selection == '0') return _exitGame;
+      if (selection == '1') return _returnToGame;
+      if (selection == '2') return _changeProcess;
+      output.writeln('Choose one of the listed options.');
+    }
+    return _exitGame;
+  }
+
+  String _friendlyError(String commandOutput) {
+    final status = RegExp(r'Status: (.+)').firstMatch(commandOutput)?.group(1);
+    if (status == null || status.isEmpty)
+      return 'Check the error details above.';
+    return switch (status) {
+      'native memory read failed' => 'The memory read failed.',
+      'incomplete memory read' => 'The memory read was incomplete.',
+      'native memory write failed' => 'The memory write failed.',
+      'incomplete memory write' => 'The memory write was incomplete.',
+      'read-back did not match the requested value' ||
+      'read-back did not match' => 'The confirmed value did not match.',
+      'write read-back failed' => 'The written value could not be confirmed.',
+      'invalid memory mapping' => 'The memory location could not be used.',
+      _ => status,
+    };
+  }
+
+  String _gameTitle(GameProfile profile) =>
+      profile.id == _collectionProfileId
+          ? '${profile.gameName} — PS3 Collection'
+          : profile.gameName;
+
+  String _formatNumber(int value) {
+    final digits = value.toString();
+    return digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
   }
 
   bool _isWithinFieldRange(int value, GameField field) {
@@ -452,7 +539,6 @@ class InteractiveTrainerCli {
     if (!cleared) output.writeln('\n----------------------------------------');
     if (showHeader) {
       output.writeln('               LUDAVA');
-      output.writeln('          Game Memory Trainer');
       output.writeln('========================================');
     }
   }

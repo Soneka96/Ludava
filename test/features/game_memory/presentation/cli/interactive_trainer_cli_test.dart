@@ -37,6 +37,42 @@ void main() {
       expect(harness.readCommands.single, contains('0x300000000'));
     });
 
+    test('Method run() retries process discovery after an exception', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..discoveryError = Exception('temporary discovery issue')
+            ..inputs = ['1', '1', '1', '0'];
+      final errorOutput = StringBuffer();
+
+      harness.run(StringBuffer(), errorOutput);
+
+      expect(harness.discoveryCalls, 2);
+      expect(errorOutput.toString(), contains('temporary discovery issue'));
+      expect(harness.readCommands, hasLength(1));
+    });
+
+    test('Method run() reports unsupported process discovery and exits', () {
+      final harness =
+          _InteractiveHarness()
+            ..unsupportedDiscoveryError = UnsupportedError(
+              'process discovery is unavailable',
+            );
+      final errorOutput = StringBuffer();
+
+      final exitCode = harness.run(StringBuffer(), errorOutput);
+
+      expect(exitCode, 0);
+      expect(harness.discoveryCalls, 1);
+      expect(
+        errorOutput.toString(),
+        contains('process discovery is unavailable'),
+      );
+      expect(harness.commands, isEmpty);
+    });
+
     test('Method run() clears each menu screen and redraws after retry', () {
       var clearCalls = 0;
       final harness =
@@ -59,7 +95,9 @@ void main() {
         isNot(contains('----------------------------------------')),
       );
       expect(
-        'Could not confirm the RPCS3 memory base'.allMatches(output.toString()),
+        'Ludava could not find the memory base automatically'.allMatches(
+          output.toString(),
+        ),
         hasLength(2),
       );
     });
@@ -286,10 +324,81 @@ void main() {
       harness.run(output, StringBuffer());
 
       expect(clearCalls, 5);
-      expect(output.toString(), contains('RPCS3 process selected: PID 42'));
-      expect(output.toString(), contains('Memory base: 0x300000000'));
-      expect(output.toString(), contains('Value: 102'));
+      expect(output.toString(), contains('Connected to RPCS3'));
+      expect(output.toString(), contains('  102'));
+      expect(output.toString(), contains('Bolts refreshed.'));
     });
+
+    test('Method run() keeps developer details off the game screen', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..boltValues = [293930]
+            ..inputs = ['1', '1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      final rendered = output.toString();
+      final gameScreenStart = rendered.lastIndexOf('             LUDAVA');
+      final gameScreen = rendered.substring(gameScreenStart);
+      expect(gameScreen, contains('Ratchet & Clank 2'));
+      expect(gameScreen, contains('PS3 Collection'));
+      expect(gameScreen, contains('293,930'));
+      expect(gameScreen, contains('1. Refresh bolts'));
+      expect(gameScreen, contains('4. Connection details'));
+      expect(gameScreen, isNot(contains('rc2-collection')));
+      expect(gameScreen, isNot(contains('BCUS98282')));
+      expect(gameScreen, isNot(contains('Process ID')));
+      expect(gameScreen, isNot(contains('Memory base')));
+      expect(gameScreen, isNot(contains('Profile status')));
+    });
+
+    test(
+      'Method run() keeps process and runtime details in the advanced screen',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..inputs = ['1', '1', '4', '1', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(output.toString(), contains('Connection Details'));
+        expect(output.toString(), contains('RPCS3 process ID: 42'));
+        expect(output.toString(), contains('Memory base: 0x300000000'));
+        expect(output.toString(), contains('Build ID: BCUS98282'));
+        expect(
+          output.toString(),
+          contains('cannot confirm the active game or build'),
+        );
+      },
+    );
+
+    test(
+      'Method run() keeps bolts unavailable when a successful read has no value',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..omitReadValue = true
+              ..inputs = ['1', '1', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(output.toString(), contains('RPCS3 found — bolts unavailable'));
+        expect(output.toString(), contains('The value could not be read.'));
+        expect(output.toString(), isNot(contains('  101')));
+      },
+    );
 
     test('Method run() does not write when the user cancels confirmation', () {
       final harness =
@@ -304,7 +413,7 @@ void main() {
 
       expect(harness.writeCommands, isEmpty);
       expect(harness.readCommands, hasLength(2));
-      expect(output.toString(), contains('Write cancelled'));
+      expect(output.toString(), contains('Change cancelled'));
     });
 
     test('Method run() rejects an out-of-range value without writing', () {
@@ -319,7 +428,7 @@ void main() {
       harness.run(output, StringBuffer());
 
       expect(harness.writeCommands, isEmpty);
-      expect(output.toString(), contains('between 0 and 4294967295'));
+      expect(output.toString(), contains('between 0 and 4,294,967,295'));
     });
 
     test(
@@ -337,7 +446,7 @@ void main() {
           harness.run(output, StringBuffer());
 
           expect(harness.writeCommands, isEmpty);
-          expect(output.toString(), contains('Enter a value between'));
+          expect(output.toString(), contains('Enter a bolt value between'));
         }
       },
     );
@@ -385,7 +494,8 @@ void main() {
         containsAll(['--value', '999999', '--confirm-write']),
       );
       expect(harness.readCommands, hasLength(3));
-      expect(output.toString(), contains('does not verify that this process'));
+      expect(output.toString(), contains('Bolts updated successfully'));
+      expect(output.toString(), contains('999,999'));
     });
 
     test(
@@ -406,11 +516,12 @@ void main() {
 
         harness.run(output, errorOutput);
 
-        expect(output.toString(), contains('Status: read-back did not match'));
+        expect(output.toString(), contains('Could not update bolts'));
         expect(
           output.toString(),
-          contains('Status: native memory read failed'),
+          contains('The confirmed value did not match'),
         );
+        expect(output.toString(), contains('The memory read failed.'));
         expect(errorOutput.toString(), contains('simulated write error'));
         expect(errorOutput.toString(), contains('simulated refresh error'));
         expect(harness.readCommands, hasLength(3));
@@ -432,7 +543,7 @@ void main() {
         harness.run(output, StringBuffer());
 
         expect(harness.writeCommands, isEmpty);
-        expect(output.toString(), contains('fresh value could not be read'));
+        expect(output.toString(), contains('Bolts could not be read'));
       },
     );
 
@@ -462,7 +573,7 @@ void main() {
                 logPath: r'C:\RPCS3\log\RPCS3.log',
               );
             }
-            ..inputs = ['1', '1', '4', '1', '1', '2', '5', 'y', '0'];
+            ..inputs = ['1', '1', '4', '2', '1', '1', '2', '5', 'y', '0'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -513,7 +624,7 @@ void main() {
       expect(output.toString(), contains('sharing violation'));
       expect(
         output.toString(),
-        contains('Use this base for the current session'),
+        contains('Use the suggested base (confirm for this session)'),
       );
       expect(harness.commands, isEmpty);
     });
@@ -529,12 +640,16 @@ class _InteractiveHarness {
   int discoveryCalls = 0;
   int resolveCalls = 0;
   int readValues = 0;
+  List<int> boltValues = [];
+  bool omitReadValue = false;
   int readExitCode = 0;
   List<int> readExitCodes = [];
   int writeExitCode = 0;
   String readErrorOutput = '';
   String writeErrorOutput = '';
   bool hasTerminal = true;
+  Exception? discoveryError;
+  UnsupportedError? unsupportedDiscoveryError;
   bool Function()? clearScreen;
   Rpcs3MemoryBaseCandidate? candidate;
   Rpcs3MemoryBaseCandidate? Function(int processId)? candidateForProcess;
@@ -554,6 +669,13 @@ class _InteractiveHarness {
     return InteractiveTrainerCli(
       discoverProcessIds: () {
         final index = discoveryCalls++;
+        final unsupportedError = unsupportedDiscoveryError;
+        if (unsupportedError != null) throw unsupportedError;
+        final error = discoveryError;
+        if (error != null) {
+          discoveryError = null;
+          throw error;
+        }
         if (processResults.isEmpty) return const [];
         return processResults[index < processResults.length
             ? index
@@ -587,11 +709,13 @@ class _InteractiveHarness {
               readNumber <= readExitCodes.length
                   ? readExitCodes[readNumber - 1]
                   : readExitCode;
-          output.writeln(
-            exitCode == 0
-                ? 'Value: ${100 + readNumber}'
-                : 'Status: native memory read failed',
-          );
+          if (exitCode != 0) {
+            output.writeln('Status: native memory read failed');
+          } else if (!omitReadValue) {
+            output.writeln(
+              'Value: ${boltValues.length >= readNumber ? boltValues[readNumber - 1] : 100 + readNumber}',
+            );
+          }
           if (exitCode != 0 && readErrorOutput.isNotEmpty) {
             errorOutput.writeln(readErrorOutput);
           }

@@ -37,6 +37,21 @@ void main() {
       expect(fake.consoleModes, isEmpty);
     });
 
+    test('Method clearScreen() rejects an invalid standard output handle', () {
+      final fake = _FakeConsole()..returnInvalidHandleSentinel = true;
+
+      final cleared =
+          WindowsConsoleDataSource(
+            api: fake.api,
+            isWindows: true,
+          ).clearScreen();
+
+      expect(cleared, isFalse);
+      expect(fake.getModeCalls, 0);
+      expect(fake.consoleModes, isEmpty);
+      expect(fake.writeCalls, 0);
+    });
+
     test('Method clearScreen() rejects a non-console output handle', () {
       final fake = _FakeConsole()..getModeResult = 0;
 
@@ -107,15 +122,42 @@ void main() {
     test('Method clearScreen() rejects non-Windows platforms', () {
       final fake = _FakeConsole();
 
-      final cleared =
-          WindowsConsoleDataSource(
-            api: fake.api,
-            isWindows: false,
-          ).clearScreen();
+      final cleared = WindowsConsoleDataSource(
+        api: fake.api,
+        isWindows: false,
+      ).clearScreen(isTerminal: false);
 
       expect(cleared, isFalse);
       expect(fake.standardHandle, isNull);
     });
+
+    test(
+      'Method clearScreen() uses ANSI on a supported non-Windows terminal',
+      () {
+        final output = StringBuffer();
+
+        final cleared = WindowsConsoleDataSource(
+          isWindows: false,
+        ).clearScreen(output: output, isTerminal: true);
+
+        expect(cleared, isTrue);
+        expect(output.toString(), '\x1b[2J\x1b[H');
+      },
+    );
+
+    test(
+      'Method clearScreen() leaves redirected non-Windows output untouched',
+      () {
+        final output = StringBuffer();
+
+        final cleared = WindowsConsoleDataSource(
+          isWindows: false,
+        ).clearScreen(output: output, isTerminal: false);
+
+        expect(cleared, isFalse);
+        expect(output.toString(), isEmpty);
+      },
+    );
   });
 }
 
@@ -132,12 +174,14 @@ class _FakeConsole {
   int? writtenCount;
   int restoreModeResult = 1;
   bool returnInvalidHandle = false;
+  bool returnInvalidHandleSentinel = false;
 
   Pointer<Void> get _handle => Pointer<Void>.fromAddress(1);
 
   WindowsConsoleApi get api => WindowsConsoleApi(
     getStdHandle: (standardHandle) {
       this.standardHandle = standardHandle;
+      if (returnInvalidHandleSentinel) return Pointer<Void>.fromAddress(-1);
       return returnInvalidHandle ? nullptr : _handle;
     },
     getConsoleMode: (_, mode) {

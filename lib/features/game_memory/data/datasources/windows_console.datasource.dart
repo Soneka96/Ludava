@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_console_api.dart';
 
-/// Clears the Windows terminal when it supports virtual terminal output.
+/// Clears a terminal using virtual-terminal output when supported.
 class WindowsConsoleDataSource {
   /// Creates a console data source with an optional native API seam.
   WindowsConsoleDataSource({WindowsConsoleApi? api, bool? isWindows})
@@ -19,9 +19,17 @@ class WindowsConsoleDataSource {
   final WindowsConsoleApi? _api;
   final bool? _isWindows;
 
-  /// Clears and homes the screen, returning false when the console cannot.
-  bool clearScreen() {
-    if (!(_isWindows ?? Platform.isWindows)) return false;
+  /// Clears and homes a terminal, returning false when it cannot be cleared.
+  bool clearScreen({StringSink? output, bool? isTerminal}) {
+    if (!(_isWindows ?? Platform.isWindows)) {
+      final terminalOutput = output ?? stdout;
+      final supportsAnsi =
+          isTerminal ??
+          (stdout.hasTerminal && Platform.environment['TERM'] != 'dumb');
+      if (!supportsAnsi) return false;
+      terminalOutput.write(_clearAndHome);
+      return true;
+    }
     final api = _api ?? WindowsConsoleApi.system();
     final handle = api.getStdHandle(_standardOutputHandle);
     if (handle == nullptr || handle.address == -1) return false;
