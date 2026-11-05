@@ -1,6 +1,6 @@
 # Compatibility and verification matrix
 
-**Ludava RC2 read: owner-tested live. Ludava RC2 write: implemented, not yet owner-tested live.** The bolt mapping has owner-confirmed read/write research in RatchetHax, and the owner reports a successful Ludava read against RPCS3 on November 5, 2026, using PID `20992` and guest base `0x300000000`. The displayed bolt count and executable fingerprint were not supplied, so this does not complete the formal two-value read-verification gate. The CLI requires the user to select the process, profile, and guest base manually and does not prove the active game identity.
+**Ludava RC2 read: owner-tested live. Ludava RC2 write: implemented, not yet owner-tested live.** The bolt mapping has owner-confirmed read/write research in RatchetHax, and the owner reports a successful Ludava read against RPCS3 on November 5, 2026, using PID `20992` and guest base `0x300000000`. The displayed bolt count and executable fingerprint were not supplied, so this does not complete the formal two-value read-verification gate. The interactive CLI discovers RPCS3 PIDs, but the user still selects the game profile and confirms a current log candidate or manual guest base. Process discovery and log matching do not prove the active game identity.
 
 | Game/edition | Identifier | Environment | Capability | Status |
 | --- | --- | --- | --- | --- |
@@ -13,7 +13,7 @@
 - Collection title ID: `BCUS98282`; RC2 executable: `RC2.ppu.self`; inner app ID: `NPUA80644`.
 - Guest bolt offset: `0x01329E80`; type: unsigned 32-bit; byte order: big-endian.
 - Research-session guest base: `0x300000000`; observed host address: `0x301329E80`.
-- The guest base may differ between sessions. Check the current RPCS3 log and supply the session's base explicitly.
+- The guest base may differ between sessions. Ludava checks fresh logs beside the selected executable for a candidate and asks the user to confirm it. A stale log is ignored; a missing or ambiguous value leads to the research-tested suggestion or manual entry. The selected candidate is not proof that the log belongs to that process.
 - The owner-confirmed research recorded ordinary HUD changes from 244012 to 244016 and a targeted write/read-back/HUD change from 243866 to 244866.
 - These research observations do not establish that Ludava's independent Dart implementation works with every RPCS3 build or Collection revision.
 - No other RC2 field is included or supported. Do not apply the Collection offset to standalone RC2.

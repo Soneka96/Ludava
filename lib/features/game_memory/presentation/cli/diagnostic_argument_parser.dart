@@ -5,12 +5,14 @@ import 'package:ludava/shared/constants/enums.dart';
 abstract final class DiagnosticArgumentParser {
   /// Usage text for the supported commands.
   static const String usage = '''Usage:
+  dart run bin/ludava.dart
   dart run bin/ludava.dart read --game <id> --field <id> --pid <PID> --memory-base <0xHEX>
   dart run bin/ludava.dart write --game <id> --field <id> --pid <PID> --memory-base <0xHEX> --value <integer> --confirm-write
 
-Select the process, profile, and session guest base manually. Ludava does not
-verify the active game build. RC2 bolts use owner-confirmed research and remain
-unverified against a live Ludava session. Repeat the read command to refresh.''';
+No arguments starts the interactive trainer. Diagnostic commands require an
+explicit process ID, profile, and session guest base. Ludava does not verify the active game build.
+RC2 bolts use owner-confirmed research and remain unverified against a live
+Ludava session. Repeat the read command to refresh.''';
 
   /// Parses a read or write command and rejects missing, duplicate, or invalid options.
   static DiagnosticArguments parse(List<String> arguments) {

@@ -1,6 +1,6 @@
 # MVP — RC2 bolt trainer
 
-**Current status:** the profile-driven Windows CLI can read and write RC2 Collection bolts using owner-confirmed research. The owner successfully tested a live RC2 bolt read with Ludava on November 5, 2026; a live Ludava write and full two-value read-verification evidence are still pending. Ludava does not identify the active game/build automatically.
+**Current status:** the interactive Windows CLI discovers RPCS3 processes, offers fresh log-derived or manual memory-base choices, and reads or writes RC2 Collection bolts using owner-confirmed research. The owner successfully tested a live RC2 bolt read with Ludava on November 5, 2026; a live Ludava write and full two-value read-verification evidence are still pending. Process discovery and log matching do not identify the active game/build.
 
 ## Objective
 
@@ -8,15 +8,17 @@ Read and deliberately modify the bolt value for Ratchet & Clank 2 inside the PS3
 
 ## First user-visible capability
 
-- Select the intended RPCS3 process, `rc2-collection` profile, and session guest memory base explicitly.
+- Select the intended RPCS3 process when multiple instances exist, choose the `rc2-collection` profile, and explicitly confirm a candidate or manual session guest memory base.
 - Read exactly four bytes and decode them as an unsigned big-endian 32-bit value.
 - Keep the guest offset `0x01329E80` in the RC2 profile; the observed research-session base was `0x300000000`.
 - Allow a write only for the research-confirmed bolt field, a value from 0 through 4294967295, and an explicit `--confirm-write` request.
 - Require native success and exactly four bytes written, then read back the value. Report write success only when the read-back matches.
-- Display that process/profile/base selection is manual and that Ludava has not validated the live game session.
-- Close the process handle at the end of each CLI command. Run `read` again to refresh the value.
+- Display the selected process/profile/base and that Ludava has not validated the live game session.
+- Close process handles after operations. The interactive refresh action runs a new read; the diagnostic CLI can be repeated to refresh too.
 
 Automated tests cover the codec, address mapping, domain write flow, CLI wiring, native errors, partial transfers, read-back, and handle lifecycle through controlled fakes and local test memory. They do not test against RPCS3.
+
+The Windows x64 executable can be built with `tool/build_windows.ps1` and transferred to a ROG Ally without installing Dart or Flutter there. See [WINDOWS_BUILD.md](WINDOWS_BUILD.md).
 
 ## Out of scope
 

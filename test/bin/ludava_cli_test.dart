@@ -1,10 +1,69 @@
 import 'package:test/test.dart';
 
+import 'package:ludava/features/game_memory/presentation/cli/interactive_trainer_cli.dart';
+
 import '../../bin/ludava_cli.dart';
 import '../support/fake_windows_memory_api.dart';
 
 void main() {
   group('Method run() behaves correctly', () {
+    test('Method run() starts the interactive menu without arguments', () {
+      var discoveryCalls = 0;
+      final interactiveCli = InteractiveTrainerCli(
+        discoverProcessIds: () {
+          discoveryCalls++;
+          return const [];
+        },
+        readProcessMetadata: (_) => throw StateError('no process selected'),
+        resolveMemoryBaseCandidate: (_) => null,
+        runCommand: (_, __, ___) => 0,
+        readLine: () => '0',
+        hasTerminal: true,
+      );
+      final output = StringBuffer();
+      final errorOutput = StringBuffer();
+
+      final exitCode = LudavaCli(interactiveCli: interactiveCli).run(
+        [],
+        output: output,
+        errorOutput: errorOutput,
+      );
+
+      expect(exitCode, 0);
+      expect(output.toString(), contains('LUDAVA'));
+      expect(output.toString(), contains('RPCS3 was not found'));
+      expect(discoveryCalls, 1);
+      expect(errorOutput.toString(), isEmpty);
+    });
+
+    test('Method run() rejects interactive mode when input is not a terminal',
+        () {
+      var discoveryCalls = 0;
+      final interactiveCli = InteractiveTrainerCli(
+        discoverProcessIds: () {
+          discoveryCalls++;
+          return const [];
+        },
+        readProcessMetadata: (_) => throw StateError('not reached'),
+        resolveMemoryBaseCandidate: (_) => null,
+        runCommand: (_, __, ___) => 0,
+        readLine: () => throw StateError('must not read input'),
+        hasTerminal: false,
+      );
+      final output = StringBuffer();
+      final errorOutput = StringBuffer();
+
+      final exitCode = LudavaCli(interactiveCli: interactiveCli).run(
+        [],
+        output: output,
+        errorOutput: errorOutput,
+      );
+
+      expect(exitCode, 2);
+      expect(errorOutput.toString(), contains('requires a terminal'));
+      expect(discoveryCalls, 0);
+    });
+
     test('Method run() prints help without opening a process', () {
       final output = StringBuffer();
       final errorOutput = StringBuffer();
@@ -17,6 +76,10 @@ void main() {
       ).run(['--help'], output: output, errorOutput: errorOutput);
 
       expect(exitCode, 0);
+      expect(
+        output.toString(),
+        contains('No arguments starts the interactive trainer'),
+      );
       expect(output.toString(), contains('bin/ludava.dart read'));
       expect(output.toString(), contains('Ludava does not'));
       expect(output.toString(), contains('verify the active game build'));
@@ -364,6 +427,34 @@ void main() {
       expect(errorOutput.toString(), contains('Windows only'));
       expect(api.openCalls, 0);
       expect(api.closeCalls, 0);
+    });
+
+    test('Method run() reports unsupported pointer sizes before opening', () {
+      final errorOutput = StringBuffer();
+      final api = FakeWindowsMemoryApi();
+
+      final exitCode = LudavaCli(
+        api: api.adapter,
+        isWindows: true,
+        pointerSize: 4,
+      ).run(
+        [
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+        ],
+        errorOutput: errorOutput,
+      );
+
+      expect(exitCode, 1);
+      expect(errorOutput.toString(), contains('requires 64-bit Windows'));
+      expect(api.openCalls, 0);
     });
 
     test('Method run() reports handle-close failures after a read', () {
