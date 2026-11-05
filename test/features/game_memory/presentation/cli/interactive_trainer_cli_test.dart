@@ -7,6 +7,61 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method run() behaves correctly', () {
+    test('Method run() lists all three Collection games in order', () {
+      final harness = _InteractiveHarness()
+        ..processResults = [[42]]
+        ..inputs = ['1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(output.toString(), contains('1. Ratchet & Clank — PS3 Collection'));
+      expect(output.toString(), contains('2. Ratchet & Clank 2 — PS3 Collection'));
+      expect(output.toString(), contains('3. Ratchet & Clank 3 — PS3 Collection'));
+      expect(harness.readCommands, isEmpty);
+    });
+
+    test('Method run() selects the RC1 profile for reading bolts', () {
+      final harness = _InteractiveHarness()
+        ..processResults = [[42]]
+        ..inputs = ['1', '1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.readCommands, hasLength(1));
+      expect(harness.readCommands.single, containsAll(['--game', 'rc1-collection']));
+      expect(output.toString(), contains('  Ratchet & Clank\n'));
+      expect(output.toString(), contains('  PS3 Collection'));
+    });
+
+    test('Method run() selects the RC3 profile for reading bolts', () {
+      final harness = _InteractiveHarness()
+        ..processResults = [[42]]
+        ..inputs = ['1', '3', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.readCommands, hasLength(1));
+      expect(harness.readCommands.single, containsAll(['--game', 'rc3-collection']));
+      expect(output.toString(), contains('Ratchet & Clank 3'));
+      expect(output.toString(), contains('  PS3 Collection'));
+    });
+
+    test('Method run() explains unavailable data for the selected RC3 game', () {
+      final harness = _InteractiveHarness()
+        ..processResults = [[42]]
+        ..readExitCode = 1
+        ..inputs = ['1', '3', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(output.toString(), contains('Start Ratchet & Clank 3 in RPCS3'));
+      expect(harness.writeCommands, isEmpty);
+    });
+
     test('Method run() rejects non-terminal input without discovering', () {
       final harness = _InteractiveHarness()..hasTerminal = false;
       final output = StringBuffer();
