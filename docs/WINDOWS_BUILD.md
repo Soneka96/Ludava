@@ -41,15 +41,15 @@ dart format --output=none --set-exit-if-changed lib test bin
 
 1. Build `build\Ludava.exe` on the Windows x64 development PC.
 2. Copy `Ludava.exe` to the ROG Ally.
-3. Start RPCS3 and Ratchet & Clank 2 in the PS3 Collection.
-4. Launch `Ludava.exe` and select the detected RPCS3 process and RC2 profile.
+3. Start RPCS3 and the selected Ratchet & Clank 1, 2 or 3 game in the PS3 Collection.
+4. Launch `Ludava.exe` and select the detected RPCS3 process and the matching Collection game profile.
 5. Verify the current session's memory base from a fresh RPCS3 log before using
    it. The suggested `0x300000000` base is a research-session value and may not
    match the current session.
 6. Refresh bolts, then deliberately confirm any write from the trainer menu.
 
 The owner successfully read and changed RC2 bolts with Ludava in RPCS3 on
-November 5, 2026. That live test does not establish compatibility with every
+November 5, 2026. RC1 and RC3 bolt locations come from owner-confirmed RatchetHax research, but have not yet been tested with Ludava. That RC2 live test does not establish compatibility with every
 RPCS3 version or game build. A successful read-back confirms the value at the
 selected address, but does not identify the active game or prove that the
 correct target was selected. Verify the session base and use a test save before
