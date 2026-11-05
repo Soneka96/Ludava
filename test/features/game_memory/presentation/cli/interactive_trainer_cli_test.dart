@@ -49,6 +49,32 @@ void main() {
       expect(output.toString(), contains('  PS3 Collection'));
     });
 
+    test('Method run() routes RC1 and RC3 bolt changes to selected profiles', () {
+      for (final selection in ['1', '3']) {
+        final harness = _InteractiveHarness()
+          ..processResults = [[42]]
+          ..inputs = ['1', selection, '2', '1234', 'y', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(harness.writeCommands, hasLength(1));
+        expect(
+          harness.writeCommands.single,
+          containsAll([
+            '--game',
+            'rc$selection-collection',
+            '--field',
+            'bolts',
+            '--value',
+            '1234',
+            '--confirm-write',
+          ]),
+        );
+        expect(output.toString(), contains('Bolts updated successfully'));
+      }
+    });
+
     test('Method run() explains unavailable data for the selected RC3 game', () {
       final harness = _InteractiveHarness()
         ..processResults = [[42]]
