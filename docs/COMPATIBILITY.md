@@ -9,8 +9,17 @@ The observed guest memory base was `0x300000000`. The exact Windows and RPCS3 ve
 | Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / Windows | `bolts` read | Owner-tested live on 2026-11-05; observed `0` during startup and `110` in gameplay; exact runtime/build details unavailable |
 | Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / Windows | `bolts` write | Owner-tested live on 2026-11-05; requested `120`, Ludava displayed `120`, and the owner screenshot showed `120` on the HUD; cross-build compatibility not established |
 | Ratchet & Clank 2 — standalone PS3 | `NPUA80644` | RPCS3 / Windows | Read/write bolts | Not supported by this Collection profile |
-| Ratchet & Clank 1 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80643` | RPCS3 / Windows | `bolts` read/write | Implemented from owner-confirmed RatchetHax research; live Ludava validation pending |
-| Ratchet & Clank 3 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80645` | RPCS3 / Windows | `bolts` read/write | Implemented from owner-confirmed RatchetHax research; live Ludava validation pending |
+| Ratchet & Clank 1 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80643` | RPCS3 / Windows | `bolts` read/write | Owner-tested live on 2026-11-05: gameplay read `22`, requested write `12,312`, Ludava read-back and owner screenshot HUD showed `12,312` |
+| Ratchet & Clank 3 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80645` | RPCS3 / Windows | `bolts` read/write | Owner-tested live on 2026-11-05: gameplay read `248`, requested write `1,312,312`, Ludava read-back and owner screenshot HUD showed `1,312,312` |
+
+## Live RC1 and RC3 verification (2026-11-05)
+
+The owner tested both new Ludava profiles in RPCS3 and supplied terminal output and gameplay screenshots. The screenshots display RPCS3 `0.0.43-20565` and the Collection title ID `BCUS98282`. The selected process ID was `20992` and the session memory base was `0x300000000` in the terminal report. Exact game executable fingerprints, complete RPCS3 build identifier and Windows version remain unrecorded.
+
+- **RC1:** Ludava read `22` bolts in the running game. The owner set `12,312`; Ludava reported matching read-back and the HUD screenshot displayed `12312`.
+- **RC3:** Ludava read `248` bolts. The owner set `1,312,312`; Ludava reported matching read-back and the HUD screenshot displayed `1312312`. A separate `+20` game reward appeared in the HUD; whether that bonus had already been reflected in the displayed balance was not independently established.
+- The owner ran `dart pub get` successfully, `dart analyze` with no issues and `dart test` with **254 tests passed**. The compiled Windows EXE was not demonstrated for this branch.
+- These are successful live read/write observations for the owner's configuration, not proof of general cross-build compatibility or automatic identification of the active embedded game.
 
 ## RC2 Collection mapping
 
@@ -21,8 +30,8 @@ The observed guest memory base was `0x300000000`. The exact Windows and RPCS3 ve
 - The owner-confirmed research recorded ordinary HUD changes from 244012 to 244016 and a targeted write/read-back/HUD change from 243866 to 244866.
 - These research observations do not establish that Ludava's independent Dart implementation works with every RPCS3 build or Collection revision.
 - No other RC2 field is included or supported. Do not apply the Collection offset to standalone RC2.
-- Ratchet & Clank 1: bolt guest offset `0x009BC3A0` (`0x3009BC3A0` with observed research base `0x300000000`). RatchetHax tracked HUD `5155 → 5105 → 5055` and confirmed a write to `105055` on the HUD; Ludava live validation is pending.
-- Ratchet & Clank 3: bolt guest offset `0x00C1EDAC` (`0x300C1EDAC` with observed research base `0x300000000`). RatchetHax tracked HUD `753 → 755` and confirmed a write to `1755` on the HUD; Ludava live validation is pending.
+- Ratchet & Clank 1: bolt guest offset `0x009BC3A0` (`0x3009BC3A0` with observed research base `0x300000000`). RatchetHax tracked HUD `5155 → 5105 → 5055` and confirmed a write to `105055` on the HUD; Ludava live RC1 write to `12,312` was confirmed on the HUD on 2026-11-05.
+- Ratchet & Clank 3: bolt guest offset `0x00C1EDAC` (`0x300C1EDAC` with observed research base `0x300000000`). RatchetHax tracked HUD `753 → 755` and confirmed a write to `1755` on the HUD; Ludava live RC3 write to `1,312,312` was confirmed on the HUD on 2026-11-05.
 - Both profiles store one big-endian unsigned 32-bit `bolts` field only; their active PPU SELF filenames/builds were not established in the research. The Collection's outer title ID is shared, so the selected profile must match the active embedded game. Neither the profile nor a plausible numeric read proves that match.
 
 ## Evidence vocabulary
