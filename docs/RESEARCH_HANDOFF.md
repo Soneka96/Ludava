@@ -1,37 +1,37 @@
 # Research handoff: RatchetHax → Ludava
 
-**Pending.** Ludava is independently implemented; this process transfers reproducible knowledge, not source code.
+Ludava's implementation is independently written. RatchetHax supplies the research basis and remains GPLv3; no RatchetHax source has been copied or mechanically translated.
 
-## Sources
+## Owner-confirmed RC2 Collection research
+
+RatchetHax PR #1 is merged. Its RC2 Collection investigation records the following tested-session values:
+
+- Collection title ID: `BCUS98282`.
+- RC2 subgame executable: `RC2.ppu.self`; inner app ID: `NPUA80644`.
+- Bolt guest offset: `0x01329E80`; unsigned 32-bit, big-endian.
+- Observed guest base: `0x300000000`, translating to host address `0x301329E80`.
+- Two snapshots tracked a normal HUD change from 244012 to 244016.
+- A targeted owner-authorized write changed 243866 to 244866; read-back and the HUD matched.
+
+These findings establish the bolt mapping for the tested research session. They do not validate Ludava's separate Dart implementation, every RPCS3 build, other Collection revisions, or any other game field. The memory base may vary by session.
+
+## Ludava implementation status
+
+Ludava stores this one bolt field in its RC2 Collection profile with `researchConfirmed` write eligibility. The CLI requires explicit process, profile, and guest-base selection. It does not identify the active executable/build automatically. Writes require an explicit request and confirmation, a valid unsigned 32-bit value, complete native transfer, and matching read-back.
+
+Automated tests cover the new implementation using fakes and controlled local memory. The owner reports a successful live RPCS3 read using Ludava on November 5, 2026, with PID `20992` and guest base `0x300000000`. Exact observed bolt values, full build identification, and a live Ludava write have not been recorded. Do not claim complete read/write runtime compatibility until the remaining evidence is recorded.
+
+## Sources and licensing
 
 - [Original RatchetHax](https://github.com/ParadoxEpoch/RatchetHax) — GPLv3.
 - [RatchetHax working fork](https://github.com/Soneka96/RatchetHax).
-- [RatchetHax PR #1: RC2 Collection memory investigation](https://github.com/Soneka96/RatchetHax/pull/1).
+- [RatchetHax PR #1: RC2 Collection investigation](https://github.com/Soneka96/RatchetHax/pull/1) — merged; contains the investigation and validation report.
 
-## Findings needed
+## Next live-validation work
 
-1. Exact RC2 Collection game/build identification and live RPCS3 version.
-2. RPCS3 guest-to-host mapping assumptions, address width and pointer truncation analysis.
-3. How invalid or partial native reads are distinguished from valid zero values.
-4. At least two independent read-only measurements matching distinct real in-game bolt counts.
-5. Candidate versus verified addresses with sources and experimental method.
-6. Contradictory results, environmental constraints, tests not run and next diagnostic steps.
+1. Record the exact Windows version, RPCS3 version, game/session identity, and guest base.
+2. Match two distinct normal in-game bolt counts against Ludava reads.
+3. With a suitable test save, perform one deliberate Ludava write and record the requested value, exact transfer result, read-back, and HUD outcome.
+4. Record recovery steps and limitations in `COMPATIBILITY.md`.
 
-## Handoff and independent implementation
-
-1. Review PR #1 findings and real machine logs, not just the PR's existence or merge status.
-2. Preserve citations to original references and observed experiments.
-3. Reproduce critical facts using a new Dart read-only implementation.
-4. Do not copy or mechanically translate RatchetHax's GPLv3 source or curated tables without a separate license and provenance assessment.
-5. Permit guarded writes only in a later, independently validated change.
-
-## Checklist
-
-- [ ] PR #1 provides reproducible diagnostic findings.
-- [ ] Exact build and RPCS3 version are recorded.
-- [ ] Read failures and valid values are distinguishable.
-- [ ] Candidate mappings are clearly separated from verified measurements.
-- [ ] License and source/data provenance are reviewed.
-- [ ] A narrow Dart read-only implementation task is approved.
-
-**Next action:** complete the RatchetHax investigation and review the evidence before starting application code in Ludava.
+Do not add health, multiplier, planet, equipped-item, weapon, gadget, or unlock fields without separate evidence. Keep snapshots and logs local unless they are deliberately scrubbed and shared.

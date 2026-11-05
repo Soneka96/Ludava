@@ -1,0 +1,417 @@
+import 'package:ludava/features/game_memory/domain/entities/game_field.entity.dart';
+import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_memory/domain/entities/memory_read_result.entity.dart';
+import 'package:ludava/features/game_memory/domain/entities/memory_write_result.entity.dart';
+import 'package:ludava/features/game_memory/domain/repositories/Igame_memory.repository.dart';
+import 'package:ludava/features/game_memory/domain/usecases/params/write_game_field.params.dart';
+import 'package:ludava/features/game_memory/domain/usecases/write_game_field.usecase.dart';
+import 'package:ludava/shared/constants/enums.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('Method execute() behaves correctly', () {
+    test('Method execute() requires explicit confirmation before writing', () {
+      final repository = _WriteGameFieldTestRepository();
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(confirmed: false),
+      );
+
+      expect(result.status, GameWriteStatus.confirmationRequired);
+      expect(repository.writeCalls, 0);
+      expect(repository.readCalls, 0);
+    });
+
+    test(
+        'Method execute() rejects unverified profiles and fields before writing',
+        () {
+      final repository = _WriteGameFieldTestRepository();
+      final useCase = WriteGameFieldUseCase(repository);
+
+      final unsupportedProfile = useCase.execute(
+        _WriteGameFieldTestRepository.params(
+          profileStatus: VerificationStatus.experimental,
+        ),
+      );
+      final unsupportedField = useCase.execute(
+        _WriteGameFieldTestRepository.params(
+          fieldStatus: VerificationStatus.experimental,
+        ),
+      );
+
+      expect(unsupportedProfile.status, GameWriteStatus.unsupportedProfile);
+      expect(unsupportedField.status, GameWriteStatus.unsupportedField);
+      expect(repository.writeCalls, 0);
+      expect(repository.readCalls, 0);
+    });
+
+    test('Method execute() rejects values without a verified safe range', () {
+      final repository = _WriteGameFieldTestRepository();
+      final missingBounds = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(
+            minimumValue: null, maximumValue: null),
+      );
+      final belowMinimum = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(value: -1),
+      );
+      final aboveMaximum = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(value: 101),
+      );
+
+      expect(missingBounds.status, GameWriteStatus.invalidValue);
+      expect(belowMinimum.status, GameWriteStatus.invalidValue);
+      expect(aboveMaximum.status, GameWriteStatus.invalidValue);
+      expect(repository.writeCalls, 0);
+    });
+
+    test('Method execute() accepts research-confirmed profile and field', () {
+      final repository = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.complete,
+          bytes: [0, 0, 0, 42],
+          bytesRead: 4,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(),
+      );
+
+      expect(result.status, GameWriteStatus.success);
+      expect(repository.writeCalls, 1);
+      expect(repository.readCalls, 1);
+    });
+
+    test('Method execute() rejects invalid mappings before writing', () {
+      final repository = _WriteGameFieldTestRepository();
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(memoryBase: -1),
+      );
+
+      expect(result.status, GameWriteStatus.invalidMapping);
+      expect(repository.writeCalls, 0);
+    });
+
+    test('Method execute() maps failed or partial writes without reading back',
+        () {
+      final failedRepository = _WriteGameFieldTestRepository(
+        writeResult: const MemoryWriteResult(
+          status: MemoryWriteStatus.nativeFailure,
+          bytesWritten: 0,
+          requestedBytes: 4,
+          errorCode: 5,
+        ),
+      );
+      final partialRepository = _WriteGameFieldTestRepository(
+        writeResult: const MemoryWriteResult(
+          status: MemoryWriteStatus.partial,
+          bytesWritten: 2,
+          requestedBytes: 4,
+        ),
+      );
+      final params = _WriteGameFieldTestRepository.params();
+
+      final failed = WriteGameFieldUseCase(failedRepository).execute(params);
+      final partial = WriteGameFieldUseCase(partialRepository).execute(params);
+
+      expect(failed.status, GameWriteStatus.writeFailed);
+      expect(failed.errorCode, 5);
+      expect(failedRepository.readCalls, 0);
+      expect(partial.status, GameWriteStatus.incompleteWrite);
+      expect(partialRepository.readCalls, 0);
+    });
+
+    test('Method execute() maps an invalid write address before read-back', () {
+      final repository = _WriteGameFieldTestRepository(
+        writeResult: const MemoryWriteResult(
+          status: MemoryWriteStatus.invalidAddress,
+          bytesWritten: 0,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(),
+      );
+
+      expect(result.status, GameWriteStatus.invalidMapping);
+      expect(repository.readCalls, 0);
+    });
+
+    test('Method execute() rejects non-transfer write results', () {
+      for (final status in [
+        MemoryWriteStatus.none,
+        MemoryWriteStatus.invalidRequest,
+        MemoryWriteStatus.invalidByteCount,
+      ]) {
+        final repository = _WriteGameFieldTestRepository(
+          writeResult: MemoryWriteResult(
+            status: status,
+            bytesWritten: 0,
+            requestedBytes: 4,
+          ),
+        );
+
+        final result = WriteGameFieldUseCase(repository).execute(
+          _WriteGameFieldTestRepository.params(),
+        );
+
+        expect(result.status, GameWriteStatus.invalidWriteResult);
+        expect(repository.readCalls, 0);
+      }
+    });
+
+    test('Method execute() rejects impossible native write results', () {
+      final repository = _WriteGameFieldTestRepository(
+        writeResult: const MemoryWriteResult(
+          status: MemoryWriteStatus.complete,
+          bytesWritten: 3,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(),
+      );
+
+      expect(result.status, GameWriteStatus.invalidWriteResult);
+      expect(repository.readCalls, 0);
+    });
+
+    test('Method execute() reports read-back failures and mismatches', () {
+      final failedReadBack = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.nativeFailure,
+          bytes: [],
+          bytesRead: 0,
+          requestedBytes: 4,
+          errorCode: 299,
+        ),
+      );
+      final partialReadBack = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.partial,
+          bytes: [0, 0],
+          bytesRead: 2,
+          requestedBytes: 4,
+        ),
+      );
+      final invalidAddressReadBack = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.invalidAddress,
+          bytes: [],
+          bytesRead: 0,
+          requestedBytes: 4,
+        ),
+      );
+      final mismatch = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.complete,
+          bytes: [0, 0, 0, 41],
+          bytesRead: 4,
+          requestedBytes: 4,
+        ),
+      );
+      final params = _WriteGameFieldTestRepository.params(value: 42);
+
+      final failed = WriteGameFieldUseCase(failedReadBack).execute(params);
+      final partial = WriteGameFieldUseCase(partialReadBack).execute(params);
+      final invalidAddress =
+          WriteGameFieldUseCase(invalidAddressReadBack).execute(params);
+      final mismatched = WriteGameFieldUseCase(mismatch).execute(params);
+
+      expect(failed.status, GameWriteStatus.readBackFailed);
+      expect(failed.errorCode, 299);
+      expect(partial.status, GameWriteStatus.readBackFailed);
+      expect(invalidAddress.status, GameWriteStatus.readBackFailed);
+      expect(mismatched.status, GameWriteStatus.readBackMismatch);
+      expect(mismatched.readBackValue, 41);
+    });
+
+    test('Method execute() rejects malformed read-back results', () {
+      final invalidRequest = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.invalidRequest,
+          bytes: [],
+          bytesRead: 0,
+          requestedBytes: 4,
+        ),
+      );
+      final impossibleCount = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.complete,
+          bytes: [0, 0],
+          bytesRead: 2,
+          requestedBytes: 4,
+        ),
+      );
+      final invalidByteCount = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.invalidByteCount,
+          bytes: [],
+          bytesRead: 5,
+          requestedBytes: 4,
+        ),
+      );
+      final params = _WriteGameFieldTestRepository.params(value: 42);
+
+      final invalid = WriteGameFieldUseCase(invalidRequest).execute(params);
+      final inconsistent =
+          WriteGameFieldUseCase(impossibleCount).execute(params);
+      final invalidCount =
+          WriteGameFieldUseCase(invalidByteCount).execute(params);
+
+      expect(invalid.status, GameWriteStatus.invalidWriteResult);
+      expect(inconsistent.status, GameWriteStatus.invalidWriteResult);
+      expect(invalidCount.status, GameWriteStatus.invalidWriteResult);
+      expect(invalidRequest.writeCalls, 1);
+      expect(impossibleCount.writeCalls, 1);
+      expect(invalidByteCount.writeCalls, 1);
+    });
+
+    test('Method execute() succeeds only after a matching read-back', () {
+      final repository = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.complete,
+          bytes: [0, 0, 0, 42],
+          bytesRead: 4,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(value: 42),
+      );
+
+      expect(result.status, GameWriteStatus.success);
+      expect(result.succeeded, isTrue);
+      expect(result.requestedValue, 42);
+      expect(result.readBackValue, 42);
+      expect(repository.writtenBytes, [0, 0, 0, 42]);
+      expect(repository.lastWriteAddress, 0x301329e80);
+      expect(repository.readCalls, 1);
+      expect(repository.lastReadAddress, 0x301329e80);
+      expect(repository.lastReadByteCount, 4);
+    });
+
+    test('Method execute() accepts the inclusive minimum value', () {
+      final repository = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.complete,
+          bytes: [0, 0, 0, 0],
+          bytesRead: 4,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(value: 0),
+      );
+
+      expect(result.status, GameWriteStatus.success);
+      expect(repository.writtenBytes, [0, 0, 0, 0]);
+    });
+
+    test('Method execute() accepts the inclusive maximum value', () {
+      final repository = _WriteGameFieldTestRepository(
+        readResult: MemoryReadResult(
+          status: MemoryReadStatus.complete,
+          bytes: [0, 0, 0, 100],
+          bytesRead: 4,
+          requestedBytes: 4,
+        ),
+      );
+
+      final result = WriteGameFieldUseCase(repository).execute(
+        _WriteGameFieldTestRepository.params(value: 100),
+      );
+
+      expect(result.status, GameWriteStatus.success);
+      expect(repository.writtenBytes, [0, 0, 0, 100]);
+    });
+  });
+}
+
+class _WriteGameFieldTestRepository implements IGameMemoryRepository {
+  int readCalls = 0;
+  int writeCalls = 0;
+  int? lastReadAddress;
+  int? lastReadByteCount;
+  int? lastWriteAddress;
+  List<int>? writtenBytes;
+
+  _WriteGameFieldTestRepository({
+    MemoryReadResult? readResult,
+    MemoryWriteResult? writeResult,
+  })  : _readResult = readResult ??
+            MemoryReadResult(
+              status: MemoryReadStatus.complete,
+              bytes: [0, 0, 0, 42],
+              bytesRead: 4,
+              requestedBytes: 4,
+            ),
+        _writeResult = writeResult ??
+            const MemoryWriteResult(
+              status: MemoryWriteStatus.complete,
+              bytesWritten: 4,
+              requestedBytes: 4,
+            );
+
+  final MemoryReadResult _readResult;
+  final MemoryWriteResult _writeResult;
+
+  static WriteGameFieldParams params({
+    VerificationStatus profileStatus = VerificationStatus.researchConfirmed,
+    VerificationStatus fieldStatus = VerificationStatus.researchConfirmed,
+    int? minimumValue = 0,
+    int? maximumValue = 100,
+    int value = 42,
+    int memoryBase = 0x300000000,
+    bool confirmed = true,
+  }) =>
+      WriteGameFieldParams(
+        profile: GameProfile(
+          id: 'rc2-test',
+          gameName: 'Test game',
+          buildId: 'TEST',
+          executable: 'test.exe',
+          readStatus: VerificationStatus.verified,
+          writeStatus: profileStatus,
+          fields: {
+            'bolts': GameField(
+              id: 'bolts',
+              name: 'Bolts',
+              guestOffset: 0x1329e80,
+              valueType: MemoryValueType.unsigned32,
+              byteOrder: ByteOrder.big,
+              readStatus: VerificationStatus.verified,
+              writeStatus: fieldStatus,
+              minimumValue: minimumValue,
+              maximumValue: maximumValue,
+            ),
+          },
+        ),
+        fieldId: 'bolts',
+        memoryBase: memoryBase,
+        value: value,
+        confirmed: confirmed,
+      );
+
+  @override
+  MemoryReadResult read(int address, int byteCount) {
+    readCalls++;
+    lastReadAddress = address;
+    lastReadByteCount = byteCount;
+    return _readResult;
+  }
+
+  @override
+  MemoryWriteResult write(int address, List<int> bytes) {
+    writeCalls++;
+    lastWriteAddress = address;
+    writtenBytes = List.unmodifiable(bytes);
+    return _writeResult;
+  }
+}
