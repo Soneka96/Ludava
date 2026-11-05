@@ -23,6 +23,9 @@ class DiagnosticArguments {
   /// Whether the user explicitly confirmed the write command.
   final bool confirmed;
 
+  /// Whether a read requires current process and profile identity evidence.
+  final bool requireCurrentIdentity;
+
   /// Creates parsed arguments for one game-memory operation.
   const DiagnosticArguments({
     required this.action,
@@ -31,6 +34,7 @@ class DiagnosticArguments {
     required this.processId,
     required this.memoryBase,
     required this.confirmed,
+    this.requireCurrentIdentity = false,
     this.value,
   });
 }

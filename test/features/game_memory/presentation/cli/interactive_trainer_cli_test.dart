@@ -1,73 +1,371 @@
 import 'dart:io';
 
+import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava/features/game_memory/domain/profiles/rc2_collection_profile.dart';
+import 'package:ludava/features/game_memory/domain/profiles/rc1_collection_profile.dart';
+import 'package:ludava/features/game_memory/domain/profiles/rc3_collection_profile.dart';
 import 'package:ludava/features/game_memory/presentation/cli/interactive_trainer_cli.dart';
+import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('Method run() behaves correctly', () {
+    test('Method run() bypasses manual selection for confirmed identity', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..detectionResult = GameDetectionResult(
+              status: GameDetectionStatus.supportedGame,
+              processId: 42,
+              titleId: 'BCUS98282',
+              gameTitle: 'Ratchet & Clank 2',
+              executable: 'RC2.ppu.self',
+              executableHash: Rc2CollectionProfile.profile.executableHash,
+              confidence: GameIdentityConfidence.confirmed,
+              profile: Rc2CollectionProfile.profile,
+              evidenceDescription: 'Unique current-game identity evidence.',
+            )
+            ..candidate = const Rpcs3MemoryBaseCandidate(
+              memoryBase: 0x300000000,
+              logPath: r'C:\RPCS3\log\RPCS3.log',
+            )
+            ..inputs = ['0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.detectionCalls, 1);
+      expect(harness.readCommands, hasLength(1));
+      expect(
+        harness.readCommands.single,
+        containsAll(['--game', 'rc2-collection', '--require-current-identity']),
+      );
+      expect(output.toString(), contains('Ratchet & Clank 2 detected.'));
+      expect(output.toString(), isNot(contains('Choose your game:')));
+      expect(output.toString(), isNot(contains('Confirm RPCS3 connection')));
+      expect(output.toString(), contains('Guest memory base resolved'));
+    });
+
+    test(
+      'Method run() does not prompt for a missing automatic memory base',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..detectionResult = _confirmedRc2Detection();
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(harness.resolveCalls, 1);
+        expect(harness.readCommands, isEmpty);
+        expect(
+          output.toString(),
+          contains('could not verify a guest memory base'),
+        );
+        expect(
+          output.toString(),
+          isNot(contains('Enter hexadecimal memory base')),
+        );
+      },
+    );
+
+    test(
+      'Method run() keeps log candidates uncertain and offers manual selection',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..detectionResult = GameDetectionResult(
+                status: GameDetectionStatus.ambiguous,
+                processId: 42,
+                titleId: 'BCUS98282',
+                gameTitle: 'Ratchet & Clank Collection',
+                confidence: GameIdentityConfidence.uncertain,
+                evidenceDescription:
+                    'Historical log evidence; active game unverified.',
+              )
+              ..inputs = ['2', '1', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(output.toString(), contains('title candidate (unverified)'));
+        expect(output.toString(), contains('Choose a profile manually'));
+        expect(
+          output.toString(),
+          contains('Manual profile: Ratchet & Clank 2'),
+        );
+        expect(harness.readCommands.single, contains('rc2-collection'));
+        expect(
+          harness.readCommands.single,
+          isNot(contains('--require-current-identity')),
+        );
+      },
+    );
+
+    test(
+      'Method run() offers no trainer for a confirmed unsupported title',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..detectionResult = GameDetectionResult(
+                status: GameDetectionStatus.unsupportedGame,
+                processId: 42,
+                titleId: 'UNSUPPORTED',
+                gameTitle: 'Unsupported title',
+                confidence: GameIdentityConfidence.confirmed,
+                evidenceDescription: 'Current title identity was confirmed.',
+              )
+              ..inputs = ['1', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(output.toString(), contains('Unsupported title'));
+        expect(output.toString(), contains('No trainer profile is available'));
+        expect(output.toString(), isNot(contains('Choose your game:')));
+        expect(harness.resolveCalls, 0);
+        expect(harness.commands, isEmpty);
+      },
+    );
+
+    test('Method run() retries when RPCS3 has no active game identity', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..detectionResults = [
+              GameDetectionResult(
+                status: GameDetectionStatus.noActiveGame,
+                processId: 42,
+                confidence: GameIdentityConfidence.none,
+                evidenceDescription: 'No active game signal was observed.',
+              ),
+              _confirmedRc2Detection(),
+            ]
+            ..candidate = const Rpcs3MemoryBaseCandidate(
+              memoryBase: 0x300000000,
+              logPath: r'C:\RPCS3\log\RPCS3.log',
+            )
+            ..inputs = ['1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.detectionCalls, 2);
+      expect(harness.resolveCalls, 1);
+      expect(output.toString(), contains('No active game was identified'));
+      expect(output.toString(), contains('Ratchet & Clank 2 detected.'));
+      expect(harness.readCommands.single, contains('rc2-collection'));
+    });
+
+    test('Method run() does not ask for a base when no game is active', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..detectionResult = GameDetectionResult(
+              status: GameDetectionStatus.noActiveGame,
+              processId: 42,
+              confidence: GameIdentityConfidence.none,
+              evidenceDescription: 'No completed PPU load is present.',
+            )
+            ..inputs = ['0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.resolveCalls, 0);
+      expect(harness.readCommands, isEmpty);
+      expect(output.toString(), contains('No active game was identified'));
+      expect(
+        output.toString(),
+        isNot(contains('could not find the memory base automatically')),
+      );
+      expect(
+        output.toString(),
+        isNot(contains('Enter hexadecimal memory base')),
+      );
+    });
+
+    test('Method run() retries unsupported-game detection on request', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..detectionResults = [
+              GameDetectionResult(
+                status: GameDetectionStatus.unsupportedGame,
+                processId: 42,
+                titleId: 'UNSUPPORTED',
+                gameTitle: 'Unsupported title',
+                confidence: GameIdentityConfidence.confirmed,
+                evidenceDescription: 'Current title identity was confirmed.',
+              ),
+              _confirmedRc2Detection(),
+            ]
+            ..candidate = const Rpcs3MemoryBaseCandidate(
+              memoryBase: 0x300000000,
+              logPath: r'C:\RPCS3\log\RPCS3.log',
+            )
+            ..inputs = ['1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.detectionCalls, 2);
+      expect(output.toString(), contains('No trainer profile is available'));
+      expect(output.toString(), contains('Ratchet & Clank 2 detected.'));
+      expect(output.toString(), isNot(contains('Choose your game:')));
+    });
+
+    test('Method run() rejects detection evidence for a different process', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..detectionResult = _confirmedRc2Detection(processId: 43)
+            ..inputs = ['2', '1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(
+        output.toString(),
+        contains(
+          'Game detection evidence does not match the selected RPCS3 process.',
+        ),
+      );
+      expect(harness.readCommands.single, containsAll(['--pid', '42']));
+      expect(harness.readCommands.single, contains('rc2-collection'));
+      expect(output.toString(), contains('Manual profile: Ratchet & Clank 2'));
+    });
+
     test('Method run() accepts menu choices with surrounding whitespace', () {
-      final harness = _InteractiveHarness()
-        ..processResults = [[42]]
-        ..inputs = [' 1 ', ' 1 ', ' 3 ', ' 3 ', ' 0 '];
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..inputs = [' 1 ', ' 1 ', ' 3 ', ' 3 ', ' 0 '];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
 
       expect(harness.readCommands, hasLength(2));
-      expect(harness.readCommands.first, containsAll(['--game', 'rc1-collection']));
-      expect(harness.readCommands.last, containsAll(['--game', 'rc3-collection']));
-      expect(output.toString(), isNot(contains('Choose one of the listed options.')));
+      expect(
+        harness.readCommands.first,
+        containsAll(['--game', 'rc1-collection']),
+      );
+      expect(
+        harness.readCommands.last,
+        containsAll(['--game', 'rc3-collection']),
+      );
+      expect(
+        output.toString(),
+        isNot(contains('Choose one of the listed options.')),
+      );
     });
 
     test('Method run() lists all three Collection games in order', () {
-      final harness = _InteractiveHarness()
-        ..processResults = [[42]]
-        ..inputs = ['1', '0'];
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..inputs = ['1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
 
-      expect(output.toString(), contains('1. Ratchet & Clank — PS3 Collection'));
-      expect(output.toString(), contains('2. Ratchet & Clank 2 — PS3 Collection'));
-      expect(output.toString(), contains('3. Ratchet & Clank 3 — PS3 Collection'));
+      expect(
+        output.toString(),
+        contains('1. Ratchet & Clank — PS3 Collection'),
+      );
+      expect(
+        output.toString(),
+        contains('2. Ratchet & Clank 2 — PS3 Collection'),
+      );
+      expect(
+        output.toString(),
+        contains('3. Ratchet & Clank 3 — PS3 Collection'),
+      );
       expect(harness.readCommands, isEmpty);
     });
 
     test('Method run() selects the RC1 profile for reading bolts', () {
-      final harness = _InteractiveHarness()
-        ..processResults = [[42]]
-        ..inputs = ['1', '1', '0'];
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..inputs = ['1', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
 
       expect(harness.readCommands, hasLength(1));
-      expect(harness.readCommands.single, containsAll(['--game', 'rc1-collection']));
-      expect(output.toString(), contains('  Ratchet & Clank\n'));
+      expect(
+        harness.readCommands.single,
+        containsAll(['--game', 'rc1-collection']),
+      );
+      expect(output.toString(), contains('Manual profile: Ratchet & Clank'));
       expect(output.toString(), contains('  PS3 Collection'));
     });
 
     test('Method run() selects the RC3 profile for reading bolts', () {
-      final harness = _InteractiveHarness()
-        ..processResults = [[42]]
-        ..inputs = ['1', '3', '0'];
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..inputs = ['3', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
 
       expect(harness.readCommands, hasLength(1));
-      expect(harness.readCommands.single, containsAll(['--game', 'rc3-collection']));
+      expect(
+        harness.readCommands.single,
+        containsAll(['--game', 'rc3-collection']),
+      );
       expect(output.toString(), contains('Ratchet & Clank 3'));
       expect(output.toString(), contains('  PS3 Collection'));
     });
 
-    test('Method run() routes RC1 and RC3 bolt changes to selected profiles', () {
-      for (final selection in ['1', '3']) {
-        final harness = _InteractiveHarness()
-          ..processResults = [[42]]
-          ..inputs = ['1', selection, '2', '1234', 'y', '0'];
+    test('Method run() allows writes for confirmed RC1 and RC3 identities', () {
+      for (final profile in [
+        Rc1CollectionProfile.profile,
+        Rc3CollectionProfile.profile,
+      ]) {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..detectionResult = _confirmedDetection(profile)
+              ..candidate = const Rpcs3MemoryBaseCandidate(
+                memoryBase: 0x300000000,
+                logPath: r'C:\RPCS3\log\RPCS3.log',
+              )
+              ..inputs = ['2', '1234', 'y', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -77,7 +375,7 @@ void main() {
           harness.writeCommands.single,
           containsAll([
             '--game',
-            'rc$selection-collection',
+            profile.id,
             '--field',
             'bolts',
             '--value',
@@ -89,18 +387,24 @@ void main() {
       }
     });
 
-    test('Method run() explains unavailable data for the selected RC3 game', () {
-      final harness = _InteractiveHarness()
-        ..processResults = [[42]]
-        ..readExitCode = 1
-        ..inputs = ['1', '3', '0'];
-      final output = StringBuffer();
+    test(
+      'Method run() explains unavailable data for the selected RC3 game',
+      () {
+        final harness =
+            _InteractiveHarness()
+              ..processResults = [
+                [42],
+              ]
+              ..readExitCode = 1
+              ..inputs = ['3', '1', '0'];
+        final output = StringBuffer();
 
-      harness.run(output, StringBuffer());
+        harness.run(output, StringBuffer());
 
-      expect(output.toString(), contains('Start Ratchet & Clank 3 in RPCS3'));
-      expect(harness.writeCommands, isEmpty);
-    });
+        expect(output.toString(), contains('Start Ratchet & Clank 3 in RPCS3'));
+        expect(harness.writeCommands, isEmpty);
+      },
+    );
 
     test('Method run() rejects non-terminal input without discovering', () {
       final harness = _InteractiveHarness()..hasTerminal = false;
@@ -121,7 +425,7 @@ void main() {
               [],
               [42],
             ]
-            ..inputs = ['1', '1', '2', '0'];
+            ..inputs = ['1', '2', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -139,7 +443,7 @@ void main() {
               [42],
             ]
             ..discoveryError = Exception('temporary discovery issue')
-            ..inputs = ['1', '1', '2', '0'];
+            ..inputs = ['1', '2', '1', '0'];
       final errorOutput = StringBuffer();
 
       harness.run(StringBuffer(), errorOutput);
@@ -193,7 +497,7 @@ void main() {
         'Ludava could not find the memory base automatically'.allMatches(
           output.toString(),
         ),
-        hasLength(2),
+        hasLength(1),
       );
     });
 
@@ -224,12 +528,12 @@ void main() {
             ..processResults = [
               [101, 202],
             ]
-            ..inputs = ['2', '1', '2', '0'];
+            ..inputs = ['2', '2', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
 
-      expect(harness.metadataProcessIds, [202]);
+      expect(harness.metadataProcessIds, [202, 202]);
       expect(harness.readCommands.single, containsAll(['--pid', '202']));
       expect(output.toString(), contains('Several RPCS3 processes'));
     });
@@ -244,7 +548,7 @@ void main() {
               memoryBase: 0x400000000,
               logPath: r'C:\RPCS3\log\RPCS3.log',
             )
-            ..inputs = ['1', '2', '0'];
+            ..inputs = ['2', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -261,7 +565,7 @@ void main() {
               ..processResults = [
                 [42],
               ]
-              ..inputs = ['2', 'not-hex', '0x400000000', '2', '0'];
+              ..inputs = ['2', '2', 'not-hex', '0x400000000', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -284,7 +588,7 @@ void main() {
                 logPath: r'C:\RPCS3\log\RPCS3.log',
               ),
             ]
-            ..inputs = ['3', '1', '2', '0'];
+            ..inputs = ['2', '3', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -296,7 +600,7 @@ void main() {
     test(
       'Method run() keeps console output writable after synchronous prompts',
       () {
-        final inputs = ['3', '2', '0x400000000', '0'];
+        final inputs = ['2', '3', '2', '0x400000000', '0'];
         var resolveCalls = 0;
         final cli = InteractiveTrainerCli(
           discoverProcessIds: () => [42],
@@ -309,11 +613,10 @@ void main() {
             resolveCalls++;
             return null;
           },
-          runCommand:
-              (_, __, ___) =>
-                  throw StateError(
-                    'The test exits before reading game memory.',
-                  ),
+          runCommand: (arguments, output, _) {
+            if (arguments.first == 'read') output.writeln('Value: 0');
+            return 0;
+          },
           readLine: () => inputs.removeAt(0),
           hasTerminal: true,
         );
@@ -334,7 +637,7 @@ void main() {
               ..processResults = [
                 [42],
               ]
-              ..inputs = ['0'];
+              ..inputs = ['2', '0'];
 
         final exitCode = harness.run(StringBuffer(), StringBuffer());
 
@@ -365,7 +668,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1'];
+            ..inputs = [];
 
       final exitCode = harness.run(StringBuffer(), StringBuffer());
 
@@ -379,7 +682,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '2'];
+            ..inputs = ['2', '1'];
 
       final exitCode = harness.run(StringBuffer(), StringBuffer());
 
@@ -394,13 +697,42 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '2', '1', '0'];
+            ..inputs = ['2', '1', '1', '0'];
 
       harness.run(StringBuffer(), StringBuffer());
 
       expect(harness.readCommands, hasLength(2));
       expect(harness.readValues, 2);
     });
+
+    test(
+      'Method run() requires current identity on automatic refresh reads',
+      () {
+        final harness =
+            _confirmedRc2Harness()
+              ..boltValues = [500, 999]
+              ..readExitCodes = [0, 1]
+              ..inputs = ['1', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(harness.readCommands, hasLength(2));
+        expect(
+          harness.readCommands.first,
+          contains('--require-current-identity'),
+        );
+        expect(
+          harness.readCommands.last,
+          contains('--require-current-identity'),
+        );
+        final finalScreen = output.toString().substring(
+          output.toString().lastIndexOf('             LUDAVA'),
+        );
+        expect(finalScreen, contains('Not available'));
+        expect(finalScreen, isNot(contains('500')));
+      },
+    );
 
     test('Method run() redraws trainer context after refreshing a field', () {
       var clearCalls = 0;
@@ -409,7 +741,7 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '2', '1', '0']
+            ..inputs = ['2', '1', '1', '0']
             ..clearScreen = () {
               clearCalls++;
               return true;
@@ -431,7 +763,7 @@ void main() {
               [42],
             ]
             ..boltValues = [293930]
-            ..inputs = ['1', '2', '0'];
+            ..inputs = ['2', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -459,7 +791,7 @@ void main() {
               ..processResults = [
                 [42],
               ]
-              ..inputs = ['1', '2', '4', '1', '0'];
+              ..inputs = ['2', '1', '4', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -470,7 +802,7 @@ void main() {
         expect(output.toString(), contains('Build ID: BCUS98282'));
         expect(
           output.toString(),
-          contains('cannot confirm the active game or build'),
+          contains('Game identity: selected manually; unverified'),
         );
       },
     );
@@ -484,7 +816,7 @@ void main() {
                 [42],
               ]
               ..omitReadValue = true
-              ..inputs = ['1', '2', '4', '1', '0'];
+              ..inputs = ['2', '1', '4', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -512,7 +844,7 @@ void main() {
             ]
             ..readExitCodes = [1, 0]
             ..boltValues = [0, 110]
-            ..inputs = ['1', '2', '1', '0'];
+            ..inputs = ['2', '1', '1', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -533,7 +865,7 @@ void main() {
                 [42],
               ]
               ..readExitCode = 1
-              ..inputs = ['1', '2', '4', '1', '0'];
+              ..inputs = ['2', '1', '4', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -549,13 +881,30 @@ void main() {
       },
     );
 
-    test('Method run() does not write when the user cancels confirmation', () {
+    test('Method run() keeps manual profile selection read-only', () {
       final harness =
           _InteractiveHarness()
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '2', '2', '999999', 'n', '0'];
+            ..inputs = ['2', '1', '2', '1234', 'y', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.readCommands, hasLength(1));
+      expect(harness.writeCommands, isEmpty);
+      expect(
+        output.toString(),
+        contains(
+          'Writes are disabled until the active game is verified automatically.',
+        ),
+      );
+    });
+
+    test('Method run() does not write when the user cancels confirmation', () {
+      final harness =
+          _confirmedRc2Harness()..inputs = ['2', '999999', 'n', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -566,12 +915,7 @@ void main() {
     });
 
     test('Method run() rejects an out-of-range value without writing', () {
-      final harness =
-          _InteractiveHarness()
-            ..processResults = [
-              [42],
-            ]
-            ..inputs = ['1', '2', '2', '4294967296', '0'];
+      final harness = _confirmedRc2Harness()..inputs = ['2', '4294967296', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -584,12 +928,7 @@ void main() {
       'Method run() rejects non-numeric and negative values without writing',
       () {
         for (final value in ['not-a-number', '-1']) {
-          final harness =
-              _InteractiveHarness()
-                ..processResults = [
-                  [42],
-                ]
-                ..inputs = ['1', '2', '2', value, '0'];
+          final harness = _confirmedRc2Harness()..inputs = ['2', value, '0'];
           final output = StringBuffer();
 
           harness.run(output, StringBuffer());
@@ -601,12 +940,7 @@ void main() {
     );
 
     test('Method run() does not write when input ends at the value prompt', () {
-      final harness =
-          _InteractiveHarness()
-            ..processResults = [
-              [42],
-            ]
-            ..inputs = ['1', '2', '2'];
+      final harness = _confirmedRc2Harness()..inputs = ['2'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -614,12 +948,7 @@ void main() {
     });
 
     test('Method run() does not write when input ends at confirmation', () {
-      final harness =
-          _InteractiveHarness()
-            ..processResults = [
-              [42],
-            ]
-            ..inputs = ['1', '2', '2', '999'];
+      final harness = _confirmedRc2Harness()..inputs = ['2', '999'];
 
       harness.run(StringBuffer(), StringBuffer());
 
@@ -628,11 +957,7 @@ void main() {
 
     test('Method run() confirms a write and refreshes the field afterward', () {
       final harness =
-          _InteractiveHarness()
-            ..processResults = [
-              [42],
-            ]
-            ..inputs = ['1', '2', '2', '999999', 'Y', '0'];
+          _confirmedRc2Harness()..inputs = ['2', '999999', 'Y', '0'];
       final output = StringBuffer();
 
       harness.run(output, StringBuffer());
@@ -647,19 +972,95 @@ void main() {
       expect(output.toString(), contains('999,999'));
     });
 
+    test('Method run() blocks a write when the PPU identity changes', () {
+      final harness =
+          _confirmedRc2Harness()
+            ..detectionResults = [
+              _confirmedRc2Detection(),
+              _confirmedDetection(Rc1CollectionProfile.profile),
+            ]
+            ..inputs = ['2', '1234', 'y', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.detectionCalls, 3);
+      expect(harness.writeCommands, isEmpty);
+      expect(output.toString(), contains('active game or memory base changed'));
+      expect(output.toString(), isNot(contains('Bolts updated successfully')));
+    });
+
+    test('Method run() blocks a write when the memory base changes', () {
+      final harness =
+          _confirmedRc2Harness()
+            ..candidateByAttempt = [
+              const Rpcs3MemoryBaseCandidate(
+                memoryBase: 0x300000000,
+                logPath: r'C:\RPCS3\log\RPCS3.log',
+              ),
+              const Rpcs3MemoryBaseCandidate(
+                memoryBase: 0x400000000,
+                logPath: r'C:\RPCS3\log\RPCS3.log',
+              ),
+            ]
+            ..inputs = ['2', '1234', 'y', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.writeCommands, isEmpty);
+      expect(output.toString(), contains('active game or memory base changed'));
+      expect(output.toString(), isNot(contains('Bolts updated successfully')));
+    });
+
+    test(
+      'Method run() blocks a write when RPCS3 restarts before confirmation',
+      () {
+        final initialStart = DateTime.utc(2026, 11, 5);
+        final restartedAt = DateTime.utc(2026, 11, 5, 1);
+        final harness =
+            _confirmedRc2Harness()
+              ..candidateByAttempt = [
+                const Rpcs3MemoryBaseCandidate(
+                  memoryBase: 0x300000000,
+                  logPath: r'C:\RPCS3\log\RPCS3.log',
+                ),
+                const Rpcs3MemoryBaseCandidate(
+                  memoryBase: 0x400000000,
+                  logPath: r'C:\RPCS3\log\RPCS3.log',
+                ),
+              ]
+              ..processStartTimes = [
+                initialStart,
+                initialStart,
+                restartedAt,
+                restartedAt,
+                restartedAt,
+              ]
+              ..inputs = ['2', '1234', 'y', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(harness.writeCommands, isEmpty);
+        expect(
+          output.toString(),
+          contains('RPCS3 session changed. No write was made.'),
+        );
+        expect(harness.readCommands, hasLength(3));
+      },
+    );
+
     test(
       'Method run() reports write failures and still refreshes the field',
       () {
         final harness =
-            _InteractiveHarness()
-              ..processResults = [
-                [42],
-              ]
+            _confirmedRc2Harness()
               ..writeExitCode = 1
               ..readExitCodes = [0, 0, 1]
               ..writeErrorOutput = 'simulated write error'
               ..readErrorOutput = 'simulated refresh error'
-              ..inputs = ['1', '2', '2', '5', 'y', '0'];
+              ..inputs = ['2', '5', 'y', '0'];
         final output = StringBuffer();
         final errorOutput = StringBuffer();
 
@@ -681,12 +1082,9 @@ void main() {
       'Method run() cancels a write when the current value cannot be read',
       () {
         final harness =
-            _InteractiveHarness()
-              ..processResults = [
-                [42],
-              ]
+            _confirmedRc2Harness()
               ..readExitCode = 1
-              ..inputs = ['1', '2', '2', '0'];
+              ..inputs = ['2', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -702,11 +1100,99 @@ void main() {
             ..processResults = [
               [42],
             ]
-            ..inputs = ['1', '2', '3', '3', '0'];
+            ..inputs = ['2', '1', '3', '3', '0'];
 
       harness.run(StringBuffer(), StringBuffer());
 
       expect(harness.readCommands, hasLength(2));
+    });
+
+    test('Method run() clears the prior field before re-detection', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..boltValues = [111, 333]
+            ..inputs = ['2', '1', '5', '3', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.detectionCalls, 2);
+      expect(harness.readCommands, hasLength(2));
+      expect(harness.readCommands[0], contains('rc2-collection'));
+      expect(harness.readCommands[1], contains('rc3-collection'));
+      final finalScreen = output.toString().substring(
+        output.toString().lastIndexOf('             LUDAVA'),
+      );
+      expect(finalScreen, contains('333'));
+      expect(finalScreen, isNot(contains('111')));
+    });
+
+    test('Method run() abandons the prior profile when RPCS3 exits', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+              [],
+            ]
+            ..inputs = ['2', '1', '5', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(
+        output.toString(),
+        contains('selected RPCS3 process is no longer running'),
+      );
+      expect(harness.readCommands, hasLength(1));
+      expect(harness.writeCommands, isEmpty);
+      expect(output.toString(), contains('RPCS3 was not found'));
+    });
+
+    test('Method run() reselects process and base after an RPCS3 restart', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..detectionResults = [
+              _confirmedRc2Detection(),
+              _confirmedDetection(Rc3CollectionProfile.profile),
+            ]
+            ..candidateByAttempt = [
+              const Rpcs3MemoryBaseCandidate(
+                memoryBase: 0x300000000,
+                logPath: r'C:\RPCS3\log\RPCS3.log',
+              ),
+              const Rpcs3MemoryBaseCandidate(
+                memoryBase: 0x400000000,
+                logPath: r'C:\RPCS3\log\RPCS3.log',
+              ),
+            ]
+            ..processStartTimes = [
+              DateTime.utc(2026, 11, 5),
+              DateTime.utc(2026, 11, 5),
+              DateTime.utc(2026, 11, 5, 1),
+              DateTime.utc(2026, 11, 5, 1),
+              DateTime.utc(2026, 11, 5, 1),
+            ]
+            ..inputs = ['5', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(harness.readCommands, hasLength(2));
+      expect(harness.readCommands[0], contains('rc2-collection'));
+      expect(harness.readCommands[1], contains('rc3-collection'));
+      expect(
+        output.toString(),
+        contains(
+          'The RPCS3 process session changed. Select the process and memory base again.',
+        ),
+      );
+      expect(harness.resolveCalls, 2);
     });
 
     test('Method run() re-evaluates the base after changing processes', () {
@@ -716,17 +1202,21 @@ void main() {
               [42],
               [43],
             ]
+            ..detectionResults = [
+              _confirmedRc2Detection(),
+              _confirmedDetection(Rc3CollectionProfile.profile, processId: 43),
+            ]
             ..candidateForProcess = (processId) {
               return Rpcs3MemoryBaseCandidate(
                 memoryBase: processId == 42 ? 0x300000000 : 0x400000000,
                 logPath: r'C:\RPCS3\log\RPCS3.log',
               );
             }
-            ..inputs = ['1', '2', '4', '2', '1', '2', '2', '5', 'y', '0'];
+            ..inputs = ['4', '2', '2', '5', 'y', '0'];
 
       harness.run(StringBuffer(), StringBuffer());
 
-      expect(harness.metadataProcessIds, [42, 43]);
+      expect(harness.metadataProcessIds, [42, 42, 43, 43, 43]);
       expect(harness.readCommands[0], contains('0x300000000'));
       expect(harness.readCommands[1], contains('0x400000000'));
       expect(harness.writeCommands.single, containsAll(['--pid', '43']));
@@ -743,7 +1233,7 @@ void main() {
               ]
               ..metadataError = Exception('process exited before lookup')
               ..readExitCode = 1
-              ..inputs = ['1', '2', '0'];
+              ..inputs = ['2', '1', '0'];
         final output = StringBuffer();
 
         harness.run(output, StringBuffer());
@@ -782,11 +1272,15 @@ void main() {
 
 class _InteractiveHarness {
   List<List<int>> processResults = [];
+  List<DateTime> processStartTimes = [];
   List<String> inputs = [];
+  List<GameDetectionResult> detectionResults = [];
   List<Rpcs3MemoryBaseCandidate?> candidateByAttempt = [];
   List<int> metadataProcessIds = [];
   List<List<String>> commands = [];
   int discoveryCalls = 0;
+  int detectionCalls = 0;
+  GameDetectionResult? detectionResult;
   int resolveCalls = 0;
   int readValues = 0;
   List<int> boltValues = [];
@@ -834,9 +1328,15 @@ class _InteractiveHarness {
         metadataProcessIds.add(processId);
         final error = metadataError;
         if (error != null) throw error;
+        final startTimeIndex = metadataProcessIds.length - 1;
         return Rpcs3ProcessMetadata(
           executablePath: r'C:\RPCS3\rpcs3.exe',
-          startedAtUtc: DateTime.utc(2026, 11, 5),
+          startedAtUtc:
+              processStartTimes.isEmpty
+                  ? DateTime.utc(2026, 11, 5)
+                  : processStartTimes[startTimeIndex < processStartTimes.length
+                      ? startTimeIndex
+                      : processStartTimes.length - 1],
         );
       },
       resolveMemoryBaseCandidate: (_) {
@@ -849,6 +1349,21 @@ class _InteractiveHarness {
               : candidateByAttempt.length - 1];
         }
         return candidateForProcess?.call(metadataProcessIds.last) ?? candidate;
+      },
+      detectGame: (processId, _) {
+        final index = detectionCalls++;
+        if (detectionResults.isNotEmpty) {
+          return detectionResults[index < detectionResults.length
+              ? index
+              : detectionResults.length - 1];
+        }
+        return detectionResult ??
+            GameDetectionResult(
+              status: GameDetectionStatus.ambiguous,
+              processId: processId,
+              confidence: GameIdentityConfidence.none,
+              evidenceDescription: 'No current-game identity is verified.',
+            );
       },
       runCommand: (arguments, output, errorOutput) {
         commands.add(arguments);
@@ -887,3 +1402,32 @@ class _InteractiveHarness {
     );
   }
 }
+
+_InteractiveHarness _confirmedRc2Harness() =>
+    _InteractiveHarness()
+      ..processResults = [
+        [42],
+      ]
+      ..detectionResult = _confirmedRc2Detection()
+      ..candidate = const Rpcs3MemoryBaseCandidate(
+        memoryBase: 0x300000000,
+        logPath: r'C:\RPCS3\log\RPCS3.log',
+      );
+
+GameDetectionResult _confirmedRc2Detection({int processId = 42}) =>
+    _confirmedDetection(Rc2CollectionProfile.profile, processId: processId);
+
+GameDetectionResult _confirmedDetection(
+  GameProfile profile, {
+  int processId = 42,
+}) => GameDetectionResult(
+  status: GameDetectionStatus.supportedGame,
+  processId: processId,
+  titleId: 'BCUS98282',
+  gameTitle: profile.gameName,
+  executable: profile.executable,
+  executableHash: profile.executableHash,
+  confidence: GameIdentityConfidence.confirmed,
+  profile: profile,
+  evidenceDescription: 'Unique current-game identity evidence.',
+);

@@ -21,8 +21,7 @@ void main() {
 
         expect(output, contains('rc2-collection'));
         expect(output, contains('Profile status: experimental'));
-        expect(output, contains('process and profile are manually selected'));
-        expect(output, contains('Ludava does not verify the active game'));
+        expect(output, contains('profile selection is manual or unverified'));
         expect(output, contains('Status: read complete'));
         expect(output, contains('Field: bolts'));
         expect(output, contains('Value: 0'));
@@ -52,6 +51,26 @@ void main() {
 
       expect(output, contains('Status: invalid read result'));
       expect(output, isNot(contains('Value:')));
+    });
+
+    test('Method readResult() labels the remaining read outcomes', () {
+      final expectedStatuses = {
+        GameReadStatus.none: 'Status: no read attempted',
+        GameReadStatus.unsupportedProfile:
+            'Status: profile is not approved for reading',
+        GameReadStatus.unsupportedField:
+            'Status: field is not approved for reading',
+        GameReadStatus.invalidReadResult: 'Status: invalid memory read result',
+      };
+
+      for (final entry in expectedStatuses.entries) {
+        final output = GameMemoryOutput.readResult(
+          Rc2CollectionProfile.profile,
+          GameReadResult(status: entry.key, fieldId: 'bolts'),
+        );
+
+        expect(output, contains(entry.value));
+      }
     });
 
     test('Method readResult() displays mapping and partial-read failures', () {
@@ -90,10 +109,26 @@ void main() {
       );
 
       expect(output, contains('Profile status: researchConfirmed'));
-      expect(output, contains('process and profile are manually selected'));
+      expect(output, contains('profile selection is manual or unverified'));
       expect(output, contains('Status: write and read-back complete'));
       expect(output, contains('Requested value: 42'));
       expect(output, contains('Read-back value: 42'));
+    });
+
+    test('Method writeResult() reports confirmed runtime identity', () {
+      final output = GameMemoryOutput.writeResult(
+        Rc2CollectionProfile.profile,
+        const GameWriteResult(
+          status: GameWriteStatus.success,
+          fieldId: 'bolts',
+          requestedValue: 42,
+          readBackValue: 42,
+        ),
+        identityConfirmed: true,
+      );
+
+      expect(output, contains('current RPCS3 PPU hash matches this profile'));
+      expect(output, isNot(contains('manual or unverified')));
     });
 
     test('Method writeResult() explains rejected and failed writes', () {
@@ -147,6 +182,32 @@ void main() {
         contains('Status: preliminary memory read failed'),
       );
       expect(preliminaryReadFailed, contains('Windows error: 299'));
+    });
+
+    test('Method writeResult() labels the remaining write outcomes', () {
+      final expectedStatuses = {
+        GameWriteStatus.none: 'Status: no write attempted',
+        GameWriteStatus.unsupportedProfile:
+            'Status: profile is not approved for writing',
+        GameWriteStatus.unsupportedField:
+            'Status: field is not approved for writing',
+        GameWriteStatus.invalidMapping: 'Status: invalid memory mapping',
+        GameWriteStatus.writeFailed: 'Status: native memory write failed',
+        GameWriteStatus.incompleteWrite: 'Status: incomplete memory write',
+        GameWriteStatus.readBackMismatch:
+            'Status: read-back did not match the requested value',
+        GameWriteStatus.invalidWriteResult:
+            'Status: invalid memory write result',
+      };
+
+      for (final entry in expectedStatuses.entries) {
+        final output = GameMemoryOutput.writeResult(
+          Rc2CollectionProfile.profile,
+          GameWriteResult(status: entry.key, fieldId: 'bolts'),
+        );
+
+        expect(output, contains(entry.value));
+      }
     });
   });
 }

@@ -41,21 +41,9 @@ dart format --output=none --set-exit-if-changed lib test bin
 
 1. Build `build\Ludava.exe` on the Windows x64 development PC.
 2. Copy `Ludava.exe` to the ROG Ally.
-3. Start RPCS3 and the selected Ratchet & Clank 1, 2 or 3 game in the PS3 Collection.
-4. Launch `Ludava.exe` and select the detected RPCS3 process and the matching Collection game profile.
-5. Verify the current session's memory base from a fresh RPCS3 log before using
-   it. The suggested `0x300000000` base is a research-session value and may not
-   match the current session.
-6. Refresh bolts, then deliberately confirm any write from the trainer menu.
+3. Start RPCS3 and a supported Ratchet & Clank Collection game.
+4. Launch `Ludava.exe`. With one RPCS3 process and measured identity evidence, Ludava selects the embedded game and session base automatically. When multiple processes share a log folder, or the game/hash/base is unresolved, Ludava does not authorize a trainer write.
+5. If RPCS3 is open with no game, Ludava reports no active game and does not request a memory base. Manual profile selection remains unverified and read-only.
+6. Use **Re-detect game** to clear the displayed field value and check current identity again. Before a write, Ludava rechecks the process session, PPU hash, and base, then requires deliberate confirmation and matching read-back.
 
-The owner successfully read and changed bolts with Ludava in all three PS3 Collection games on
-November 5, 2026. RC1 and RC3 bolt locations originated in owner-confirmed RatchetHax research and were subsequently live-tested in Ludava with matching HUD screenshots. These live tests do not establish compatibility with every
-RPCS3 version or game build. A successful read-back confirms the value at the
-selected address, but does not identify the active game or prove that the
-correct target was selected. Verify the session base and use a test save before
-writing. The Ally does not need Dart or Flutter installed. RPCS3 must still be
-installed and running. RPCS3's [support guidance](https://github.com/RPCS3/rpcs3/wiki/How-to-ask-for-Support)
-places the Windows log in the `log` folder inside the RPCS3 directory; official
-support reports also describe it as near the executable. Ludava checks those
-two locations and asks for an explicit base choice when it cannot identify a
-fresh candidate.
+The owner tested live bolt reads and writes in all three Collection games on November 5, 2026. A separate RPCS3 log experiment measured their PPU hashes on RPCS3 `0.0.43-20565-eee3f0f7`. The final compiled CLI was live-smoke-tested with RC2; live Ludava detection runs for RC1 and RC3 and on the Ally remain pending. These observations do not establish compatibility with every RPCS3 build. The Ally does not need Dart or Flutter installed. RPCS3 must still be installed and running. RPCS3's [support guidance](https://github.com/RPCS3/rpcs3/wiki/How-to-ask-for-Support) places the Windows log in the `log` folder inside the RPCS3 directory; support reports also describe it as near the executable.

@@ -5,16 +5,20 @@ import 'package:ludava/shared/constants/enums.dart';
 
 /// Formats game-memory outcomes for terminal display.
 abstract final class GameMemoryOutput {
-  static const String _runtimeIdentityNote =
-      'Runtime identity: process and profile are manually selected; Ludava does not verify the active game.';
-
-  /// Formats [result] for the selected [profile].
-  static String readResult(GameProfile profile, GameReadResult result) {
+  /// Formats [result] for [profile], disclosing whether runtime identity matched.
+  ///
+  /// Set [identityConfirmed] only when current-session identity matched the
+  /// selected profile.
+  static String readResult(
+    GameProfile profile,
+    GameReadResult result, {
+    bool identityConfirmed = false,
+  }) {
     final lines = [
       'Game: ${profile.gameName} (${profile.id})',
       'Build: ${profile.buildId}',
       'Profile status: ${profile.readStatus.name}',
-      _runtimeIdentityNote,
+      _runtimeIdentityNote(identityConfirmed),
     ];
     switch (result.status) {
       case GameReadStatus.success:
@@ -46,13 +50,20 @@ abstract final class GameMemoryOutput {
     return lines.join('\n');
   }
 
-  /// Formats [result] for the selected [profile].
-  static String writeResult(GameProfile profile, GameWriteResult result) {
+  /// Formats [result] for [profile], disclosing whether runtime identity matched.
+  ///
+  /// Set [identityConfirmed] only when current-session identity matched the
+  /// selected profile.
+  static String writeResult(
+    GameProfile profile,
+    GameWriteResult result, {
+    bool identityConfirmed = false,
+  }) {
     final lines = [
       'Game: ${profile.gameName} (${profile.id})',
       'Build: ${profile.buildId}',
       'Profile status: ${profile.writeStatus.name}',
-      _runtimeIdentityNote,
+      _runtimeIdentityNote(identityConfirmed),
     ];
     switch (result.status) {
       case GameWriteStatus.success:
@@ -98,4 +109,9 @@ abstract final class GameMemoryOutput {
     }
     return lines.join('\n');
   }
+
+  static String _runtimeIdentityNote(bool identityConfirmed) =>
+      identityConfirmed
+          ? 'Runtime identity: the current RPCS3 PPU hash matches this profile.'
+          : 'Runtime identity: profile selection is manual or unverified.';
 }

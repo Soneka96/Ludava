@@ -188,6 +188,29 @@ void main() {
       );
       expect(api.closeCalls, 1);
     });
+
+    test('Method findRpcs3ProcessIds() supports repeated discovery calls', () {
+      final api = _FakeWindowsProcessDiscoveryApi([
+        _ProcessInfo(51, 'rpcs3.exe'),
+        _ProcessInfo(52, 'notepad.exe'),
+      ]);
+      final dataSource = _dataSource(api);
+
+      expect(dataSource.findRpcs3ProcessIds(), [51]);
+      expect(dataSource.findRpcs3ProcessIds(), [51]);
+      expect(api.snapshotCalls, 2);
+      expect(api.closeCalls, 2);
+    });
+
+    test('Method findRpcs3ProcessIds() returns an immutable result list', () {
+      final api = _FakeWindowsProcessDiscoveryApi([
+        _ProcessInfo(51, 'rpcs3.exe'),
+      ]);
+
+      final processIds = _dataSource(api).findRpcs3ProcessIds();
+
+      expect(() => processIds.add(52), throwsUnsupportedError);
+    });
   });
 }
 

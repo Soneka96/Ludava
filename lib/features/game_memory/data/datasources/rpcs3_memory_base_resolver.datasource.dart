@@ -26,11 +26,11 @@ class Rpcs3MemoryBaseResolverDataSource {
   final String Function(String path) _readAsString;
   final bool Function(String path) _fileExists;
 
-  /// Returns the first fresh log candidate tied by path to [processMetadata].
+  /// Returns one base shared by all readable, fresh candidate logs.
   ///
   /// Candidate logs are searched in the executable directory's `log` folder,
   /// then beside the executable. A log older than process start is ignored.
-  /// The returned value must still be confirmed by the user.
+  /// Conflicting or unreadable fresh candidates are not used.
   Rpcs3MemoryBaseCandidate? resolveCandidate(
     Rpcs3ProcessMetadata processMetadata,
   ) {
@@ -42,6 +42,8 @@ class Rpcs3MemoryBaseResolverDataSource {
     ];
     Exception? lastLogError;
     StackTrace? lastLogErrorStack;
+    final candidateBases = <int>{};
+    String? candidateLogPath;
 
     for (final logPath in logPaths) {
       try {
@@ -49,13 +51,12 @@ class Rpcs3MemoryBaseResolverDataSource {
         if (_lastModifiedUtc(logPath).isBefore(processMetadata.startedAtUtc)) {
           continue;
         }
-        final bases = _parseMemoryBases(_readAsString(logPath));
-        if (bases == null) continue;
-        if (bases.length != 1) return null;
-        return Rpcs3MemoryBaseCandidate(
-          memoryBase: bases.single,
-          logPath: logPath,
-        );
+        final logBases = _parseMemoryBases(_readAsString(logPath));
+        if (logBases == null) continue;
+        if (logBases.length != 1) return null;
+        candidateLogPath ??= logPath;
+        candidateBases.addAll(logBases);
+        if (candidateBases.length > 1) return null;
       } on FileSystemException catch (error, stackTrace) {
         // A log can disappear or become unreadable between the file checks.
         lastLogError = error;
@@ -70,7 +71,11 @@ class Rpcs3MemoryBaseResolverDataSource {
     if (lastLogError != null) {
       Error.throwWithStackTrace(lastLogError, lastLogErrorStack!);
     }
-    return null;
+    if (candidateBases.length != 1 || candidateLogPath == null) return null;
+    return Rpcs3MemoryBaseCandidate(
+      memoryBase: candidateBases.single,
+      logPath: candidateLogPath,
+    );
   }
 
   static Set<int>? _parseMemoryBases(String logContents) {

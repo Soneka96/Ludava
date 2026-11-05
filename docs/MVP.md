@@ -1,6 +1,6 @@
 # MVP — RC2 bolt trainer
 
-**Current status:** the interactive Windows CLI discovers RPCS3 processes, offers fresh log-derived or manual memory-base choices, and reads or writes RC2 Collection bolts using owner-confirmed research. On November 5, 2026, the owner successfully read bolts in a live session (observing `0` during startup and `110` in gameplay) and wrote `120`, which Ludava displayed and the owner screenshot showed on the HUD. Exact Windows/RPCS3 versions and executable fingerprint were not supplied, so compatibility across builds is not established. Process discovery and log matching do not identify the active game/build.
+**Current status:** the interactive Windows CLI discovers RPCS3, matches RC1/RC2/RC3 from measured PPU hashes and ordered lifecycle events, and resolves a unique guest base from the selected process session log. Unknown, incomplete, stale, stopped, or ambiguous identity is not allowed to authorize a write. Manual profile selection is labeled unverified and read-only. The owner measured the four Collection PPU hashes in RPCS3 `0.0.43-20565-eee3f0f7`; the final compiled CLI automatically matched the RC2 session and base, then displayed a bolt read of `0` (not proof gameplay was active). Live Ludava detection runs for RC1 and RC3 remain pending.
 
 ## Objective
 
@@ -8,12 +8,15 @@ Read and deliberately modify the bolt value for Ratchet & Clank 2 inside the PS3
 
 ## First user-visible capability
 
-- Select the intended RPCS3 process when multiple instances exist, choose the `rc2-collection` profile, and explicitly confirm a candidate or manual session guest memory base.
+- Discover one RPCS3 process automatically; when multiple instances share a log directory, leave identity unresolved.
+- Match a supported embedded game from the shared title ID, measured PPU hash, and executable name. The Collection menu, stopped game, and unknown hashes do not select an RC profile.
+- Resolve the unique current guest base from the selected process session without a normal-user confirmation prompt; do not use `0x300000000` as a constant.
 - Read exactly four bytes and decode them as an unsigned big-endian 32-bit value.
 - Keep the guest offset `0x01329E80` in the RC2 profile; the observed research-session base was `0x300000000`.
 - Allow a write only for the research-confirmed bolt field, a value from 0 through 4294967295, and an explicit `--confirm-write` request.
 - Require native success and exactly four bytes written, then read back the value. Report write success only when the read-back matches.
-- Display the selected process/profile/base and explain that Ludava cannot identify the active game/build.
+- Display the current process, detected profile, base, and evidence. Keep manual selection visibly unverified and read-only.
+- Revalidate process session, PPU identity, and base immediately before a write; preserve complete preliminary reads, explicit confirmation, complete transfer checks, and matching read-back.
 - Close process handles after operations. The interactive refresh action runs a new read; the diagnostic CLI can be repeated to refresh too.
 
 Automated tests cover the codec, address mapping, preliminary read-before-write policy, CLI wiring, native errors, partial transfers, read-back, and handle lifecycle through controlled fakes and local test memory. They do not test against RPCS3.
@@ -29,13 +32,13 @@ Other game fields such as health, inventory, weapons, unlock states, teleportati
 ### Gate A — Ludava live reads
 
 - **Owner-tested:** the session read returned `0` during startup and `110` once gameplay was active, using observed guest base `0x300000000`.
-- Exact Windows/RPCS3 versions and executable fingerprint were not supplied. Capture those details before making an exact-build or cross-build compatibility claim.
+- The PPU hashes and lifecycle were measured in RPCS3 `0.0.43-20565-eee3f0f7`; the exact Windows version and executable fingerprint for the earlier write session were not recorded. The updated Ludava detector has not yet been tested live end-to-end.
 - A zero read is a valid value but does not prove gameplay is active.
 
 ### Gate B — Ludava live write
 
 - **Owner-tested:** the owner requested `120`; Ludava reported success and displayed `120`, and the owner-provided screenshot showed `120` on the HUD.
-- The complete build-verification details were not supplied. Verify the current session base and use a test save before future writes; a read-back alone does not identify the active game/build.
+- The complete build-verification details for this earlier write session were not supplied. The updated CLI rechecks identity and base before writes; use a test save for future live validation. A read-back alone does not identify the active game/build.
 - Record additional runtime/build details and recovery steps if seeking reproducible exact-build compatibility.
 
 The write path is enabled based on the owner's confirmed RatchetHax research. The owner has also validated a live Ludava write in one tested environment; this does not establish compatibility with every RPCS3 version or game build.

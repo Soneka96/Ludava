@@ -8,15 +8,17 @@ abstract final class Rc3CollectionProfile {
   /// Identifier used by interactive and diagnostic commands.
   static const String id = 'rc3-collection';
 
-  /// Owner-confirmed RatchetHax bolt mapping; Ludava live validation is pending.
-  ///
-  /// The Collection shares title ID BCUS98282 across three games. Its active
-  /// subgame and exact executable build are not automatically identified.
+  /// PPU hash measured in RPCS3 0.0.43-20565-eee3f0f7.
+  static const String executableHash =
+      'PPU-56a8d02d516d82e5c1d39a4f7b3c9f83e350ab61';
+
+  /// Owner-confirmed bolt mapping and measured Collection executable identity.
   static final GameProfile profile = GameProfile(
     id: id,
     gameName: 'Ratchet & Clank 3',
     buildId: 'BCUS98282',
-    executable: '', // Exact active PPU SELF was not established by research.
+    executable: 'RC3.ppu.self',
+    executableHash: executableHash,
     readStatus: VerificationStatus.experimental,
     writeStatus: VerificationStatus.researchConfirmed,
     fields: {

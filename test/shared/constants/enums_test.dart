@@ -12,6 +12,8 @@ void main() {
       expect(MemoryWriteStatus.values.first, MemoryWriteStatus.none);
       expect(GameReadStatus.values.first, GameReadStatus.none);
       expect(GameWriteStatus.values.first, GameWriteStatus.none);
+      expect(GameDetectionStatus.values.first, GameDetectionStatus.none);
+      expect(GameIdentityConfidence.values.first, GameIdentityConfidence.none);
     });
   });
 

@@ -144,7 +144,7 @@ void main() {
     });
 
     test(
-      'Method resolveCandidate() uses a readable fallback after a log error',
+      'Method resolveCandidate() rejects an unreadable fresh log with a readable candidate',
       () {
         final primaryLog = r'C:\RPCS3\log\RPCS3.log';
         final fallbackLog = r'C:\RPCS3\RPCS3.log';
@@ -162,10 +162,16 @@ void main() {
           },
         );
 
-        final candidate = resolver.resolveCandidate(_processMetadata());
-
-        expect(candidate?.memoryBase, 0x400000000);
-        expect(candidate?.logPath, fallbackLog);
+        expect(
+          () => resolver.resolveCandidate(_processMetadata()),
+          throwsA(
+            isA<WindowsMemoryException>().having(
+              (error) => error.errorCode,
+              'errorCode',
+              32,
+            ),
+          ),
+        );
       },
     );
 
@@ -182,16 +188,40 @@ void main() {
       },
     );
 
-    test('Method resolveCandidate() prefers the RPCS3 log directory', () {
+    test(
+      'Method resolveCandidate() accepts the maximum valid native address',
+      () {
+        final resolver = _resolver({
+          r'C:\RPCS3\log\RPCS3.log': 'vm::g_base_addr = 0x7fffffffffffffff',
+        });
+
+        expect(
+          resolver.resolveCandidate(_processMetadata())?.memoryBase,
+          0x7fffffffffffffff,
+        );
+      },
+    );
+
+    test('Method resolveCandidate() rejects conflicting fresh log bases', () {
       final resolver = _resolver({
         r'C:\RPCS3\log\RPCS3.log': 'vm::g_base_addr = 0x300000000',
         r'C:\RPCS3\RPCS3.log': 'vm::g_base_addr = 0x400000000',
       });
 
-      expect(
-        resolver.resolveCandidate(_processMetadata())?.memoryBase,
-        0x300000000,
-      );
+      expect(resolver.resolveCandidate(_processMetadata()), isNull);
+    });
+
+    test('Method resolveCandidate() accepts agreeing fresh candidate logs', () {
+      final logDirectory = r'C:\RPCS3\log\RPCS3.log';
+      final resolver = _resolver({
+        logDirectory: 'vm::g_base_addr = 0x300000000',
+        r'C:\RPCS3\RPCS3.log': 'vm::g_base_addr = 0x300000000',
+      });
+
+      final candidate = resolver.resolveCandidate(_processMetadata());
+
+      expect(candidate?.memoryBase, 0x300000000);
+      expect(candidate?.logPath, logDirectory);
     });
   });
 }

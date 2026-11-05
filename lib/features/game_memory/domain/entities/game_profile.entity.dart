@@ -15,6 +15,9 @@ class GameProfile {
   /// Expected executable name when known.
   final String executable;
 
+  /// Measured RPCS3 PPU executable hash required for automatic matching.
+  final String? executableHash;
+
   /// Evidence status for reading this build from [VerificationStatus].
   final VerificationStatus readStatus;
 
@@ -29,6 +32,7 @@ class GameProfile {
     required this.gameName,
     required this.buildId,
     required this.executable,
+    required this.executableHash,
     required this.readStatus,
     required this.writeStatus,
     required this.fields,
@@ -42,6 +46,7 @@ class GameProfile {
     required String gameName,
     required String buildId,
     required String executable,
+    String? executableHash,
     required VerificationStatus readStatus,
     VerificationStatus writeStatus = VerificationStatus.none,
     Map<String, GameField> fields = const {},
@@ -58,6 +63,7 @@ class GameProfile {
       gameName: gameName,
       buildId: buildId,
       executable: executable,
+      executableHash: executableHash,
       readStatus: readStatus,
       writeStatus: writeStatus,
       fields: Map.unmodifiable(fields),
