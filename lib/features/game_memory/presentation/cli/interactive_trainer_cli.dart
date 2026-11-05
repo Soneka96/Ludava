@@ -42,7 +42,7 @@ class InteractiveTrainerCli {
   static const int _changeProcess = 2;
   static const int _returnToGame = 3;
   static const int _researchTestedMemoryBase = 0x300000000;
-  static const String _collectionProfileId = 'rc2-collection';
+  static const String _collectionTitleId = 'BCUS98282';
 
   final List<int> Function() _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId) _readProcessMetadata;
@@ -440,7 +440,9 @@ class InteractiveTrainerCli {
     );
     output.writeln();
     output.writeln('  ${profile.gameName}');
-    if (profile.id == _collectionProfileId) output.writeln('  PS3 Collection');
+    if (profile.buildId == _collectionTitleId) {
+      output.writeln('  PS3 Collection');
+    }
     output.writeln();
     output.writeln('  BOLTS');
     final count = _boltCount;
@@ -450,7 +452,7 @@ class InteractiveTrainerCli {
     if (count == null) {
       output.writeln();
       output.writeln('  Game data is not available.');
-      output.writeln('  Start Ratchet & Clank 2 in RPCS3,');
+      output.writeln('  Start ${profile.gameName} in RPCS3,');
       output.writeln('  then select Refresh bolts.');
       output.writeln('  If the game is already running,');
       output.writeln('  check Connection details.');
@@ -517,7 +519,7 @@ class InteractiveTrainerCli {
   }
 
   String _gameTitle(GameProfile profile) =>
-      profile.id == _collectionProfileId
+      profile.buildId == _collectionTitleId
           ? '${profile.gameName} — PS3 Collection'
           : profile.gameName;
 
