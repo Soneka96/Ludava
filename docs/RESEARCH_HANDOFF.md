@@ -15,9 +15,20 @@ RatchetHax PR #1 is merged. Its RC2 Collection investigation records the followi
 
 These findings establish the bolt mapping for the tested research session. They do not validate Ludava's separate Dart implementation, every RPCS3 build, other Collection revisions, or any other game field. The memory base may vary by session.
 
+## RC1 and RC3 Collection research
+
+RatchetHax PR #1 also contains owner-confirmed, bolt-only research for the other two Collection games (`BCUS98282`):
+
+| Embedded game | Bolt guest offset | Observed host address at base `0x300000000` | Value |
+| --- | --- | --- | --- |
+| Ratchet & Clank 1 | `0x009BC3A0` | `0x3009BC3A0` | big-endian unsigned 32-bit |
+| Ratchet & Clank 3 | `0x00C1EDAC` | `0x300C1EDAC` | big-endian unsigned 32-bit |
+
+RC1 research tracked normal HUD changes `5155 → 5105 → 5055` and a user-confirmed write to `105055`. RC3 tracked `753 → 755` and a user-confirmed HUD write to `1755`. Exact active PPU SELF names and independent restart reproduction remain unestablished. These observed fields are now implemented as independently written Ludava profiles; live testing of Ludava RC1 and RC3 reads/writes is still needed. Do not infer support for standalone versions or other game fields.
+
 ## Ludava implementation status
 
-Ludava stores this one bolt field in its RC2 Collection profile with `researchConfirmed` write eligibility. The CLI requires explicit process, profile, and guest-base selection. It does not identify the active executable/build automatically. The shared write use case requires a complete preliminary read, an explicit request and confirmation, a valid unsigned 32-bit value, complete native transfer, and matching read-back.
+Ludava stores separate RC1, RC2 and RC3 Collection bolt fields in game-specific profiles with `researchConfirmed` write eligibility for their independently observed research offsets. The CLI requires explicit process, profile, and guest-base selection. It does not identify the active executable/build automatically. The shared write use case requires a complete preliminary read, an explicit request and confirmation, a valid unsigned 32-bit value, complete native transfer, and matching read-back.
 
 Automated tests cover the implementation using fakes and controlled local memory. On November 5, 2026, the owner tested Ludava live with Ratchet & Clank 2 in the PS3 Collection under RPCS3. With the game closed, the initial read failed; a startup read returned `0`, and a gameplay read returned `110`. The owner requested a write to `120`; Ludava reported success and displayed `120`, and the owner screenshot showed `120` on the game's HUD. The observed guest base was `0x300000000`.
 
