@@ -24,7 +24,7 @@ RatchetHax PR #1 also contains owner-confirmed, bolt-only research for the other
 | Ratchet & Clank 1 | `0x009BC3A0` | `0x3009BC3A0` | big-endian unsigned 32-bit |
 | Ratchet & Clank 3 | `0x00C1EDAC` | `0x300C1EDAC` | big-endian unsigned 32-bit |
 
-RC1 research tracked normal HUD changes `5155 → 5105 → 5055` and a user-confirmed write to `105055`. RC3 tracked `753 → 755` and a user-confirmed HUD write to `1755`. Exact active PPU SELF names and independent restart reproduction remain unestablished. These observed fields are now implemented as independently written Ludava profiles; live testing of Ludava RC1 and RC3 reads/writes is still needed. Do not infer support for standalone versions or other game fields.
+RC1 research tracked normal HUD changes `5155 → 5105 → 5055` and a user-confirmed write to `105055`. RC3 tracked `753 → 755` and a user-confirmed HUD write to `1755`. Exact active PPU SELF names and independent restart reproduction remain unestablished. These observed fields are now implemented as independently written Ludava profiles. On November 5, 2026, the owner verified Ludava RC1 read `22` and write `12,312`, and RC3 read `248` and write `1,312,312`; the owner-provided game screenshots show the requested final balances on the HUD. The RC3 screenshot also shows a separate `+20` gameplay notification, whose timing relative to the displayed balance was not independently established. The screenshots show RPCS3 `0.0.43-20565`, but exact executable fingerprints remain unknown. Do not infer support for standalone versions or other game fields.
 
 ## Ludava implementation status
 
