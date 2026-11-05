@@ -161,8 +161,12 @@ class InteractiveTrainerCli {
         final metadata = _readProcessMetadata(processId);
         candidate = _resolveMemoryBaseCandidate(metadata);
       } on Exception catch (error) {
-        output.writeln('Could not inspect RPCS3 process $processId: $error');
-        output.writeln('The process may have exited or access was denied.');
+        output.writeln(
+          'Could not inspect RPCS3 process $processId or its log: $error',
+        );
+        output.writeln(
+          'The process may have exited, access may be denied, or its log may be locked.',
+        );
       } on UnsupportedError catch (error) {
         errorOutput.writeln(error);
         return null;

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
 import 'package:ludava/features/game_memory/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:test/test.dart';
@@ -95,7 +96,7 @@ void main() {
     });
 
     test(
-      'Method resolveCandidate() handles a log removed during detection',
+      'Method resolveCandidate() reports a log removed during detection',
       () {
         final logPath = r'C:\RPCS3\log\RPCS3.log';
         final resolver = Rpcs3MemoryBaseResolverDataSource(
@@ -105,7 +106,63 @@ void main() {
           readAsString: (_) => 'vm::g_base_addr = 0x300000000',
         );
 
-        expect(resolver.resolveCandidate(_processMetadata()), isNull);
+        expect(
+          () => resolver.resolveCandidate(_processMetadata()),
+          throwsA(isA<FileSystemException>()),
+        );
+      },
+    );
+
+    test('Method resolveCandidate() reports unreadable fresh logs', () {
+      final logPath = r'C:\RPCS3\log\RPCS3.log';
+      final resolver = Rpcs3MemoryBaseResolverDataSource(
+        fileExists: (path) => path == logPath,
+        lastModifiedUtc: (_) => DateTime.utc(2026, 11, 5, 10, 1),
+        readAsString:
+            (_) =>
+                throw const WindowsMemoryException(
+                  operation: 'CreateFileW RPCS3 log',
+                  errorCode: 32,
+                ),
+      );
+
+      expect(
+        () => resolver.resolveCandidate(_processMetadata()),
+        throwsA(
+          isA<WindowsMemoryException>()
+              .having(
+                (error) => error.operation,
+                'operation',
+                'CreateFileW RPCS3 log',
+              )
+              .having((error) => error.errorCode, 'errorCode', 32),
+        ),
+      );
+    });
+
+    test(
+      'Method resolveCandidate() uses a readable fallback after a log error',
+      () {
+        final primaryLog = r'C:\RPCS3\log\RPCS3.log';
+        final fallbackLog = r'C:\RPCS3\RPCS3.log';
+        final resolver = Rpcs3MemoryBaseResolverDataSource(
+          fileExists: (path) => path == primaryLog || path == fallbackLog,
+          lastModifiedUtc: (_) => DateTime.utc(2026, 11, 5, 10, 1),
+          readAsString: (path) {
+            if (path == primaryLog) {
+              throw const WindowsMemoryException(
+                operation: 'CreateFileW RPCS3 log',
+                errorCode: 32,
+              );
+            }
+            return 'vm::g_base_addr = 0x400000000';
+          },
+        );
+
+        final candidate = resolver.resolveCandidate(_processMetadata());
+
+        expect(candidate?.memoryBase, 0x400000000);
+        expect(candidate?.logPath, fallbackLog);
       },
     );
 

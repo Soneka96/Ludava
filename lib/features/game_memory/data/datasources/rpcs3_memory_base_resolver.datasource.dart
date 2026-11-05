@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
+import 'package:ludava/features/game_memory/data/datasources/windows_rpcs3_log.datasource.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
 
@@ -12,7 +14,7 @@ class Rpcs3MemoryBaseResolverDataSource {
     String Function(String path)? readAsString,
     bool Function(String path)? fileExists,
   }) : _lastModifiedUtc = lastModifiedUtc ?? _fileLastModifiedUtc,
-       _readAsString = readAsString ?? _fileReadAsString,
+       _readAsString = readAsString ?? WindowsRpcs3LogDataSource().read,
        _fileExists = fileExists ?? _fileExistsOnDisk;
 
   static const int _maxNativeAddress = 0x7fffffffffffffff;
@@ -38,10 +40,12 @@ class Rpcs3MemoryBaseResolverDataSource {
       '$executableDirectory${Platform.pathSeparator}log${Platform.pathSeparator}RPCS3.log',
       '$executableDirectory${Platform.pathSeparator}RPCS3.log',
     ];
+    Exception? lastLogError;
+    StackTrace? lastLogErrorStack;
 
     for (final logPath in logPaths) {
-      if (!_fileExists(logPath)) continue;
       try {
+        if (!_fileExists(logPath)) continue;
         if (_lastModifiedUtc(logPath).isBefore(processMetadata.startedAtUtc)) {
           continue;
         }
@@ -52,10 +56,19 @@ class Rpcs3MemoryBaseResolverDataSource {
           memoryBase: bases.single,
           logPath: logPath,
         );
-      } on FileSystemException {
+      } on FileSystemException catch (error, stackTrace) {
         // A log can disappear or become unreadable between the file checks.
+        lastLogError = error;
+        lastLogErrorStack = stackTrace;
+        continue;
+      } on WindowsMemoryException catch (error, stackTrace) {
+        lastLogError = error;
+        lastLogErrorStack = stackTrace;
         continue;
       }
+    }
+    if (lastLogError != null) {
+      Error.throwWithStackTrace(lastLogError, lastLogErrorStack!);
     }
     return null;
   }
@@ -77,8 +90,6 @@ class Rpcs3MemoryBaseResolverDataSource {
 
   static DateTime _fileLastModifiedUtc(String path) =>
       File(path).lastModifiedSync().toUtc();
-
-  static String _fileReadAsString(String path) => File(path).readAsStringSync();
 
   static bool _fileExistsOnDisk(String path) => File(path).existsSync();
 }

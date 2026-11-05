@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/game_memory/presentation/cli/interactive_trainer_cli.dart';
@@ -420,6 +422,31 @@ void main() {
         expect(harness.readCommands.single, contains('0x300000000'));
       },
     );
+
+    test('Method run() reports locked log access and keeps base choices', () {
+      final harness =
+          _InteractiveHarness()
+            ..processResults = [
+              [42],
+            ]
+            ..resolverError = FileSystemException(
+              'sharing violation',
+              r'C:\RPCS3\log\RPCS3.log',
+              const OSError('Sharing violation', 32),
+            )
+            ..inputs = ['1', '0'];
+      final output = StringBuffer();
+
+      harness.run(output, StringBuffer());
+
+      expect(output.toString(), contains('or its log'));
+      expect(output.toString(), contains('sharing violation'));
+      expect(
+        output.toString(),
+        contains('Use this base for the current session'),
+      );
+      expect(harness.commands, isEmpty);
+    });
   });
 }
 
@@ -441,6 +468,7 @@ class _InteractiveHarness {
   Rpcs3MemoryBaseCandidate? candidate;
   Rpcs3MemoryBaseCandidate? Function(int processId)? candidateForProcess;
   Exception? metadataError;
+  Exception? resolverError;
 
   List<List<String>> get readCommands =>
       commands.where((arguments) => arguments.first == 'read').toList();
@@ -471,6 +499,8 @@ class _InteractiveHarness {
       },
       resolveMemoryBaseCandidate: (_) {
         final index = resolveCalls++;
+        final error = resolverError;
+        if (error != null) throw error;
         if (candidateByAttempt.isNotEmpty) {
           return candidateByAttempt[index < candidateByAttempt.length
               ? index
