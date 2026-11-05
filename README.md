@@ -1,8 +1,8 @@
 # Ludava
 
-> A Windows game-memory trainer with an interactive, profile-driven RC2 bolt CLI.
+> A Windows game-memory trainer with an interactive, profile-driven PS3 Collection bolt CLI.
 
-**Status:** the owner successfully tested Ludava reading and writing RC2 Collection bolts in a live RPCS3 session on November 5, 2026. This records the tested environment; compatibility across RPCS3 versions or game builds and ROG Ally validation are not established.
+**Status:** The owner successfully tested bolt reading and writing in Ludava for all three games in the PS3 Ratchet & Clank Collection on November 5, 2026. RC1 and RC3 writes were confirmed against HUD screenshots. Exact executable fingerprints, broader RPCS3/build compatibility, and ROG Ally validation are not yet established.
 
 ## Start here
 
@@ -14,13 +14,15 @@ dart run bin/ludava.dart
 
 Ludava selects a single running RPCS3 process automatically or asks you to choose when multiple instances are found. It checks fresh `RPCS3.log` files near the selected executable for a guest memory base. A log value remains a candidate and must be confirmed. If no candidate is found, you can accept the research-tested `0x300000000` suggestion for that session or enter another base. That value may differ between sessions.
 
-Choose the Ratchet & Clank 2 PS3 Collection profile (`BCUS98282`), then refresh or set bolts from the menu. Writes require entering a value and confirming the target process, profile, and base. Ludava reuses the existing write validation and read-back verification. It does not identify the active game build; use the profile only when RC2 is running inside the Collection.
+Choose Ratchet & Clank 1, 2 or 3 in the PS3 Collection (`BCUS98282`), then refresh or set bolts from the menu. Writes require entering a value and confirming the target process, profile, and base. Ludava reuses the existing write validation and read-back verification. It does not identify the active embedded game or build; select only the profile matching the Collection game currently running.
 
-If bolts are unavailable, start Ratchet & Clank 2 in RPCS3 and refresh. If the game is already running, check Connection Details for the selected process and memory base.
+If bolts are unavailable, start the selected Collection game in RPCS3 and refresh. If the game is already running, check Connection Details for the selected process and memory base.
 
-The bolt field is guest offset `0x01329E80`, an unsigned 32-bit big-endian value. It is not the standalone RC2 profile.
+Each Collection profile stores a separate big-endian unsigned 32-bit bolt offset: RC1 `0x009BC3A0`, RC2 `0x01329E80`, RC3 `0x00C1EDAC`. These offsets are not interchangeable with the standalone PS3 game profiles.
 
 ## Diagnostic commands
+
+Use `--game rc1-collection`, `--game rc2-collection`, or `--game rc3-collection` to select the matching embedded game. The examples below use RC2. RC1 and RC3 have also been owner-tested live with matching write/read-back and HUD confirmation in the reported environment.
 
 The existing explicit commands remain available for troubleshooting and automation. Read the current bolt count:
 

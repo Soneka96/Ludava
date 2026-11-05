@@ -44,7 +44,8 @@ Milestones describe verified outcomes, not completed code alone.
 
 ## M4 — Incremental expansion
 
-- [ ] Add each game/build as profile data after its mapping and evidence are recorded.
+- [x] Add RC1 and RC3 Collection bolt-only profiles from owner-confirmed RatchetHax research.
+- [x] Owner-tested RC1 and RC3 Ludava bolt reads and writes with matching in-game HUD screenshots on 2026-11-05, using session base `0x300000000` (exact executable fingerprints still pending).
 - [ ] Reuse the generic reader/writer instead of creating duplicate game features.
 - [ ] Reevaluate architecture only when a new capability creates a real boundary.
 
