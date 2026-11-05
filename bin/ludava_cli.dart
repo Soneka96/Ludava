@@ -1,7 +1,11 @@
 import 'dart:io';
 
+import 'package:ludava/features/game_memory/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
+import 'package:ludava/features/game_memory/data/datasources/windows_console.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
+import 'package:ludava/features/game_memory/data/datasources/windows_process_discovery.datasource.dart';
+import 'package:ludava/features/game_memory/data/datasources/windows_process_metadata.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
 import 'package:ludava/features/game_memory/data/repositories/game_memory.repository.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
@@ -14,6 +18,7 @@ import 'package:ludava/features/game_memory/domain/usecases/write_game_field.use
 import 'package:ludava/features/game_memory/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava/features/game_memory/presentation/cli/diagnostic_arguments.dart';
 import 'package:ludava/features/game_memory/presentation/cli/game_memory_output.dart';
+import 'package:ludava/features/game_memory/presentation/cli/interactive_trainer_cli.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
 /// Composes the command-line trainer and its Windows data boundary.
@@ -23,13 +28,16 @@ class LudavaCli {
     WindowsMemoryApi? api,
     bool? isWindows,
     int? pointerSize,
-  })  : _api = api,
-        _isWindows = isWindows,
-        _pointerSize = pointerSize;
+    InteractiveTrainerCli? interactiveCli,
+  }) : _api = api,
+       _isWindows = isWindows,
+       _pointerSize = pointerSize,
+       _interactiveCli = interactiveCli;
 
   final WindowsMemoryApi? _api;
   final bool? _isWindows;
   final int? _pointerSize;
+  final InteractiveTrainerCli? _interactiveCli;
 
   /// Runs one command and returns its process exit code.
   int run(
@@ -39,6 +47,12 @@ class LudavaCli {
   }) {
     final stdoutSink = output ?? stdout;
     final stderrSink = errorOutput ?? stderr;
+    if (arguments.isEmpty) {
+      return (_interactiveCli ?? _createInteractiveCli()).run(
+        output: output,
+        errorOutput: errorOutput,
+      );
+    }
     if (arguments.length == 1 && arguments.single == '--help') {
       stdoutSink.writeln(DiagnosticArgumentParser.usage);
       return 0;
@@ -165,4 +179,18 @@ class LudavaCli {
     }
     return exitCode;
   }
+
+  InteractiveTrainerCli _createInteractiveCli() => InteractiveTrainerCli(
+    discoverProcessIds:
+        () => WindowsProcessDiscoveryDataSource().findRpcs3ProcessIds(),
+    readProcessMetadata:
+        (processId) => WindowsProcessMetadataDataSource().read(processId),
+    resolveMemoryBaseCandidate:
+        (processMetadata) => Rpcs3MemoryBaseResolverDataSource()
+            .resolveCandidate(processMetadata),
+    runCommand:
+        (arguments, output, errorOutput) =>
+            run(arguments, output: output, errorOutput: errorOutput),
+    clearScreen: WindowsConsoleDataSource().clearScreen,
+  );
 }

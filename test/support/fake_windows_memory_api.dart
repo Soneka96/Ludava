@@ -13,8 +13,14 @@ class FakeWindowsMemoryApi {
   /// Optional byte count reported by the fake read call.
   int? reportedReadBytes;
 
+  /// Optional byte counts reported for successive read calls.
+  List<int>? reportedReadByteCounts;
+
   /// Native return value for the fake read call.
   int readReturnValue = 1;
+
+  /// Optional native return values for successive read calls.
+  List<int>? readReturnValues;
 
   /// Optional byte count reported by the fake write call.
   int? reportedWriteBytes;
@@ -55,38 +61,45 @@ class FakeWindowsMemoryApi {
 
   /// Exposes the configured functions through [WindowsMemoryApi].
   WindowsMemoryApi get adapter => WindowsMemoryApi(
-        openProcess: (access, _, processId) {
-          openCalls++;
-          requestedAccess = access;
-          openedProcessId = processId;
-          return Pointer<Void>.fromAddress(handleAddress);
-        },
-        readProcessMemory: (handle, address, buffer, byteCount, transferred) {
-          readCalls++;
-          readAddress = address.address;
-          final copiedCount =
-              readBytes.length < byteCount ? readBytes.length : byteCount;
-          for (var index = 0; index < copiedCount; index++) {
-            buffer[index] = readBytes[index];
-          }
-          transferred.value = reportedReadBytes ?? byteCount;
-          return readReturnValue;
-        },
-        writeProcessMemory: (handle, address, buffer, byteCount, transferred) {
-          writeCalls++;
-          writeAddress = address.address;
-          writtenBytes = buffer.asTypedList(byteCount).toList(growable: false);
-          transferred.value = reportedWriteBytes ?? byteCount;
-          return writeReturnValue;
-        },
-        closeHandle: (_) {
-          closeCalls++;
-          return closeReturnValue;
-        },
-        getLastError: () {
-          lastErrorCalls++;
-          return errorCode;
-        },
-        getCurrentProcessId: () => 42,
-      );
+    openProcess: (access, _, processId) {
+      openCalls++;
+      requestedAccess = access;
+      openedProcessId = processId;
+      return Pointer<Void>.fromAddress(handleAddress);
+    },
+    readProcessMemory: (handle, address, buffer, byteCount, transferred) {
+      final readIndex = readCalls++;
+      readAddress = address.address;
+      final copiedCount =
+          readBytes.length < byteCount ? readBytes.length : byteCount;
+      for (var index = 0; index < copiedCount; index++) {
+        buffer[index] = readBytes[index];
+      }
+      final reportedCount = reportedReadByteCounts;
+      transferred.value =
+          reportedCount != null && readIndex < reportedCount.length
+              ? reportedCount[readIndex]
+              : reportedReadBytes ?? byteCount;
+      final returnValues = readReturnValues;
+      return returnValues != null && readIndex < returnValues.length
+          ? returnValues[readIndex]
+          : readReturnValue;
+    },
+    writeProcessMemory: (handle, address, buffer, byteCount, transferred) {
+      writeCalls++;
+      writeAddress = address.address;
+      writtenBytes = buffer.asTypedList(byteCount).toList(growable: false);
+      transferred.value = reportedWriteBytes ?? byteCount;
+      return writeReturnValue;
+    },
+    closeHandle: (_) {
+      closeCalls++;
+      return closeReturnValue;
+    },
+    getLastError: () {
+      lastErrorCalls++;
+      return errorCode;
+    },
+    getCurrentProcessId: () => 42,
+  );
 }

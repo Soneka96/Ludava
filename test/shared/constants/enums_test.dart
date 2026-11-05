@@ -16,24 +16,32 @@ void main() {
   });
 
   group('Enum VerificationStatus evidence labels', () {
-    test('VerificationStatus includes distinct research-confirmed evidence',
-        () {
-      expect(
-        VerificationStatus.values,
-        contains(VerificationStatus.researchConfirmed),
-      );
-      expect(
-        VerificationStatus.researchConfirmed,
-        isNot(VerificationStatus.verified),
-      );
-    });
+    test(
+      'VerificationStatus includes distinct research-confirmed evidence',
+      () {
+        expect(
+          VerificationStatus.values,
+          contains(VerificationStatus.researchConfirmed),
+        );
+        expect(
+          VerificationStatus.researchConfirmed,
+          isNot(VerificationStatus.verified),
+        );
+      },
+    );
   });
 
   group('Enum GameWriteStatus enabled outcomes', () {
     test('GameWriteStatus distinguishes incomplete and verified writes', () {
       expect(GameWriteStatus.values, contains(GameWriteStatus.incompleteWrite));
       expect(
-          GameWriteStatus.values, contains(GameWriteStatus.readBackMismatch));
+        GameWriteStatus.values,
+        contains(GameWriteStatus.preliminaryReadFailed),
+      );
+      expect(
+        GameWriteStatus.values,
+        contains(GameWriteStatus.readBackMismatch),
+      );
       expect(GameWriteStatus.values, contains(GameWriteStatus.success));
       expect(GameWriteStatus.values, isNot(contains('unverifiedBuild')));
     });

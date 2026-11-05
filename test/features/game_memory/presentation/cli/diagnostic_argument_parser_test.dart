@@ -3,29 +3,48 @@ import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Method parse() behaves correctly', () {
-    test('Method parse() returns read arguments when all options are valid',
-        () {
-      final arguments = DiagnosticArgumentParser.parse([
-        'read',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-      ]);
-
-      expect(arguments.action, GameMemoryAction.read);
-      expect(arguments.gameId, 'rc2-collection');
-      expect(arguments.fieldId, 'bolts');
-      expect(arguments.processId, 42);
-      expect(arguments.memoryBase, 0x300000000);
-      expect(arguments.value, isNull);
-      expect(arguments.confirmed, isFalse);
+  group('Property usage behaves correctly', () {
+    test('Property usage reports live RC2 evidence and its limits', () {
+      expect(
+        DiagnosticArgumentParser.usage,
+        contains('The owner tested RC2 bolt reading and writing'),
+      );
+      expect(
+        DiagnosticArgumentParser.usage,
+        contains('Compatibility across RPCS3 versions and game builds'),
+      );
+      expect(
+        DiagnosticArgumentParser.usage,
+        isNot(contains('remain unverified against a live')),
+      );
     });
+  });
+
+  group('Method parse() behaves correctly', () {
+    test(
+      'Method parse() returns read arguments when all options are valid',
+      () {
+        final arguments = DiagnosticArgumentParser.parse([
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+        ]);
+
+        expect(arguments.action, GameMemoryAction.read);
+        expect(arguments.gameId, 'rc2-collection');
+        expect(arguments.fieldId, 'bolts');
+        expect(arguments.processId, 42);
+        expect(arguments.memoryBase, 0x300000000);
+        expect(arguments.value, isNull);
+        expect(arguments.confirmed, isFalse);
+      },
+    );
 
     test('Method parse() returns explicitly confirmed write arguments', () {
       final arguments = DiagnosticArgumentParser.parse([
@@ -139,13 +158,7 @@ void main() {
     });
 
     test('Method parse() rejects malformed pid base and values', () {
-      final common = [
-        'read',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-      ];
+      final common = ['read', '--game', 'rc2-collection', '--field', 'bolts'];
       for (final options in [
         ['--pid', '0', '--memory-base', '0x1'],
         ['--pid', '4294967296', '--memory-base', '0x1'],
@@ -177,40 +190,41 @@ void main() {
     });
 
     test(
-        'Method parse() requires confirmation for writes and forbids it for reads',
-        () {
-      expect(
-        () => DiagnosticArgumentParser.parse([
-          'write',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x1',
-          '--value',
-          '1',
-        ]),
-        throwsFormatException,
-      );
-      expect(
-        () => DiagnosticArgumentParser.parse([
-          'read',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x1',
-          '--confirm-write',
-        ]),
-        throwsFormatException,
-      );
-    });
+      'Method parse() requires confirmation for writes and forbids it for reads',
+      () {
+        expect(
+          () => DiagnosticArgumentParser.parse([
+            'write',
+            '--game',
+            'rc2-collection',
+            '--field',
+            'bolts',
+            '--pid',
+            '42',
+            '--memory-base',
+            '0x1',
+            '--value',
+            '1',
+          ]),
+          throwsFormatException,
+        );
+        expect(
+          () => DiagnosticArgumentParser.parse([
+            'read',
+            '--game',
+            'rc2-collection',
+            '--field',
+            'bolts',
+            '--pid',
+            '42',
+            '--memory-base',
+            '0x1',
+            '--confirm-write',
+          ]),
+          throwsFormatException,
+        );
+      },
+    );
 
     test('Method parse() throws when a confirmed write has no value', () {
       expect(
@@ -248,5 +262,27 @@ void main() {
         throwsFormatException,
       );
     });
+  });
+
+  group('Method parseMemoryBase() behaves correctly', () {
+    test('Method parseMemoryBase() returns a 64-bit hexadecimal base', () {
+      expect(
+        DiagnosticArgumentParser.parseMemoryBase('0x300000000'),
+        0x300000000,
+      );
+      expect(DiagnosticArgumentParser.parseMemoryBase('0X1'), 1);
+    });
+
+    test(
+      'Method parseMemoryBase() rejects malformed and overflowing bases',
+      () {
+        for (final value in ['300000000', '0x', '0x-1', '0x8000000000000000']) {
+          expect(
+            () => DiagnosticArgumentParser.parseMemoryBase(value),
+            throwsFormatException,
+          );
+        }
+      },
+    );
   });
 }

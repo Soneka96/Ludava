@@ -1,22 +1,34 @@
 # Ludava
 
-> A Windows game-memory trainer with a small, profile-driven RC2 bolt read/write CLI.
+> A Windows game-memory trainer with an interactive, profile-driven RC2 bolt CLI.
 
-**Status:** the CLI reads and writes the RC2 Collection bolt field using owner-confirmed research. The owner has successfully tested the Dart RC2 bolt read command against a live RPCS3 session. A Ludava write and full cross-build compatibility are not yet confirmed.
+**Status:** the owner successfully tested Ludava reading and writing RC2 Collection bolts in a live RPCS3 session on November 5, 2026. This records the tested environment; compatibility across RPCS3 versions or game builds and ROG Ally validation are not established.
 
 ## Start here
 
-The included profile targets Ratchet & Clank 2 in the PS3 Collection (`BCUS98282`) running in RPCS3 on 64-bit Windows. The owner-confirmed research field is guest offset `0x01329E80`, an unsigned 32-bit big-endian value. It is not the standalone RC2 profile.
+Start the interactive trainer in a Windows terminal:
 
-Select the RPCS3 process ID and supply that session's guest memory base. `0x300000000` is the base observed during the tested research session; check the current `RPCS3.log` before using a different session. Ludava does not identify the active game build, so use the RC2 profile only when RC2 is running inside the Collection.
+```powershell
+dart run bin/ludava.dart
+```
 
-Read the current bolt count:
+Ludava selects a single running RPCS3 process automatically or asks you to choose when multiple instances are found. It checks fresh `RPCS3.log` files near the selected executable for a guest memory base. A log value remains a candidate and must be confirmed. If no candidate is found, you can accept the research-tested `0x300000000` suggestion for that session or enter another base. That value may differ between sessions.
+
+Choose the Ratchet & Clank 2 PS3 Collection profile (`BCUS98282`), then refresh or set bolts from the menu. Writes require entering a value and confirming the target process, profile, and base. Ludava reuses the existing write validation and read-back verification. It does not identify the active game build; use the profile only when RC2 is running inside the Collection.
+
+If bolts are unavailable, start Ratchet & Clank 2 in RPCS3 and refresh. If the game is already running, check Connection Details for the selected process and memory base.
+
+The bolt field is guest offset `0x01329E80`, an unsigned 32-bit big-endian value. It is not the standalone RC2 profile.
+
+## Diagnostic commands
+
+The existing explicit commands remain available for troubleshooting and automation. Read the current bolt count:
 
 ```powershell
 dart run bin/ludava.dart read --game rc2-collection --field bolts --pid RPCS3_PID --memory-base 0x300000000
 ```
 
-Repeat the `read` command to refresh the value. Each command opens the process for that operation and closes its handle before exiting.
+Repeat the `read` command to refresh the value. Each command opens the selected process for that operation and closes its handle before exiting.
 
 Write an unsigned 32-bit bolt value explicitly with `--value` and `--confirm-write`:
 
@@ -24,7 +36,17 @@ Write an unsigned 32-bit bolt value explicitly with `--value` and `--confirm-wri
 dart run bin/ludava.dart write --game rc2-collection --field bolts --pid RPCS3_PID --memory-base 0x300000000 --value 244866 --confirm-write
 ```
 
-The CLI writes four big-endian bytes, checks the native result and byte count, then reads the field back. It reports success only when the observed read-back equals the requested value. The process ID and chosen profile are manual inputs; Ludava does not validate the running game or RPCS3 build. RatchetHax's owner-confirmed RC2 research is separate from live validation of Ludava's Dart implementation.
+The shared write operation first requires a complete, valid read of the selected field, then writes four big-endian bytes, checks the native result and byte count, and reads the field back. It reports success only when the observed read-back equals the requested value. The owner tested a write to `120`; Ludava displayed `120`, and the owner screenshot showed `120` on the game's HUD. Process/profile selection does not prove the active game or RPCS3 build. RatchetHax's research is separate from this live test of Ludava's Dart implementation.
+
+## Portable Windows executable
+
+Build a standalone Windows x64 executable with:
+
+```powershell
+.\tool\build_windows.ps1
+```
+
+Copy `build\Ludava.exe` to the ROG Ally and launch it from a terminal. Dart and Flutter are not required on the Ally. See [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md) for the build and transfer steps.
 
 Run the automated checks with:
 
@@ -41,6 +63,7 @@ dart format --output=none --set-exit-if-changed lib test bin
 - [MVP scope and acceptance gates](docs/MVP.md)
 - [Compatibility evidence matrix](docs/COMPATIBILITY.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md)
 - [Research handoff](docs/RESEARCH_HANDOFF.md)
 - [Development policy and conventions](docs/DEVELOPMENT.md)
 
@@ -57,7 +80,7 @@ Technical references: [Dart native interop](https://dart.dev/interop/c-interop),
 
 ## Repository status
 
-The RC2 profile uses guest offset `0x01329E80`, an unsigned 32-bit big-endian field, with write eligibility marked `researchConfirmed`. The tested research session used guest base `0x300000000`; the base can vary. The owner reports a successful live RPCS3 bolt read with Ludava. The write operation still requires live validation, and the CLI does not identify the active game build.
+The RC2 profile uses guest offset `0x01329E80`, an unsigned 32-bit big-endian field, with write eligibility marked `researchConfirmed`. The owner observed guest base `0x300000000` in the tested session; the base can vary. Ludava's live read/write behavior was tested successfully on November 5, 2026, but the exact Windows/RPCS3 versions and executable fingerprint were not supplied. Process discovery does not identify the active game/build, and compatibility across builds is not established.
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 

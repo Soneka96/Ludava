@@ -5,12 +5,15 @@ import 'package:ludava/shared/constants/enums.dart';
 abstract final class DiagnosticArgumentParser {
   /// Usage text for the supported commands.
   static const String usage = '''Usage:
+  dart run bin/ludava.dart
   dart run bin/ludava.dart read --game <id> --field <id> --pid <PID> --memory-base <0xHEX>
   dart run bin/ludava.dart write --game <id> --field <id> --pid <PID> --memory-base <0xHEX> --value <integer> --confirm-write
 
-Select the process, profile, and session guest base manually. Ludava does not
-verify the active game build. RC2 bolts use owner-confirmed research and remain
-unverified against a live Ludava session. Repeat the read command to refresh.''';
+No arguments starts the interactive trainer. Diagnostic commands require an
+explicit process ID, profile, and session guest base. Ludava does not verify the active game build.
+The owner tested RC2 bolt reading and writing in a live RPCS3 session on
+November 5, 2026. Compatibility across RPCS3 versions and game builds is not
+established. Repeat the read command to refresh.''';
 
   /// Parses a read or write command and rejects missing, duplicate, or invalid options.
   static DiagnosticArguments parse(List<String> arguments) {
@@ -53,7 +56,7 @@ unverified against a live Ludava session. Repeat the read command to refresh.'''
         case '--pid':
           processId = _parseProcessId(optionValue);
         case '--memory-base':
-          memoryBase = _parseMemoryBase(optionValue);
+          memoryBase = parseMemoryBase(optionValue);
         case '--value':
           value = _parseInteger(optionValue, option);
         default:
@@ -106,7 +109,8 @@ unverified against a live Ludava session. Repeat the read command to refresh.'''
     return processId;
   }
 
-  static int _parseMemoryBase(String value) {
+  /// Parses a hexadecimal memory base with the same bounds as CLI options.
+  static int parseMemoryBase(String value) {
     if (!RegExp(r'^0[xX][0-9a-fA-F]+$').hasMatch(value)) {
       throw const FormatException(
         '--memory-base requires a hexadecimal value prefixed with 0x.',
@@ -115,7 +119,8 @@ unverified against a live Ludava session. Repeat the read command to refresh.'''
     final memoryBase = int.tryParse(value.substring(2), radix: 16);
     if (memoryBase == null || memoryBase < 0) {
       throw const FormatException(
-          '--memory-base is outside the address range.');
+        '--memory-base is outside the address range.',
+      );
     }
     return memoryBase;
   }

@@ -4,7 +4,7 @@ This document defines the target architecture for new and materially changed cod
 
 ## Feature ownership
 
-The first capability is `game_memory`: reading and writing selected game values through profiles. A game or build is profile data, not a separate feature. Adding a game should add its researched profile and fields with their actual evidence status; it should reuse the same reader and writer use cases. `researchConfirmed` means owner-confirmed external research supports an operation; it does not mean Ludava was tested against a live game session.
+The first capability is `game_memory`: reading and writing selected game values through profiles. A game or build is profile data, not a separate feature. Adding a game should add its researched profile and fields with their actual evidence status; it should reuse the same reader and writer use cases. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
 
 Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires explicit confirmation and matching read-back.
 
@@ -102,4 +102,4 @@ Compatibility is recorded per exact game/build and capability. Keep experimental
 
 ## Current implementation
 
-The implementation uses `lib/features/game_memory` with generic read/write use cases, a profile catalog, and a Windows process-memory data source. The RC2 bolt field has research-confirmed read/write eligibility. The CLI requires manual process/profile/base selection and explicit write confirmation, then checks the complete native transfer and matching read-back. Ludava has not been run against a live RPCS3 session, and no build is identified automatically.
+The implementation uses `lib/features/game_memory` with generic read/write use cases, a profile catalog, Windows process-memory access, Tool Help process discovery, and Windows process metadata lookup. The interactive CLI selects an RPCS3 process, asks the user to select a game profile, and requires explicit confirmation for a log-derived or manually entered memory base. The shared write use case requires a complete valid preliminary field read, a deliberate confirmation, a complete native transfer, and matching read-back. The owner tested RC2 reading and writing in a live RPCS3 session on November 5, 2026. Exact Windows/RPCS3 versions and an executable fingerprint were not supplied; process discovery and log matching do not identify the active game/build or establish cross-build compatibility.
