@@ -17,8 +17,13 @@ jobs:
     runs-on: windows-latest
     env:
       LUDAVA_EXPECT_NO_RPCS3: '1'
+      LUDAVA_FORMAT_EVENT_NAME: ${{ github.event_name }}
+      LUDAVA_FORMAT_REF_NAME: ${{ github.ref_name }}
+      LUDAVA_FORMAT_PUSH_BEFORE: ${{ github.event.before }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: dart-lang/setup-dart@v1
         with:
@@ -32,6 +37,14 @@ jobs:
 
       - name: Check package dependency boundaries
         run: .\tool\check_workspace_boundaries.ps1
+
+      - name: Test changed-file formatter
+        shell: pwsh
+        run: .\tool\test_changed_dart_format.ps1
+
+      - name: Check changed Dart formatting
+        shell: pwsh
+        run: .\tool\check_changed_dart_format.ps1
 
       - name: Analyze root compatibility package
         run: dart analyze
