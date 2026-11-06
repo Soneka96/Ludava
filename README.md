@@ -83,6 +83,15 @@ Flutter application will be added as `apps/ludava_app` in a later project; it
 is not part of this workspace yet. See [Architecture and testing](docs/ARCHITECTURE.md)
 for the runtime API and package ownership.
 
+The SDK runtime assembles and owns its session and diagnostics capabilities.
+Their feature services perform detection and memory operations. Disposal is
+terminal: retained capability references reject further operations, while the
+last immutable session snapshot remains readable. See the architecture guide
+for the lifecycle and stream contract.
+
+PR #7 must remain unmerged until GitHub CI and real Windows acceptance both
+pass. Keep it in draft while either gate is incomplete.
+
 Pub workspaces require Dart 3.6 or newer, while `dart pub workspace list` was
 added in Dart 3.13. Ludava's declared minimum is Dart 3.7, so the workspace
 works throughout the supported range but the listing command does not run on

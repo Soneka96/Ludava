@@ -6,7 +6,7 @@ Milestones describe verified outcomes, not completed code alone. The sequence be
 
 The owner-approved Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. The SDK exposes the lifecycle-owned `LudavaSdk` runtime; the TUI consumes its public capabilities. The legacy interactive text menu is removed, while Nocterm and explicit diagnostic commands remain. `apps/ludava_app` is a future Flutter application and is not part of the current workspace. See [ARCHITECTURE.md](ARCHITECTURE.md) for the actual directory structure and ownership.
 
-The workspace cleanup and local Windows checks are complete in the current checkout. GitHub Actions has not been confirmed on PR #7. Physical keyboard acceptance remains a manual check. Existing live-game observations and their compatibility limits are documented in [COMPATIBILITY.md](COMPATIBILITY.md); the structural cleanup does not change those claims.
+The final focused SDK cleanup gives `game_memory` ownership of shared field execution, keeps detection execution in `game_detection`, and makes disposal terminal across retained SDK capabilities. The TUI awaits SDK cleanup on every command path. Local checks are recorded for the current checkout; GitHub Actions and real Windows acceptance remain separate PR #7 merge gates. Keep PR #7 as a draft until both gates pass. Existing live-game observations and their compatibility limits are documented in [COMPATIBILITY.md](COMPATIBILITY.md); the structural cleanup does not change those claims.
 
 ## M0 — Project and documentation foundation
 
@@ -44,7 +44,7 @@ The workspace cleanup and local Windows checks are complete in the current check
 
 - [x] Add RC1 and RC3 Collection bolt-only profiles from owner-confirmed RatchetHax research.
 - [x] Owner-tested RC1 and RC3 Ludava bolt reads and writes with matching in-game HUD screenshots on 2026-11-05, using session base `0x300000000`; their PPU hashes were later measured in a separate runtime session.
-- [ ] Reuse the generic reader/writer instead of creating duplicate game features.
+- [x] Reuse the generic reader/writer instead of creating duplicate game features.
 - [ ] Reevaluate architecture only when a new capability creates a real boundary.
 
 **Not planned now:** a large dashboard, plugin framework, cloud services, additional emulator backends, or unverified feature tables.
@@ -68,12 +68,15 @@ The workspace cleanup and local Windows checks are complete in the current check
 - [x] Establish `packages/ludava_sdk` as the reusable engine and `apps/ludava_tui` as its Nocterm/diagnostic frontend.
 - [x] Move diagnostic application workflows into the trainer feature and add the lifecycle-owned `LudavaSdk` runtime.
 - [x] Make the TUI consume public SDK capabilities and remove the legacy text-based interactive menu.
+- [x] Move shared process-memory handle management and field execution into `game_memory`; keep trainer and diagnostic authorization policies in their owning services.
+- [x] Assemble the feature-owned detection workflow in the SDK runtime without executing detection there.
+- [x] Reject operations through retained session and diagnostic capabilities once disposal starts, and await TUI cleanup.
 - [x] Keep root commands as thin compatibility entry points; add workspace boundary checks and fixture tests.
 - [x] Verify local package analysis and tests, root compatibility tests, workspace boundaries, Windows build, and relocated executable help in the current checkout.
-- [ ] Confirm the Windows workflow on PR #7; it must run SDK, TUI, root compatibility, boundary, and Windows build checks.
-- [ ] Record physical keyboard acceptance; the terminal keyboard protocol fix remains a manual check.
+- [ ] Confirm GitHub Actions on PR #7; it must run SDK, TUI, root compatibility, boundary, formatting, Windows build, and relocated native-discovery checks.
+- [ ] Record real Windows acceptance, including physical keyboard behavior and live RPCS3 checks for RC1, RC2, and RC3.
 
-**Exit:** workspace boundaries and local Windows build are verified; GitHub Actions and physical keyboard acceptance are recorded separately.
+**Exit:** local workspace checks pass, GitHub Actions passes, and real Windows acceptance is recorded. Do not merge PR #7 while either remote CI or required Windows acceptance remains unverified.
 
 ## M6 — Minimal Flutter desktop interface
 

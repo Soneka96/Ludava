@@ -36,7 +36,7 @@ These conventions apply to new code and files materially changed by a task:
 
 ## Application state and dependency injection
 
-The application controller owns authoritative trainer-session state and publishes immutable snapshots through a UI-toolkit-independent Dart observation API. Subscribers must have a defined way to obtain current state, receive changes after transitions, and stop receiving updates after deterministic cleanup. A state snapshot must not expose mutable collections.
+The application controller owns authoritative trainer-session state and publishes immutable snapshots through a UI-toolkit-independent Dart observation API. Subscribers must have a defined way to obtain current state, receive changes after transitions, and stop receiving updates after deterministic cleanup. A state snapshot must not expose mutable collections. Disposal tests retain capability references, verify later operations throw before collaborators run, and verify subscriptions close without later state events; see [`ARCHITECTURE.md`](ARCHITECTURE.md#sdk-runtime-api) for the contract.
 
 Presentation may own temporary interaction state such as focus, selected rows, cursor/selection, and unsaved text. It must not keep a second copy of process identity, profile, memory base, or verified field values. Clear or re-evaluate interaction state when its session becomes obsolete. Application services and replaceable boundaries are passed explicitly through constructors from the composition root. Do not use a global service locator or introduce a state-management framework without a demonstrated need. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for ownership and dependency direction.
 

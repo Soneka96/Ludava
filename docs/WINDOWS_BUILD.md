@@ -65,4 +65,15 @@ Nocterm's Windows backend reads Win32 console key events and translates them dir
 
 For final keyboard acceptance, run the TUI in both the VS Code integrated PowerShell terminal and standalone Windows Terminal. Use the physical keyboard to open an available field, press Escape, and confirm the editor closes without writing or displaying protocol text. Press Ctrl+C and confirm the app exits safely without inserting protocol text. Also verify number shortcuts, arrows, Home/End, Backspace/Delete, Enter, refresh selection, and terminal input restoration after exit. Automated byte-stream tests do not replace this physical-key check.
 
+## PR #7 merge gate
+
+PR #7 requires both a passing GitHub Actions run and real Windows x64 acceptance
+before merge. Windows acceptance must launch the packaged executable with its
+companion DLL, exercise process discovery and RC1/RC2/RC3 detection and reads,
+check the physical keyboard behavior above, and confirm relocation works. A
+guarded live write requires explicit owner authorization. If CI or required
+Windows acceptance is incomplete, keep the PR in draft and report those checks
+as unverified. Automated tests and successful builds do not replace live-game
+verification.
+
 The owner tested live bolt reads and writes in all three Collection games on November 5, 2026. A separate RPCS3 log experiment measured their PPU hashes on RPCS3 `0.0.43-20565-eee3f0f7`. The final compiled CLI was live-smoke-tested with RC2. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing. The records do not map each game to each device or identify the exact RPCS3 build for that later confirmation; compatibility with other RPCS3 builds remains unverified. The Ally does not need Dart or Flutter installed, but it needs both files listed above. RPCS3 must still be installed and running. RPCS3's [support guidance](https://github.com/RPCS3/rpcs3/wiki/How-to-ask-for-Support) places the Windows log in the `log` folder inside the RPCS3 directory; support reports also describe it as near the executable.
