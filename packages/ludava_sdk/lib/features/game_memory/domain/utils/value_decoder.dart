@@ -16,11 +16,8 @@ abstract final class ValueDecoder {
     final endian = switch (byteOrder) {
       ByteOrder.big => Endian.big,
       ByteOrder.little => Endian.little,
-      ByteOrder.none => throw ArgumentError.value(
-          byteOrder,
-          'byteOrder',
-          'must be selected',
-        ),
+      ByteOrder.none =>
+        throw ArgumentError.value(byteOrder, 'byteOrder', 'must be selected'),
     };
     return ByteData.sublistView(bytes).getUint32(0, endian);
   }

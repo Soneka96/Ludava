@@ -14,29 +14,31 @@ void main() {
       expect(result.isComplete, isTrue);
     });
 
-    test('Property isComplete returns false for failed partial or empty writes',
-        () {
-      const results = [
-        MemoryWriteResult(
-          status: MemoryWriteStatus.nativeFailure,
-          bytesWritten: 0,
-          requestedBytes: 4,
-        ),
-        MemoryWriteResult(
-          status: MemoryWriteStatus.partial,
-          bytesWritten: 2,
-          requestedBytes: 4,
-        ),
-        MemoryWriteResult(
-          status: MemoryWriteStatus.complete,
-          bytesWritten: 4,
-          requestedBytes: 0,
-        ),
-      ];
+    test(
+      'Property isComplete returns false for failed partial or empty writes',
+      () {
+        const results = [
+          MemoryWriteResult(
+            status: MemoryWriteStatus.nativeFailure,
+            bytesWritten: 0,
+            requestedBytes: 4,
+          ),
+          MemoryWriteResult(
+            status: MemoryWriteStatus.partial,
+            bytesWritten: 2,
+            requestedBytes: 4,
+          ),
+          MemoryWriteResult(
+            status: MemoryWriteStatus.complete,
+            bytesWritten: 4,
+            requestedBytes: 0,
+          ),
+        ];
 
-      for (final result in results) {
-        expect(result.isComplete, isFalse);
-      }
-    });
+        for (final result in results) {
+          expect(result.isComplete, isFalse);
+        }
+      },
+    );
   });
 }

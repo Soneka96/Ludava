@@ -32,38 +32,39 @@ void main() {
     });
 
     test(
-        'Property isComplete returns false for partial or inconsistent results',
-        () {
-      final results = [
-        MemoryReadResult(
-          status: MemoryReadStatus.partial,
-          bytes: [1, 2],
-          bytesRead: 2,
-          requestedBytes: 4,
-        ),
-        MemoryReadResult(
-          status: MemoryReadStatus.complete,
-          bytes: [1, 2],
-          bytesRead: 2,
-          requestedBytes: 4,
-        ),
-        MemoryReadResult(
-          status: MemoryReadStatus.complete,
-          bytes: [1, 2, 3, 4],
-          bytesRead: 3,
-          requestedBytes: 4,
-        ),
-        MemoryReadResult(
-          status: MemoryReadStatus.complete,
-          bytes: const [],
-          bytesRead: 0,
-          requestedBytes: 0,
-        ),
-      ];
+      'Property isComplete returns false for partial or inconsistent results',
+      () {
+        final results = [
+          MemoryReadResult(
+            status: MemoryReadStatus.partial,
+            bytes: [1, 2],
+            bytesRead: 2,
+            requestedBytes: 4,
+          ),
+          MemoryReadResult(
+            status: MemoryReadStatus.complete,
+            bytes: [1, 2],
+            bytesRead: 2,
+            requestedBytes: 4,
+          ),
+          MemoryReadResult(
+            status: MemoryReadStatus.complete,
+            bytes: [1, 2, 3, 4],
+            bytesRead: 3,
+            requestedBytes: 4,
+          ),
+          MemoryReadResult(
+            status: MemoryReadStatus.complete,
+            bytes: const [],
+            bytesRead: 0,
+            requestedBytes: 0,
+          ),
+        ];
 
-      for (final result in results) {
-        expect(result.isComplete, isFalse);
-      }
-    });
+        for (final result in results) {
+          expect(result.isComplete, isFalse);
+        }
+      },
+    );
   });
 }

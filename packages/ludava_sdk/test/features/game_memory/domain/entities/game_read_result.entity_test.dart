@@ -20,16 +20,17 @@ void main() {
 
   group('Property succeeded behaves correctly', () {
     test(
-        'Property succeeded returns true when status and value indicate success',
-        () {
-      const result = GameReadResult(
-        status: GameReadStatus.success,
-        fieldId: 'bolts',
-        value: 0,
-      );
+      'Property succeeded returns true when status and value indicate success',
+      () {
+        const result = GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: 'bolts',
+          value: 0,
+        );
 
-      expect(result.succeeded, isTrue);
-    });
+        expect(result.succeeded, isTrue);
+      },
+    );
 
     test('Property succeeded returns false when status is not success', () {
       const result = GameReadResult(
@@ -41,34 +42,38 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('Property succeeded returns false when successful status has no value',
-        () {
-      const result = GameReadResult(status: GameReadStatus.success);
+    test(
+      'Property succeeded returns false when successful status has no value',
+      () {
+        const result = GameReadResult(status: GameReadStatus.success);
 
-      expect(result.succeeded, isFalse);
-    });
+        expect(result.succeeded, isFalse);
+      },
+    );
 
     test(
-        'Property succeeded returns false when successful result has no field id',
-        () {
-      const result = GameReadResult(
-        status: GameReadStatus.success,
-        value: 10,
-      );
+      'Property succeeded returns false when successful result has no field id',
+      () {
+        const result = GameReadResult(
+          status: GameReadStatus.success,
+          value: 10,
+        );
 
-      expect(result.succeeded, isFalse);
-    });
+        expect(result.succeeded, isFalse);
+      },
+    );
 
     test(
-        'Property succeeded returns false when successful result has an empty field id',
-        () {
-      const result = GameReadResult(
-        status: GameReadStatus.success,
-        fieldId: '',
-        value: 10,
-      );
+      'Property succeeded returns false when successful result has an empty field id',
+      () {
+        const result = GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: '',
+          value: 10,
+        );
 
-      expect(result.succeeded, isFalse);
-    });
+        expect(result.succeeded, isFalse);
+      },
+    );
   });
 }

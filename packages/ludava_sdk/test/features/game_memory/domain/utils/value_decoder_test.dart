@@ -28,10 +28,7 @@ void main() {
     });
 
     test('Method decodeUnsigned32() preserves zero and the maximum value', () {
-      expect(
-        ValueDecoder.decodeUnsigned32(Uint8List(4), ByteOrder.big),
-        0,
-      );
+      expect(ValueDecoder.decodeUnsigned32(Uint8List(4), ByteOrder.big), 0);
       expect(
         ValueDecoder.decodeUnsigned32(
           Uint8List.fromList([0xff, 0xff, 0xff, 0xff]),
@@ -42,26 +39,26 @@ void main() {
     });
 
     test(
-        'Method decodeUnsigned32() throws ArgumentError for non-four-byte input',
-        () {
-      for (final length in [3, 5]) {
-        expect(
-          () => ValueDecoder.decodeUnsigned32(
-            Uint8List(length),
-            ByteOrder.big,
-          ),
-          throwsArgumentError,
-        );
-      }
-    });
+      'Method decodeUnsigned32() throws ArgumentError for non-four-byte input',
+      () {
+        for (final length in [3, 5]) {
+          expect(
+            () =>
+                ValueDecoder.decodeUnsigned32(Uint8List(length), ByteOrder.big),
+            throwsArgumentError,
+          );
+        }
+      },
+    );
 
     test(
-        'Method decodeUnsigned32() throws ArgumentError when byte order is none',
-        () {
-      expect(
-        () => ValueDecoder.decodeUnsigned32(Uint8List(4), ByteOrder.none),
-        throwsArgumentError,
-      );
-    });
+      'Method decodeUnsigned32() throws ArgumentError when byte order is none',
+      () {
+        expect(
+          () => ValueDecoder.decodeUnsigned32(Uint8List(4), ByteOrder.none),
+          throwsArgumentError,
+        );
+      },
+    );
   });
 }

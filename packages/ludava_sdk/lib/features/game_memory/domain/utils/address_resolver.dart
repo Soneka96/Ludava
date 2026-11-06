@@ -10,7 +10,10 @@ abstract final class AddressResolver {
   }) {
     if (memoryBase < 0) {
       throw ArgumentError.value(
-          memoryBase, 'memoryBase', 'must not be negative');
+        memoryBase,
+        'memoryBase',
+        'must not be negative',
+      );
     }
     if (guestOffset < 0) {
       throw ArgumentError.value(

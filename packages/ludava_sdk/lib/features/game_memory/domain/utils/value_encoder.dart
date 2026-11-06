@@ -17,11 +17,8 @@ abstract final class ValueEncoder {
     final endian = switch (byteOrder) {
       ByteOrder.big => Endian.big,
       ByteOrder.little => Endian.little,
-      ByteOrder.none => throw ArgumentError.value(
-          byteOrder,
-          'byteOrder',
-          'must be selected',
-        ),
+      ByteOrder.none =>
+        throw ArgumentError.value(byteOrder, 'byteOrder', 'must be selected'),
     };
     final data = ByteData(4)..setUint32(0, value, endian);
     return data.buffer.asUint8List();

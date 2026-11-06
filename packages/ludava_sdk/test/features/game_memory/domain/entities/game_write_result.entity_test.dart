@@ -33,17 +33,19 @@ void main() {
       expect(result.succeeded, isTrue);
     });
 
-    test('Property succeeded returns false when read-back differs from request',
-        () {
-      const result = GameWriteResult(
-        status: GameWriteStatus.success,
-        fieldId: 'bolts',
-        requestedValue: 100,
-        readBackValue: 99,
-      );
+    test(
+      'Property succeeded returns false when read-back differs from request',
+      () {
+        const result = GameWriteResult(
+          status: GameWriteStatus.success,
+          fieldId: 'bolts',
+          requestedValue: 100,
+          readBackValue: 99,
+        );
 
-      expect(result.succeeded, isFalse);
-    });
+        expect(result.succeeded, isFalse);
+      },
+    );
 
     test('Property succeeded returns false when status is not success', () {
       const result = GameWriteResult(
@@ -56,22 +58,24 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('Property succeeded returns false when field or request is missing',
-        () {
-      const noField = GameWriteResult(
-        status: GameWriteStatus.success,
-        requestedValue: 10,
-        readBackValue: 10,
-      );
-      const noRequest = GameWriteResult(
-        status: GameWriteStatus.success,
-        fieldId: 'bolts',
-        readBackValue: 10,
-      );
+    test(
+      'Property succeeded returns false when field or request is missing',
+      () {
+        const noField = GameWriteResult(
+          status: GameWriteStatus.success,
+          requestedValue: 10,
+          readBackValue: 10,
+        );
+        const noRequest = GameWriteResult(
+          status: GameWriteStatus.success,
+          fieldId: 'bolts',
+          readBackValue: 10,
+        );
 
-      expect(noField.succeeded, isFalse);
-      expect(noRequest.succeeded, isFalse);
-    });
+        expect(noField.succeeded, isFalse);
+        expect(noRequest.succeeded, isFalse);
+      },
+    );
 
     test('Property succeeded returns false when field id is empty', () {
       const result = GameWriteResult(
@@ -84,15 +88,17 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('Property succeeded returns false when read-back value is missing',
-        () {
-      const result = GameWriteResult(
-        status: GameWriteStatus.success,
-        fieldId: 'bolts',
-        requestedValue: 10,
-      );
+    test(
+      'Property succeeded returns false when read-back value is missing',
+      () {
+        const result = GameWriteResult(
+          status: GameWriteStatus.success,
+          fieldId: 'bolts',
+          requestedValue: 10,
+        );
 
-      expect(result.succeeded, isFalse);
-    });
+        expect(result.succeeded, isFalse);
+      },
+    );
   });
 }

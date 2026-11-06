@@ -27,10 +27,11 @@ void main() {
     });
 
     test('Method read() preserves data-source failure details', () {
-      final api = FakeWindowsMemoryApi()
-        ..readReturnValue = 0
-        ..reportedReadBytes = 1
-        ..errorCode = 299;
+      final api =
+          FakeWindowsMemoryApi()
+            ..readReturnValue = 0
+            ..reportedReadBytes = 1
+            ..errorCode = 299;
       final source = WindowsProcessMemoryDataSource.open(
         42,
         api: api.adapter,
@@ -70,10 +71,11 @@ void main() {
     });
 
     test('Method write() preserves data-source failures', () {
-      final api = FakeWindowsMemoryApi()
-        ..writeReturnValue = 0
-        ..reportedWriteBytes = 2
-        ..errorCode = 5;
+      final api =
+          FakeWindowsMemoryApi()
+            ..writeReturnValue = 0
+            ..reportedWriteBytes = 2
+            ..errorCode = 5;
       final source = WindowsProcessMemoryDataSource.open(
         42,
         api: api.adapter,

@@ -12,7 +12,8 @@ class WindowsMemoryApi {
     Pointer<Uint8>,
     int,
     Pointer<Uint64>,
-  ) readProcessMemory;
+  )
+  readProcessMemory;
 
   /// Writes bytes to a target process.
   final int Function(
@@ -21,7 +22,8 @@ class WindowsMemoryApi {
     Pointer<Uint8>,
     int,
     Pointer<Uint64>,
-  ) writeProcessMemory;
+  )
+  writeProcessMemory;
 
   /// Closes a native process handle.
   final int Function(Pointer<Void>) closeHandle;
@@ -47,27 +49,52 @@ class WindowsMemoryApi {
     final kernel32 = DynamicLibrary.open('kernel32.dll');
     return WindowsMemoryApi(
       openProcess: kernel32.lookupFunction<
-          Pointer<Void> Function(Uint32, Int32, Uint32),
-          Pointer<Void> Function(int, int, int)>('OpenProcess'),
+        Pointer<Void> Function(Uint32, Int32, Uint32),
+        Pointer<Void> Function(int, int, int)
+      >('OpenProcess'),
       readProcessMemory: kernel32.lookupFunction<
-          Int32 Function(Pointer<Void>, Pointer<Void>, Pointer<Uint8>, Uint64,
-              Pointer<Uint64>),
-          int Function(Pointer<Void>, Pointer<Void>, Pointer<Uint8>, int,
-              Pointer<Uint64>)>('ReadProcessMemory'),
+        Int32 Function(
+          Pointer<Void>,
+          Pointer<Void>,
+          Pointer<Uint8>,
+          Uint64,
+          Pointer<Uint64>,
+        ),
+        int Function(
+          Pointer<Void>,
+          Pointer<Void>,
+          Pointer<Uint8>,
+          int,
+          Pointer<Uint64>,
+        )
+      >('ReadProcessMemory'),
       writeProcessMemory: kernel32.lookupFunction<
-          Int32 Function(Pointer<Void>, Pointer<Void>, Pointer<Uint8>, Uint64,
-              Pointer<Uint64>),
-          int Function(Pointer<Void>, Pointer<Void>, Pointer<Uint8>, int,
-              Pointer<Uint64>)>('WriteProcessMemory'),
-      closeHandle: kernel32.lookupFunction<Int32 Function(Pointer<Void>),
-          int Function(Pointer<Void>)>('CloseHandle'),
+        Int32 Function(
+          Pointer<Void>,
+          Pointer<Void>,
+          Pointer<Uint8>,
+          Uint64,
+          Pointer<Uint64>,
+        ),
+        int Function(
+          Pointer<Void>,
+          Pointer<Void>,
+          Pointer<Uint8>,
+          int,
+          Pointer<Uint64>,
+        )
+      >('WriteProcessMemory'),
+      closeHandle: kernel32.lookupFunction<
+        Int32 Function(Pointer<Void>),
+        int Function(Pointer<Void>)
+      >('CloseHandle'),
       getLastError: kernel32.lookupFunction<Uint32 Function(), int Function()>(
         'GetLastError',
       ),
-      getCurrentProcessId:
-          kernel32.lookupFunction<Uint32 Function(), int Function()>(
-        'GetCurrentProcessId',
-      ),
+      getCurrentProcessId: kernel32
+          .lookupFunction<Uint32 Function(), int Function()>(
+            'GetCurrentProcessId',
+          ),
     );
   }
 }

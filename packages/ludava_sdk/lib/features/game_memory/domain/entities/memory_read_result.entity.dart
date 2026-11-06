@@ -32,14 +32,13 @@ class MemoryReadResult {
     required int bytesRead,
     required int requestedBytes,
     int? errorCode,
-  }) =>
-      MemoryReadResult._(
-        status: status,
-        bytes: List.unmodifiable(bytes),
-        bytesRead: bytesRead,
-        requestedBytes: requestedBytes,
-        errorCode: errorCode,
-      );
+  }) => MemoryReadResult._(
+    status: status,
+    bytes: List.unmodifiable(bytes),
+    bytesRead: bytesRead,
+    requestedBytes: requestedBytes,
+    errorCode: errorCode,
+  );
 
   /// Whether the status, byte count, and buffer all describe a full read.
   bool get isComplete =>
