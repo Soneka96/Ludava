@@ -733,7 +733,7 @@ class _SessionFixture {
         detectionStatus,
       );
     },
-    readField: (selectedProfile, base, fieldId) {
+    readField: (processId, selectedProfile, base, fieldId) {
       readCalls++;
       if (readError case final error?) throw error;
       return GameReadResult(
@@ -742,7 +742,7 @@ class _SessionFixture {
         value: readStatus == GameReadStatus.success ? 100 : null,
       );
     },
-    writeField: (selectedProfile, base, fieldId, value, confirmed) {
+    writeField: (processId, selectedProfile, base, fieldId, value, confirmed) {
       writeCalls++;
       lastConfirmed = confirmed;
       if (writeError case final error?) throw error;

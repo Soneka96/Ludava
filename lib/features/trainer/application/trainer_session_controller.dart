@@ -25,12 +25,14 @@ class TrainerSessionController {
     )
     detectGame,
     required GameReadResult Function(
+      int processId,
       GameProfile profile,
       int memoryBase,
       String fieldId,
     )
     readField,
     required GameWriteResult Function(
+      int processId,
       GameProfile profile,
       int memoryBase,
       String fieldId,
@@ -63,12 +65,14 @@ class TrainerSessionController {
   )
   _detectGame;
   final GameReadResult Function(
+    int processId,
     GameProfile profile,
     int memoryBase,
     String fieldId,
   )
   _readField;
   final GameWriteResult Function(
+    int processId,
     GameProfile profile,
     int memoryBase,
     String fieldId,
@@ -168,7 +172,7 @@ class TrainerSessionController {
                 ? 'The current game memory base is unavailable.'
                 : null,
       );
-      _readAvailableFields(detection, candidate?.memoryBase);
+      _readAvailableFields(processId, detection, candidate?.memoryBase);
       return true;
     } catch (error) {
       _state = TrainerSessionState(
@@ -237,7 +241,7 @@ class TrainerSessionController {
         _state = _withError('The current game memory base is unavailable.');
         return;
       }
-      _readAvailableFields(detection, base);
+      _readAvailableFields(processId, detection, base);
     } catch (error) {
       _state = _withError(error.toString());
     }
@@ -337,7 +341,14 @@ class TrainerSessionController {
     }
 
     try {
-      final result = _writeField(profile, base, fieldId, value, true);
+      final result = _writeField(
+        processId,
+        profile,
+        base,
+        fieldId,
+        value,
+        true,
+      );
       final reads = Map<String, GameReadResult>.of(_state.readResults)
         ..remove(fieldId);
       if (result.succeeded) {
@@ -359,7 +370,11 @@ class TrainerSessionController {
     }
   }
 
-  void _readAvailableFields(GameDetectionResult detection, int? memoryBase) {
+  void _readAvailableFields(
+    int processId,
+    GameDetectionResult detection,
+    int? memoryBase,
+  ) {
     final profile = detection.profile;
     if (profile == null || memoryBase == null || !profile.canRead) return;
     final results = <String, GameReadResult>{};
@@ -367,7 +382,12 @@ class TrainerSessionController {
     for (final field in profile.fields.values) {
       if (!field.canRead) continue;
       try {
-        results[field.id] = _readField(profile, memoryBase, field.id);
+        results[field.id] = _readField(
+          processId,
+          profile,
+          memoryBase,
+          field.id,
+        );
       } catch (error) {
         results[field.id] = GameReadResult(
           status: GameReadStatus.readFailed,

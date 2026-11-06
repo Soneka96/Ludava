@@ -3,6 +3,7 @@ import 'package:ludava/features/game_detection/domain/entities/game_detection_re
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/app/trainer_command_runner.dart';
+import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
 
@@ -24,6 +25,9 @@ class LudavaCli {
     )?
     detectGame,
     Rpcs3GameIdentityLogDataSource? gameIdentityLogDataSource,
+    bool? hasTerminal,
+    Future<void> Function(TrainerSessionController sessionController)?
+    runNocterm,
     TrainerCommandRunner? commandRunner,
   }) : _commandRunner =
            commandRunner ??
@@ -37,6 +41,8 @@ class LudavaCli {
              resolveMemoryBaseCandidate: resolveMemoryBaseCandidate,
              detectGame: detectGame,
              gameIdentityLogDataSource: gameIdentityLogDataSource,
+             hasTerminal: hasTerminal,
+             runNocterm: runNocterm,
            );
 
   final TrainerCommandRunner _commandRunner;
@@ -47,4 +53,15 @@ class LudavaCli {
     StringSink? output,
     StringSink? errorOutput,
   }) => _commandRunner.run(arguments, output: output, errorOutput: errorOutput);
+
+  /// Runs diagnostic commands or launches Nocterm for the default invocation.
+  Future<int> runAsync(
+    List<String> arguments, {
+    StringSink? output,
+    StringSink? errorOutput,
+  }) => _commandRunner.runAsync(
+    arguments,
+    output: output,
+    errorOutput: errorOutput,
+  );
 }

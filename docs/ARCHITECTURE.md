@@ -6,7 +6,7 @@ This document defines the target architecture for new and materially changed cod
 
 Ludava separates the game catalog, RPCS3 connection, game detection, game memory, and trainer experience. A game or build is profile data in `game_catalog`, not a separate feature. Adding a supported game adds its researched profile and fields with their actual evidence status; it reuses the existing detection and read/write workflows. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
 
-Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires explicit confirmation and matching read-back.
+Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires a deliberate user action and matching read-back. The interactive TUI applies on Enter; diagnostic writes require `--confirm-write`.
 
 | Feature | Owns |
 | --- | --- |
@@ -14,7 +14,7 @@ Keep game-specific offsets, value types, endianness, write bounds, and evidence 
 | `rpcs3_connection` | RPCS3 process discovery and metadata, raw RPCS3 log reading, and session memory-base resolution. |
 | `game_detection` | Semantic interpretation of current-session log events, detection outcomes, and profile matching. |
 | `game_memory` | Generic address resolution, value encoding/decoding, checked reads and writes, and memory safety policy. |
-| `trainer` | Interactive and diagnostic command presentation plus current write-target revalidation. |
+| `trainer` | Nocterm and diagnostic command presentation plus current write-target revalidation. |
 
 The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU loads and process-finished events into identity evidence, then deciding whether that evidence selects a supported profile, belongs to `game_detection`.
 
@@ -99,7 +99,7 @@ Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources.
 2. Preserve 64-bit host addresses and validate the complete requested memory range.
 3. Require native success and the exact byte count before decoding or reporting a value.
 4. A failed read is never reported as numeric zero.
-5. A write requires a research-confirmed or verified field, a valid value range, a deliberate request, a complete native transfer, and a matching read-back. Live-game validation is required before claiming Ludava compatibility.
+5. A write requires a research-confirmed or verified field, a valid value range, a deliberate user action, a complete native transfer, and a matching read-back. The TUI uses Enter to apply; diagnostic commands require `--confirm-write`. Live-game validation is required before claiming Ludava compatibility.
 6. Surface process and native errors; do not silently retry writes.
 
 ## Compatibility evidence
@@ -110,6 +110,6 @@ Compatibility is recorded per exact game/build and capability. Keep experimental
 
 The implementation uses the features listed above. `game_memory` contains generic read/write use cases and Windows process-memory access. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
 
-The `game_detection` log data source preserves ordered PPU-load and process-finished events in addition to historical title, serial, and path values. The detection workflow evaluates fresh logs for the selected process and refuses automatic matching when multiple RPCS3 processes share a log directory, multiple fresh logs conflict, or evidence is incomplete. A stop event or the measured Collection EBOOT hash cannot select an RC profile. Memory-base resolution requires agreement across fresh candidate logs and runs after game detection. Automatic reads and writes recheck process session, identity, and base; failed refresh reads clear the displayed value. The interactive CLI does not poll continuously, and manual profile selection remains disclosed and read-only.
+The `game_detection` log data source preserves ordered PPU-load and process-finished events in addition to historical title, serial, and path values. The detection workflow evaluates fresh logs for the selected process and refuses automatic matching when multiple RPCS3 processes share a log directory, multiple fresh logs conflict, or evidence is incomplete. A stop event or the measured Collection EBOOT hash cannot select an RC profile. Memory-base resolution requires agreement across fresh candidate logs and runs after game detection. Automatic reads and writes recheck process session, identity, and base; failed refresh reads clear the displayed value. The Nocterm TUI does not poll continuously. Diagnostic reads may specify a profile without current identity evidence and remain labeled unverified.
 
-The owner measured distinct Collection EBOOT, RC1, RC2, and RC3 PPU hashes and lifecycle transitions in RPCS3 `0.0.43-20565-eee3f0f7`. The observed base was `0x300000000` in two process sessions. The final compiled CLI was live-smoke-tested with RC2: it matched the profile and base and read `0`, which does not prove gameplay was active. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing; the records do not map each game to each device or identify the exact RPCS3 build for that confirmation. Other RPCS3 builds remain unverified. The shared write use case still requires a complete valid preliminary field read, deliberate confirmation, a complete native transfer, and matching read-back.
+The owner measured distinct Collection EBOOT, RC1, RC2, and RC3 PPU hashes and lifecycle transitions in RPCS3 `0.0.43-20565-eee3f0f7`. The observed base was `0x300000000` in two process sessions. The final compiled CLI was live-smoke-tested with RC2: it matched the profile and base and read `0`, which does not prove gameplay was active. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing; the records do not map each game to each device or identify the exact RPCS3 build for that confirmation. Other RPCS3 builds remain unverified. The shared write use case still requires a complete valid preliminary field read, a deliberate user action, a complete native transfer, and matching read-back.

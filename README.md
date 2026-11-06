@@ -1,12 +1,12 @@
 # Ludava
 
-> A Windows game-memory trainer with an interactive, profile-driven PS3 Collection bolt CLI.
+> A Windows game-memory trainer with a keyboard-driven Nocterm interface for the PS3 Collection.
 
 **Status:** The owner tested bolt reading and writing in Ludava for all three Collection games on November 5, 2026. A separate live RPCS3 log experiment measured distinct PPU hashes for the Collection menu and RC1/RC2/RC3 on RPCS3 `0.0.43-20565-eee3f0f7`. The final compiled CLI was live-smoke-tested with RC2: it matched the profile, resolved the session base, and read `0` (which does not prove gameplay was active). The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during testing on a Windows laptop and a ROG Ally. The records do not map each game to each device or identify the exact RPCS3 build for that later confirmation; compatibility with other builds remains unverified.
 
 ## Start here
 
-Start the interactive trainer in a Windows terminal:
+Launch the Nocterm trainer in a Windows terminal:
 
 ```powershell
 dart run bin/ludava.dart
@@ -15,13 +15,19 @@ dart run bin/ludava.dart
 Run `.\tool\build_windows.ps1` first to create the native process-discovery
 library used by `dart run` and the compiled executable.
 
-Ludava selects a single running RPCS3 process automatically or asks you to choose when multiple instances are found. For the measured Collection build, it identifies the current embedded game from the latest PPU load and stop events in a fresh process log. When identity is confirmed, it uses one unique guest memory base from that process session's log without asking you to confirm it. Ludava does not hardcode `0x300000000`.
+Use **↑/↓** to move through fields, **1–9** to select one, and **Enter** to
+open its value editor. In the editor, **Enter** applies a changed, valid value
+and shows the verified read-back; **Escape** cancels without writing. Use **R**
+to refresh, **G** to re-detect the game, and **Q** to quit. The editor starts
+with the current value ungrouped and its cursor at the end.
 
-The shared Collection title ID `BCUS98282` cannot distinguish RC1, RC2, and RC3 by itself. Ludava also matches the executable filename and measured PPU hash. A stop, menu executable, unknown hash, conflicting log, or unclear process ownership leaves the game unresolved and does not load a trainer. Manual profile selection is clearly marked unverified and allows read-only inspection. Automatic refresh reads and writes require a fresh matching process session, PPU hash, profile, and base; a stale read clears the displayed value, and writes also require preliminary read and read-back verification.
+Ludava selects a single running RPCS3 process automatically. If multiple processes are found, choose one with **↑/↓**, **1–9**, and **Enter**. For the measured Collection build, it identifies the current embedded game from the latest PPU load and stop events in a fresh process log. When identity is confirmed, it uses one unique guest memory base from that process session's log without asking you to confirm it. Ludava does not hardcode `0x300000000`.
 
-Start a supported Collection game, then launch Ludava. When the identity is confirmed, the trainer opens the matching profile. The **Re-detect game** action clears the displayed field value and checks identity again. A detected unsupported title has no trainer profile.
+The shared Collection title ID `BCUS98282` cannot distinguish RC1, RC2, and RC3 by itself. Ludava also matches the executable filename and measured PPU hash. A stop, menu executable, unknown hash, conflicting log, or unclear process ownership leaves the game unresolved and does not load a trainer. Automatic refresh reads and writes require a fresh matching process session, PPU hash, profile, and base; a stale read clears the displayed value, and writes also require a complete preliminary read and matching read-back. Interactive writes apply directly after Enter without an extra confirmation dialog; diagnostic writes still require `--confirm-write`.
 
-If bolts are unavailable, start the selected Collection game in RPCS3 and refresh. If the game is already running, check Connection Details for the selected process and memory base.
+Start a supported Collection game, then launch Ludava. When the identity is confirmed, the trainer opens the matching profile. Press **G** to clear displayed values and check identity again. A detected unsupported title has no trainer profile.
+
+If bolts are unavailable, start the selected Collection game in RPCS3 and press **R**. If the game is already running, check the on-screen status for identity or memory-base errors.
 
 Each Collection profile stores a separate big-endian unsigned 32-bit bolt offset: RC1 `0x009BC3A0`, RC2 `0x01329E80`, RC3 `0x00C1EDAC`. These offsets are not interchangeable with the standalone PS3 game profiles.
 

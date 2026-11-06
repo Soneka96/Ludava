@@ -25,7 +25,10 @@ import 'package:ludava/features/trainer/presentation/cli/diagnostic_argument_par
 import 'package:ludava/features/trainer/presentation/cli/diagnostic_arguments.dart';
 import 'package:ludava/features/trainer/presentation/cli/game_memory_output.dart';
 import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli.dart';
+import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
+import 'package:ludava/features/trainer/presentation/nocterm/trainer_session_component.dart';
 import 'package:ludava/shared/constants/enums.dart';
+import 'package:nocterm/nocterm.dart' show runApp, shutdownApp;
 
 /// Runs interactive and diagnostic trainer commands.
 class TrainerCommandRunner {
@@ -45,9 +48,14 @@ class TrainerCommandRunner {
     )?
     detectGame,
     Rpcs3GameIdentityLogDataSource? gameIdentityLogDataSource,
+    bool? hasTerminal,
+    Future<void> Function(TrainerSessionController sessionController)?
+    runNocterm,
   }) : _api = api,
        _isWindows = isWindows,
        _pointerSize = pointerSize,
+       _hasTerminal = hasTerminal,
+       _runNocterm = runNocterm,
        _interactiveCli = interactiveCli,
        _discoverProcessIds = discoverProcessIds,
        _readProcessMetadata = readProcessMetadata,
@@ -58,6 +66,9 @@ class TrainerCommandRunner {
   final WindowsMemoryApi? _api;
   final bool? _isWindows;
   final int? _pointerSize;
+  final bool? _hasTerminal;
+  final Future<void> Function(TrainerSessionController sessionController)?
+  _runNocterm;
   final InteractiveTrainerCli? _interactiveCli;
   final List<int> Function()? _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId)? _readProcessMetadata;
@@ -291,6 +302,30 @@ class TrainerCommandRunner {
     return exitCode;
   }
 
+  /// Runs diagnostic commands or starts the Nocterm app for no arguments.
+  Future<int> runAsync(
+    List<String> arguments, {
+    StringSink? output,
+    StringSink? errorOutput,
+  }) async {
+    if (arguments.isNotEmpty) {
+      return run(arguments, output: output, errorOutput: errorOutput);
+    }
+    final stderrSink = errorOutput ?? stderr;
+    if (!(_hasTerminal ?? (stdin.hasTerminal && stdout.hasTerminal))) {
+      stderrSink.writeln('Interactive mode requires a terminal.');
+      return 2;
+    }
+    try {
+      final sessionController = _createTrainerSessionController();
+      await (_runNocterm ?? _runNoctermTrainer)(sessionController);
+      return 0;
+    } catch (error) {
+      stderrSink.writeln('Nocterm could not start: $error');
+      return 1;
+    }
+  }
+
   InteractiveTrainerCli _createInteractiveCli() => InteractiveTrainerCli(
     discoverProcessIds: _findRpcs3ProcessIds,
     readProcessMetadata: _readMetadata,
@@ -301,6 +336,85 @@ class TrainerCommandRunner {
             run(arguments, output: output, errorOutput: errorOutput),
     clearScreen: WindowsConsoleDataSource().clearScreen,
   );
+
+  Future<void> _runNoctermTrainer(
+    TrainerSessionController sessionController,
+  ) async {
+    await runApp(
+      TrainerSessionComponent(
+        sessionController: sessionController,
+        onQuit: shutdownApp,
+      ),
+      enableHotReload: false,
+    );
+  }
+
+  TrainerSessionController _createTrainerSessionController() =>
+      TrainerSessionController(
+        discoverProcessIds: _findRpcs3ProcessIds,
+        readProcessMetadata: _readMetadata,
+        resolveMemoryBaseCandidate: _resolveBaseCandidate,
+        detectGame: _detectCurrentGame,
+        readField: _readTrainerField,
+        writeField: _writeTrainerField,
+      );
+
+  GameReadResult _readTrainerField(
+    int processId,
+    GameProfile profile,
+    int memoryBase,
+    String fieldId,
+  ) {
+    WindowsProcessMemoryDataSource? dataSource;
+    try {
+      dataSource = WindowsProcessMemoryDataSource.open(
+        processId,
+        api: _api,
+        isWindows: _isWindows,
+        pointerSize: _pointerSize,
+      );
+      return ReadGameFieldUseCase(GameMemoryRepository(dataSource)).execute(
+        ReadGameFieldParams(
+          profile: profile,
+          fieldId: fieldId,
+          memoryBase: memoryBase,
+        ),
+      );
+    } finally {
+      dataSource?.close();
+    }
+  }
+
+  GameWriteResult _writeTrainerField(
+    int processId,
+    GameProfile profile,
+    int memoryBase,
+    String fieldId,
+    int value,
+    bool confirmed,
+  ) {
+    WindowsProcessMemoryDataSource? dataSource;
+    try {
+      dataSource = WindowsProcessMemoryDataSource.open(
+        processId,
+        api: _api,
+        isWindows: _isWindows,
+        pointerSize: _pointerSize,
+        allowWrites: true,
+      );
+      return WriteGameFieldUseCase(GameMemoryRepository(dataSource)).execute(
+        WriteGameFieldParams(
+          profile: profile,
+          fieldId: fieldId,
+          memoryBase: memoryBase,
+          value: value,
+          confirmed: confirmed,
+        ),
+      );
+    } finally {
+      dataSource?.close();
+    }
+  }
 
   List<int> _findRpcs3ProcessIds() =>
       _discoverProcessIds?.call() ??
