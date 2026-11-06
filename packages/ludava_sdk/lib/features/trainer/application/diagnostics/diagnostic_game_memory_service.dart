@@ -60,9 +60,18 @@ class DiagnosticGameMemoryService {
   )?
   _detectGame;
   final Rpcs3GameIdentityLogDataSource? _gameIdentityLogDataSource;
+  bool _disposed = false;
+  Future<void>? _disposeFuture;
+
+  /// Stops this service from executing further diagnostic operations.
+  Future<void> dispose() {
+    _disposed = true;
+    return _disposeFuture ??= Future<void>.value();
+  }
 
   /// Executes [request] and returns typed identity, memory, and cleanup results.
   DiagnosticGameMemoryResult execute(DiagnosticGameMemoryRequest request) {
+    _ensureActive();
     final action = request.action;
     if (action != GameMemoryAction.read && action != GameMemoryAction.write) {
       return const DiagnosticGameMemoryResult(
@@ -106,6 +115,7 @@ class DiagnosticGameMemoryService {
       if (_findRpcs3ProcessIds().contains(request.processId)) {
         metadata = _readMetadata(request.processId);
         final identity = _detectCurrentGame(request.processId, metadata);
+        _ensureActive();
         identityConfirmed = _identityMatchesProfile(
           identity,
           request.processId,
@@ -113,6 +123,7 @@ class DiagnosticGameMemoryService {
         );
       }
     } on Exception catch (error) {
+      if (_disposed) rethrow;
       if (isWrite) {
         return DiagnosticGameMemoryResult(
           status: DiagnosticGameMemoryStatus.identityCheckFailed,
@@ -121,6 +132,7 @@ class DiagnosticGameMemoryService {
         );
       }
     } on UnsupportedError catch (error) {
+      if (_disposed) rethrow;
       if (isWrite) {
         return DiagnosticGameMemoryResult(
           status: DiagnosticGameMemoryStatus.identityCheckFailed,
@@ -129,6 +141,7 @@ class DiagnosticGameMemoryService {
         );
       }
     }
+    _ensureActive();
 
     if ((isWrite || request.requireCurrentIdentity) && !identityConfirmed) {
       return DiagnosticGameMemoryResult(
@@ -139,6 +152,7 @@ class DiagnosticGameMemoryService {
 
     if (isWrite) {
       final baseResult = _validateCurrentMemoryBase(metadata, request);
+      _ensureActive();
       if (baseResult != null) {
         return DiagnosticGameMemoryResult(
           status: baseResult.status,
@@ -149,6 +163,7 @@ class DiagnosticGameMemoryService {
       }
     }
 
+    _ensureActive();
     GameReadResult? readResult;
     GameWriteResult? writeResult;
     final operation =
@@ -258,11 +273,13 @@ class DiagnosticGameMemoryService {
     try {
       if (metadata != null) currentBase = _resolveBaseCandidate(metadata);
     } on Exception catch (error) {
+      if (_disposed) rethrow;
       return DiagnosticGameMemoryResult(
         status: DiagnosticGameMemoryStatus.memoryBaseCheckFailed,
         error: error,
       );
     } on UnsupportedError catch (error) {
+      if (_disposed) rethrow;
       return DiagnosticGameMemoryResult(
         status: DiagnosticGameMemoryStatus.memoryBaseCheckFailed,
         error: error,
@@ -277,29 +294,37 @@ class DiagnosticGameMemoryService {
   }
 
   /// Uses the injected discovery seam or the Windows process adapter.
-  List<int> _findRpcs3ProcessIds() =>
-      _discoverProcessIds?.call() ??
-      WindowsProcessDiscoveryDataSource().findRpcs3ProcessIds();
+  List<int> _findRpcs3ProcessIds() {
+    _ensureActive();
+    return _discoverProcessIds?.call() ??
+        WindowsProcessDiscoveryDataSource().findRpcs3ProcessIds();
+  }
 
   /// Uses the injected metadata seam or the Windows metadata adapter.
-  Rpcs3ProcessMetadata _readMetadata(int processId) =>
-      _readProcessMetadata?.call(processId) ??
-      WindowsProcessMetadataDataSource().read(processId);
+  Rpcs3ProcessMetadata _readMetadata(int processId) {
+    _ensureActive();
+    return _readProcessMetadata?.call(processId) ??
+        WindowsProcessMetadataDataSource().read(processId);
+  }
 
   /// Resolves the current session base through its injected or native adapter.
   Rpcs3MemoryBaseCandidate? _resolveBaseCandidate(
     Rpcs3ProcessMetadata processMetadata,
-  ) =>
-      _resolveMemoryBaseCandidate?.call(processMetadata) ??
-      Rpcs3MemoryBaseResolverDataSource().resolveCandidate(processMetadata);
+  ) {
+    _ensureActive();
+    return _resolveMemoryBaseCandidate?.call(processMetadata) ??
+        Rpcs3MemoryBaseResolverDataSource().resolveCandidate(processMetadata);
+  }
 
   /// Uses injected detection behavior or the configured RPCS3 workflow.
   GameDetectionResult _detectCurrentGame(
     int processId,
     Rpcs3ProcessMetadata processMetadata,
-  ) =>
-      _detectGame?.call(processId, processMetadata) ??
-      _detectGameFromLog(processId, processMetadata);
+  ) {
+    _ensureActive();
+    return _detectGame?.call(processId, processMetadata) ??
+        _detectGameFromLog(processId, processMetadata);
+  }
 
   /// Builds game detection from fresh RPCS3 process and log evidence.
   GameDetectionResult _detectGameFromLog(
@@ -327,4 +352,11 @@ class DiagnosticGameMemoryService {
       profile.executableHash != null &&
       identity?.executableHash?.toLowerCase() ==
           profile.executableHash!.toLowerCase();
+
+  /// Rejects diagnostic execution once this service's disposal has started.
+  void _ensureActive() {
+    if (_disposed) {
+      throw StateError('This SDK capability has been disposed.');
+    }
+  }
 }

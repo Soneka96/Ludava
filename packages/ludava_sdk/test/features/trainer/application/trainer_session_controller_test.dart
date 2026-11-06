@@ -133,6 +133,101 @@ void main() {
       expect(completed, isTrue);
       await expectLater(fixture.controller.stateChanges, emitsDone);
     });
+
+    test(
+      'Method dispose() rejects session operations without collaborator calls',
+      () async {
+        final fixture = _SessionFixture()..controller.connect();
+        final snapshots = <TrainerSessionState>[];
+        final streamClosed = Completer<void>();
+        final subscription = fixture.controller.stateChanges.listen(
+          snapshots.add,
+          onDone: streamClosed.complete,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final initialSnapshot = fixture.controller.state;
+        final snapshotCount = snapshots.length;
+        final discoveryCalls = fixture.processDiscoveryCalls;
+        final metadataReads = fixture.metadataReads;
+        final detectionCalls = fixture.detectCalls;
+        final readCalls = fixture.readCalls;
+        final writeCalls = fixture.writeCalls;
+
+        final firstDisposal = fixture.controller.dispose();
+        final secondDisposal = fixture.controller.dispose();
+        expect(secondDisposal, same(firstDisposal));
+
+        expect(fixture.controller.connect, throwsStateError);
+        expect(() => fixture.controller.selectProcess(42), throwsStateError);
+        expect(
+          () => fixture.controller.selectManualProfile(fixture.profile),
+          throwsStateError,
+        );
+        expect(fixture.controller.refresh, throwsStateError);
+        expect(fixture.controller.redetect, throwsStateError);
+        expect(
+          () => fixture.controller.writeField('bolts', 101),
+          throwsStateError,
+        );
+        expect(fixture.controller.state, same(initialSnapshot));
+        expect(fixture.processDiscoveryCalls, discoveryCalls);
+        expect(fixture.metadataReads, metadataReads);
+        expect(fixture.detectCalls, detectionCalls);
+        expect(fixture.readCalls, readCalls);
+        expect(fixture.writeCalls, writeCalls);
+        expect(snapshots, hasLength(snapshotCount));
+
+        await firstDisposal;
+        await streamClosed.future.timeout(const Duration(seconds: 1));
+        await subscription.cancel();
+        await expectLater(fixture.controller.stateChanges, emitsDone);
+      },
+    );
+
+    test(
+      'Method dispose() stops connect after discovery disposes the session',
+      () async {
+        final fixture = _SessionFixture();
+        final controller = fixture.controller;
+        Future<void>? disposal;
+        fixture.onDiscovery = () => disposal = controller.dispose();
+        final initialState = controller.state;
+
+        expect(controller.connect, throwsStateError);
+        expect(fixture.processDiscoveryCalls, 1);
+        expect(fixture.metadataReads, 0);
+        expect(fixture.detectCalls, 0);
+        expect(fixture.readCalls, 0);
+        expect(fixture.writeCalls, 0);
+        expect(controller.state, same(initialState));
+
+        expect(disposal, isNotNull);
+        await disposal!;
+      },
+    );
+
+    test(
+      'Method dispose() stops write validation after discovery disposes the session',
+      () async {
+        final fixture = _SessionFixture()..controller.connect();
+        final controller = fixture.controller;
+        Future<void>? disposal;
+        final metadataReads = fixture.metadataReads;
+        final detectionCalls = fixture.detectCalls;
+        final readCalls = fixture.readCalls;
+        final writeCalls = fixture.writeCalls;
+        fixture.onDiscovery = () => disposal = controller.dispose();
+
+        expect(() => controller.writeField('bolts', 101), throwsStateError);
+        expect(fixture.metadataReads, metadataReads);
+        expect(fixture.detectCalls, detectionCalls);
+        expect(fixture.readCalls, readCalls);
+        expect(fixture.writeCalls, writeCalls);
+
+        expect(disposal, isNotNull);
+        await disposal!;
+      },
+    );
   });
 
   group('Method connect() behaves correctly', () {
@@ -965,14 +1060,18 @@ class _SessionFixture {
   String? readErrorFieldId;
   Object? writeError;
   int? detectionProcessId;
+  void Function()? onDiscovery;
   int metadataReads = 0;
+  int processDiscoveryCalls = 0;
   int detectCalls = 0;
   int readCalls = 0;
   int writeCalls = 0;
   bool? lastConfirmed;
   late final TrainerSessionController controller = TrainerSessionController(
     discoverProcessIds: () {
+      processDiscoveryCalls++;
       if (discoveryError case final error?) throw error;
+      onDiscovery?.call();
       return processIds;
     },
     readProcessMetadata: (processId) {

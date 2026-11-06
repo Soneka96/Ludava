@@ -580,6 +580,98 @@ void main() {
       expect(result.error, isA<UnsupportedError>());
     });
   });
+
+  group('Method dispose() behaves correctly', () {
+    test(
+      'Method dispose() rejects execution before any collaborator or memory call',
+      () async {
+        var discoveryCalls = 0;
+        var metadataCalls = 0;
+        var detectionCalls = 0;
+        var baseResolutionCalls = 0;
+        final api = FakeWindowsMemoryApi();
+        final service = DiagnosticGameMemoryService(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () {
+            discoveryCalls++;
+            return const [42];
+          },
+          readProcessMetadata: (_) {
+            metadataCalls++;
+            return _metadata;
+          },
+          detectGame: (_, __) {
+            detectionCalls++;
+            return _confirmedIdentity;
+          },
+          resolveMemoryBaseCandidate: (_) {
+            baseResolutionCalls++;
+            return const Rpcs3MemoryBaseCandidate(
+              memoryBase: 0x300000000,
+              logPath: r'C:\RPCS3\log\RPCS3.log',
+            );
+          },
+        );
+
+        final firstDisposal = service.dispose();
+        var disposalCompleted = false;
+        firstDisposal.then((_) => disposalCompleted = true);
+        final secondDisposal = service.dispose();
+        expect(secondDisposal, same(firstDisposal));
+        expect(disposalCompleted, isFalse);
+        expect(() => service.execute(_readRequest()), throwsStateError);
+        expect(discoveryCalls, 0);
+        expect(metadataCalls, 0);
+        expect(detectionCalls, 0);
+        expect(baseResolutionCalls, 0);
+        expect(api.openCalls, 0);
+        expect(api.readCalls, 0);
+        expect(api.writeCalls, 0);
+
+        await firstDisposal;
+      },
+    );
+
+    test(
+      'Method dispose() stops identity checks when discovery disposes the service',
+      () async {
+        late DiagnosticGameMemoryService service;
+        Future<void>? disposal;
+        var metadataCalls = 0;
+        var detectionCalls = 0;
+        final api = FakeWindowsMemoryApi();
+        service = DiagnosticGameMemoryService(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () {
+            disposal = service.dispose();
+            return const [42];
+          },
+          readProcessMetadata: (_) {
+            metadataCalls++;
+            return _metadata;
+          },
+          detectGame: (_, __) {
+            detectionCalls++;
+            return _confirmedIdentity;
+          },
+        );
+
+        expect(() => service.execute(_readRequest()), throwsStateError);
+        expect(metadataCalls, 0);
+        expect(detectionCalls, 0);
+        expect(api.openCalls, 0);
+        expect(api.readCalls, 0);
+        expect(api.writeCalls, 0);
+
+        expect(disposal, isNotNull);
+        await disposal!;
+      },
+    );
+  });
 }
 
 final _metadata = Rpcs3ProcessMetadata(

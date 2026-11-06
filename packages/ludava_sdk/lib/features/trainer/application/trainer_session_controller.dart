@@ -47,18 +47,20 @@ class TrainerSessionController {
        _resolveMemoryBaseCandidate = resolveMemoryBaseCandidate,
        _detectGame = detectGame,
        _readField = readField,
-       _writeField = writeField,
-       _writeValidator = TrainerWriteValidator(
-         discoverProcessIds: discoverProcessIds,
-         readProcessMetadata: readProcessMetadata,
-         resolveMemoryBaseCandidate: resolveMemoryBaseCandidate,
-         detectGame: detectGame,
-       );
+       _writeField = writeField {
+    _writeValidator = TrainerWriteValidator(
+      discoverProcessIds: _discoverForWriteValidation,
+      readProcessMetadata: _readMetadataForWriteValidation,
+      resolveMemoryBaseCandidate: _resolveBaseForWriteValidation,
+      detectGame: _detectForWriteValidation,
+    );
+  }
 
   TrainerSessionState _state = TrainerSessionState();
   final StreamController<TrainerSessionState> _stateChanges =
       StreamController<TrainerSessionState>.broadcast(sync: true);
   bool _disposed = false;
+  Future<void>? _disposeFuture;
 
   final List<int> Function() _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId) _readProcessMetadata;
@@ -85,12 +87,12 @@ class TrainerSessionController {
     bool confirmed,
   )
   _writeField;
-  final TrainerWriteValidator _writeValidator;
+  late final TrainerWriteValidator _writeValidator;
 
   /// Current immutable session state for a presentation to render.
   TrainerSessionState get state => _state;
 
-  /// Emits the current snapshot to each subscriber, then subsequent changes.
+  /// Emits the current snapshot, then changes; after disposal new listeners close.
   Stream<TrainerSessionState> get stateChanges =>
       Stream<TrainerSessionState>.multi((subscriber) {
         if (_disposed) {
@@ -107,29 +109,36 @@ class TrainerSessionController {
       }, isBroadcast: true);
 
   /// Stops state notifications and releases the controller's stream resources.
-  Future<void> dispose() async {
-    if (_disposed) return;
+  Future<void> dispose() {
+    final currentDisposal = _disposeFuture;
+    if (currentDisposal != null) return currentDisposal;
     _disposed = true;
-    await _stateChanges.close();
+    return _disposeFuture = _stateChanges.close();
   }
 
   /// Discovers RPCS3 and automatically selects it when exactly one is found.
   void connect() {
+    _ensureActive();
     try {
       final processIds = _discoverProcessIds();
+      _ensureActive();
       _publish(TrainerSessionState(processIds: processIds));
       if (processIds.length == 1) selectProcess(processIds.single);
     } catch (error) {
+      if (_disposed) rethrow;
       _publish(TrainerSessionState(errorMessage: error.toString()));
     }
   }
 
   /// Selects [processId], then detects its current game and reads available fields.
   bool selectProcess(int processId) {
+    _ensureActive();
     if (!_state.processIds.contains(processId)) return false;
     try {
       final metadata = _readProcessMetadata(processId);
+      _ensureActive();
       final detection = _detectGame(processId, metadata);
+      _ensureActive();
       if (detection.processId != processId) {
         _publish(
           TrainerSessionState(
@@ -147,6 +156,7 @@ class TrainerSessionController {
         return false;
       }
       final base = _baseFor(detection, metadata);
+      _ensureActive();
       _publish(
         TrainerSessionState(
           processIds: _state.processIds,
@@ -167,6 +177,7 @@ class TrainerSessionController {
       }
       return true;
     } catch (error) {
+      if (_disposed) rethrow;
       _publish(
         TrainerSessionState(
           processIds: _state.processIds,
@@ -180,11 +191,13 @@ class TrainerSessionController {
 
   /// Selects [profile] for read-only inspection without claiming live identity.
   bool selectManualProfile(GameProfile profile) {
+    _ensureActive();
     final processId = _state.selectedProcessId;
     final metadata = _state.processMetadata;
     if (processId == null || metadata == null) return false;
     try {
       final candidate = _resolveMemoryBaseCandidate(metadata);
+      _ensureActive();
       final detection = GameDetectionResult(
         status: GameDetectionStatus.supportedGame,
         processId: processId,
@@ -212,6 +225,7 @@ class TrainerSessionController {
       _readAvailableFields(processId, detection, candidate?.memoryBase);
       return true;
     } catch (error) {
+      if (_disposed) rethrow;
       _publish(
         TrainerSessionState(
           processIds: _state.processIds,
@@ -226,6 +240,7 @@ class TrainerSessionController {
 
   /// Rechecks current process identity and base before refreshing field values.
   void refresh() {
+    _ensureActive();
     final processId = _state.selectedProcessId;
     final previousMetadata = _state.processMetadata;
     if (processId == null || previousMetadata == null) return;
@@ -233,6 +248,7 @@ class TrainerSessionController {
     var currentMetadata = previousMetadata;
     try {
       processIds = _discoverProcessIds();
+      _ensureActive();
       if (!processIds.contains(processId)) {
         _publish(
           TrainerSessionState(
@@ -248,6 +264,7 @@ class TrainerSessionController {
         return;
       }
       final metadata = _readProcessMetadata(processId);
+      _ensureActive();
       currentMetadata = metadata;
       if (metadata.startedAtUtc != previousMetadata.startedAtUtc) {
         _publish(
@@ -261,6 +278,7 @@ class TrainerSessionController {
         return;
       }
       final detection = _detectGame(processId, metadata);
+      _ensureActive();
       if (detection.processId != processId) {
         _publish(
           TrainerSessionState(
@@ -278,6 +296,7 @@ class TrainerSessionController {
         return;
       }
       final base = _baseFor(detection, metadata);
+      _ensureActive();
       _publish(
         TrainerSessionState(
           processIds: processIds,
@@ -294,6 +313,7 @@ class TrainerSessionController {
       }
       _readAvailableFields(processId, detection, base);
     } catch (error) {
+      if (_disposed) rethrow;
       _publish(
         TrainerSessionState(
           processIds: processIds,
@@ -310,6 +330,7 @@ class TrainerSessionController {
 
   /// Validates and writes [value], then exposes only verified read-back values.
   GameWriteResult writeField(String fieldId, int value) {
+    _ensureActive();
     final profile = _state.profile;
     final processId = _state.selectedProcessId;
     final metadata = _state.processMetadata;
@@ -380,7 +401,9 @@ class TrainerSessionController {
         selectedDetection: selectedDetection,
         selectedProcessStartedAtUtc: metadata.startedAtUtc,
       );
+      _ensureActive();
     } catch (error) {
+      if (_disposed) rethrow;
       return _rejectWrite(
         GameWriteStatus.unsupportedProfile,
         fieldId,
@@ -409,6 +432,7 @@ class TrainerSessionController {
         value,
         true,
       );
+      _ensureActive();
       final reads = Map<String, GameReadResult>.of(_state.readResults)
         ..remove(fieldId);
       if (result.succeeded) {
@@ -421,6 +445,7 @@ class TrainerSessionController {
       _publish(_copyState(readResults: reads, lastWriteResult: result));
       return result;
     } catch (error) {
+      if (_disposed) rethrow;
       return _rejectWrite(
         GameWriteStatus.writeFailed,
         fieldId,
@@ -442,6 +467,7 @@ class TrainerSessionController {
     final results = <String, GameReadResult>{};
     String? readError;
     for (final field in profile.fields.values) {
+      _ensureActive();
       if (!field.canRead) continue;
       try {
         results[field.id] = _readField(
@@ -450,7 +476,9 @@ class TrainerSessionController {
           memoryBase,
           field.id,
         );
+        _ensureActive();
       } catch (error) {
+        if (_disposed) rethrow;
         results[field.id] = GameReadResult(
           status: GameReadStatus.readFailed,
           fieldId: field.id,
@@ -542,7 +570,52 @@ class TrainerSessionController {
 
   /// Replaces the snapshot and notifies active state subscribers.
   void _publish(TrainerSessionState state) {
+    _ensureActive();
     _state = state;
-    if (!_disposed) _stateChanges.add(state);
+    _stateChanges.add(state);
+  }
+
+  /// Rejects operations once this session's terminal disposal has started.
+  void _ensureActive() {
+    if (_disposed) {
+      throw StateError('This SDK capability has been disposed.');
+    }
+  }
+
+  /// Guards process discovery between each write-validation collaborator call.
+  List<int> _discoverForWriteValidation() {
+    _ensureActive();
+    final processIds = _discoverProcessIds();
+    _ensureActive();
+    return processIds;
+  }
+
+  /// Guards process metadata lookup during write validation.
+  Rpcs3ProcessMetadata _readMetadataForWriteValidation(int processId) {
+    _ensureActive();
+    final metadata = _readProcessMetadata(processId);
+    _ensureActive();
+    return metadata;
+  }
+
+  /// Guards current-session base resolution during write validation.
+  Rpcs3MemoryBaseCandidate? _resolveBaseForWriteValidation(
+    Rpcs3ProcessMetadata processMetadata,
+  ) {
+    _ensureActive();
+    final memoryBase = _resolveMemoryBaseCandidate(processMetadata);
+    _ensureActive();
+    return memoryBase;
+  }
+
+  /// Guards game detection during write validation.
+  GameDetectionResult _detectForWriteValidation(
+    int processId,
+    Rpcs3ProcessMetadata processMetadata,
+  ) {
+    _ensureActive();
+    final detection = _detectGame(processId, processMetadata);
+    _ensureActive();
+    return detection;
   }
 }

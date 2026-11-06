@@ -65,7 +65,7 @@ class LudavaSdk {
   Future<void>? _disposeFuture;
 
   /// Stops this runtime's session notifications and releases owned resources.
-  Future<void> dispose() => _disposeFuture ??= session.dispose();
+  Future<void> dispose() => _disposeFuture ??= _disposeOwnedCapabilities();
 
   /// Creates the trainer session with RPCS3, detection, and memory capabilities.
   TrainerSessionController _createTrainerSessionController(
@@ -158,5 +158,12 @@ class LudavaSdk {
               (_gameIdentityLogDataSource ?? Rpcs3GameIdentityLogDataSource())
                   .readCandidates(metadata),
     ).detect;
+  }
+
+  /// Starts disposal on both owned capabilities before awaiting their cleanup.
+  Future<void> _disposeOwnedCapabilities() {
+    final sessionDisposal = session.dispose();
+    final diagnosticsDisposal = diagnostics.dispose();
+    return Future.wait<void>([sessionDisposal, diagnosticsDisposal]);
   }
 }

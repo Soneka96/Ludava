@@ -379,19 +379,129 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
 
   group('Method dispose() behaves correctly', () {
     test(
-      'Method dispose() closes session notifications once when called repeatedly',
+      'Method dispose() rejects retained capabilities as disposal starts',
       () async {
-        final sdk = LudavaSdk.create(discoverProcessIds: () => const []);
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 41];
+        final profile = GameProfileCatalog.find('rc2-collection')!;
+        var discoveryCalls = 0;
+        var metadataCalls = 0;
+        var detectionCalls = 0;
+        var baseResolutionCalls = 0;
+        final sdk = LudavaSdk.create(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () {
+            discoveryCalls++;
+            return const [42];
+          },
+          readProcessMetadata: (_) {
+            metadataCalls++;
+            return _metadata;
+          },
+          resolveMemoryBaseCandidate: (_) {
+            baseResolutionCalls++;
+            return const Rpcs3MemoryBaseCandidate(
+              memoryBase: 0x300000000,
+              logPath: r'C:\RPCS3\log\RPCS3.log',
+            );
+          },
+          detectGame: (_, __) {
+            detectionCalls++;
+            return _confirmedIdentity(profile);
+          },
+        );
+        final snapshots = <TrainerSessionState>[];
         final streamClosed = Completer<void>();
-        sdk.session.stateChanges.listen((_) {}, onDone: streamClosed.complete);
+        final subscription = sdk.session.stateChanges.listen(
+          snapshots.add,
+          onDone: streamClosed.complete,
+        );
+        sdk.session.connect();
+        await Future<void>.delayed(Duration.zero);
+        final finalState = sdk.session.state;
+        final snapshotCount = snapshots.length;
+        final readCalls = api.readCalls;
+        final writeCalls = api.writeCalls;
+        final initialDiscoveryCalls = discoveryCalls;
+        final initialMetadataCalls = metadataCalls;
+        final initialDetectionCalls = detectionCalls;
+        final initialBaseCalls = baseResolutionCalls;
 
+        final secondApi = FakeWindowsMemoryApi();
+        final secondRuntime = _createSdk(
+          secondApi,
+          currentIdentity: () => _confirmedIdentity(profile),
+        );
+
+        subscription.pause();
         final firstDisposal = sdk.dispose();
+        final pendingDisposal = sdk.dispose();
+        var disposalCompleted = false;
+        firstDisposal.then((_) => disposalCompleted = true);
         final secondDisposal = sdk.dispose();
         expect(secondDisposal, same(firstDisposal));
-        await firstDisposal;
+        expect(pendingDisposal, same(firstDisposal));
+        expect(disposalCompleted, isFalse);
 
+        expect(sdk.session.connect, throwsStateError);
+        expect(() => sdk.session.selectProcess(42), throwsStateError);
+        expect(
+          () => sdk.session.selectManualProfile(profile),
+          throwsStateError,
+        );
+        expect(sdk.session.refresh, throwsStateError);
+        expect(sdk.session.redetect, throwsStateError);
+        expect(() => sdk.session.writeField('bolts', 42), throwsStateError);
+        expect(
+          () => sdk.diagnostics.execute(
+            DiagnosticGameMemoryRequest(
+              gameId: profile.id,
+              fieldId: 'bolts',
+              processId: 42,
+              memoryBase: 0x300000000,
+              action: GameMemoryAction.read,
+            ),
+          ),
+          throwsStateError,
+        );
+        expect(sdk.session.state, same(finalState));
+        expect(snapshots, hasLength(snapshotCount));
+        expect(discoveryCalls, initialDiscoveryCalls);
+        expect(metadataCalls, initialMetadataCalls);
+        expect(detectionCalls, initialDetectionCalls);
+        expect(baseResolutionCalls, initialBaseCalls);
+        expect(api.readCalls, readCalls);
+        expect(api.writeCalls, writeCalls);
+
+        subscription.resume();
+        await firstDisposal;
         await streamClosed.future.timeout(const Duration(seconds: 1));
+        expect(sdk.session.state, same(finalState));
+        expect(snapshots, hasLength(snapshotCount));
+        await subscription.cancel();
         await expectLater(sdk.session.stateChanges, emitsDone);
+
+        secondRuntime.session.connect();
+        expect(secondRuntime.session.state.selectedProcessId, 42);
+        expect(
+          secondRuntime.session.state.readResults['bolts']?.value,
+          0x01020304,
+        );
+        final secondDiagnosticResult = secondRuntime.diagnostics.execute(
+          DiagnosticGameMemoryRequest(
+            gameId: profile.id,
+            fieldId: 'bolts',
+            processId: 42,
+            memoryBase: 0x300000000,
+            action: GameMemoryAction.read,
+          ),
+        );
+        expect(secondDiagnosticResult.succeeded, isTrue);
+        expect(secondDiagnosticResult.readResult?.value, 0x01020304);
+        expect(secondApi.readCalls, 2);
+        expect(secondApi.writeCalls, 0);
+        await secondRuntime.dispose();
       },
     );
   });
