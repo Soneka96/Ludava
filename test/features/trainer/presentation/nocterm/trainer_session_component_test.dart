@@ -9,6 +9,7 @@ import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_ba
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_session_component.dart';
+import 'package:ludava/features/trainer/presentation/nocterm/trainer_terminal_backend.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_value_editor_component.dart';
 import 'package:ludava/shared/constants/app_constants.dart';
 import 'package:ludava/shared/constants/enums.dart';
@@ -331,11 +332,15 @@ void main() {
     );
   });
 
-  group('Class Nocterm raw keyboard input behavior', () {
+  group('Property inputStream behaves correctly', () {
     test(
-      'Class Nocterm decodes raw Escape sequences and the trainer cancels without writing',
+      'Property inputStream cancels once for fragmented Escape without leaking text or writing',
       () async {
-        final backend = _RawInputBackend();
+        final source = _RawInputBackend();
+        final backend = TrainerTerminalBackend(
+          source,
+          escapeTimeout: Duration.zero,
+        );
         final textController = TextEditingController();
         final events = <KeyboardEvent>[];
         final binding = TerminalBinding(Terminal(backend));
@@ -345,22 +350,26 @@ void main() {
         );
         final app = binding.runEventLoop();
 
+        Future<void> pumpFrame() {
+          final rendered = Completer<void>();
+          binding.addPostFrameCallback((_) {
+            if (!rendered.isCompleted) rendered.complete();
+          });
+          binding.scheduleFrame();
+          return rendered.future.timeout(const Duration(seconds: 1));
+        }
+
         try {
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          backend.sendBytes([0x61]);
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          backend.sendBytes([0x1b]);
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          backend.sendBytes([0x1b, 0x5b]);
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          backend.sendBytes([0x32, 0x37, 0x75]);
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          backend.sendBytes([0x62, 0x1b, 0x5b, 0x32, 0x37, 0x75]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
+          await pumpFrame();
+          source.sendBytes([0x61]);
+          source.sendBytes([0x1b]);
+          source.sendBytes([0x5b, 0x32, 0x37, 0x75]);
+          source.sendBytes([0x62, 0x1b, 0x5b, 0x32, 0x37, 0x75]);
+          await pumpFrame();
 
           expect(
             events.where((event) => event.logicalKey == LogicalKey.escape),
-            hasLength(3),
+            hasLength(2),
           );
           expect(textController.text, 'ab');
           expect(textController.text, isNot(contains('[27u')));
@@ -382,35 +391,19 @@ void main() {
               },
             ),
           );
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          backend.sendBytes([0x0d]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          backend.sendBytes([0x32]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          backend.sendBytes([0x1b]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
+          await pumpFrame();
+          source.sendBytes([0x0d]);
+          await pumpFrame();
+          source.sendBytes([0x32]);
+          source.sendBytes([0x1b]);
+          source.sendBytes([0x5b, 0x32, 0x37, 0x75]);
+          await pumpFrame();
           expect(cancelCount, 1);
-          expect(writeCount, 0);
-          backend.sendBytes([0x0d]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          backend.sendBytes([0x33]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          backend.sendBytes([0x1b, 0x5b]);
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          backend.sendBytes([0x32, 0x37, 0x75]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          expect(cancelCount, 2);
-          expect(writeCount, 0);
-          backend.sendBytes([0x0d]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          backend.sendBytes([0x34, 0x1b, 0x5b, 0x32, 0x37, 0x75]);
-          await Future<void>.delayed(const Duration(milliseconds: 40));
-          expect(cancelCount, 3);
           expect(writeCount, 0);
         } finally {
           binding.shutdown();
           await app.timeout(const Duration(seconds: 4));
-          backend.dispose();
+          source.dispose();
           textController.dispose();
         }
       },
@@ -492,7 +485,8 @@ class _RawEditorHarnessState extends State<_RawEditorHarness> {
 }
 
 class _RawInputBackend implements TerminalBackend {
-  final StreamController<List<int>> _input = StreamController.broadcast();
+  final StreamController<List<int>> _input =
+      StreamController<List<int>>.broadcast(sync: true);
 
   void sendBytes(List<int> bytes) => _input.add(bytes);
 

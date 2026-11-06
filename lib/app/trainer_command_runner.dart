@@ -27,8 +27,9 @@ import 'package:ludava/features/trainer/presentation/cli/game_memory_output.dart
 import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli.dart';
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_session_component.dart';
+import 'package:ludava/features/trainer/presentation/nocterm/trainer_terminal_backend.dart';
 import 'package:ludava/shared/constants/enums.dart';
-import 'package:nocterm/nocterm.dart' show runApp, shutdownApp;
+import 'package:nocterm/nocterm.dart' show StdioBackend, runApp, shutdownApp;
 
 /// Runs interactive and diagnostic trainer commands.
 class TrainerCommandRunner {
@@ -351,6 +352,10 @@ class TrainerCommandRunner {
         onQuit: shutdownApp,
       ),
       enableHotReload: false,
+      backend: TrainerTerminalBackend.forPlatform(
+        StdioBackend.new,
+        windows: Platform.isWindows,
+      ),
     );
   }
 
