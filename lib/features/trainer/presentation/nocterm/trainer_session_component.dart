@@ -172,9 +172,17 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
 
   /// Replaces the rendered snapshot and drops UI state tied to an old session.
   void _handleStateChanged(TrainerSessionState session) {
-    if (!_sameSession(_session, session)) {
+    final sessionChanged = !_sameSession(_session, session);
+    if (sessionChanged) {
       _editingField = null;
       _selectedFieldIndex = 0;
+    }
+    final editingField = _editingField;
+    final writeResult = session.lastWriteResult;
+    if (editingField != null &&
+        session.readResults[editingField.id]?.succeeded != true &&
+        writeResult?.fieldId != editingField.id) {
+      _editingField = null;
     }
     setState(() => _session = session);
   }

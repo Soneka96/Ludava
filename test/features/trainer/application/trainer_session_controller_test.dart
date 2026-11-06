@@ -382,6 +382,32 @@ void main() {
       expect(fixture.controller.state.readResults, isEmpty);
     });
 
+    test(
+      'Method refresh() keeps confirmed identity in every same-session snapshot',
+      () async {
+        final fixture = _SessionFixture()..controller.connect();
+        final snapshots = <TrainerSessionState>[];
+        final subscription = fixture.controller.stateChanges.listen(
+          snapshots.add,
+        );
+        await Future<void>.delayed(Duration.zero);
+        snapshots.clear();
+
+        fixture.controller.refresh();
+
+        expect(snapshots, isNotEmpty);
+        expect(
+          snapshots.every(
+            (snapshot) => snapshot.profile?.id == 'rc2-collection',
+          ),
+          isTrue,
+        );
+        expect(fixture.controller.state.readResults['bolts']?.value, 100);
+
+        await subscription.cancel();
+      },
+    );
+
     test('Method refresh() clears unavailable values after a failed read', () {
       final fixture = _SessionFixture()..controller.connect();
       fixture.readStatus = GameReadStatus.readFailed;
@@ -426,10 +452,17 @@ void main() {
       fixture.controller.refresh();
 
       expect(fixture.controller.state.readResults, isEmpty);
+      expect(fixture.controller.state.profile, isNull);
+      expect(fixture.controller.state.memoryBase, isNull);
       expect(
         fixture.controller.state.errorMessage,
         contains('session changed'),
       );
+      expect(
+        fixture.controller.writeField('bolts', 101).status,
+        GameWriteStatus.unsupportedField,
+      );
+      expect(fixture.writeCalls, 0);
     });
 
     test('Method refresh() clears values when game detection fails', () {
@@ -454,10 +487,17 @@ void main() {
         fixture.controller.refresh();
 
         expect(fixture.controller.state.readResults, isEmpty);
+        expect(fixture.controller.state.profile, isNull);
+        expect(fixture.controller.state.memoryBase, isNull);
         expect(
           fixture.controller.state.errorMessage,
           contains('process listing failed'),
         );
+        expect(
+          fixture.controller.writeField('bolts', 101).status,
+          GameWriteStatus.unsupportedField,
+        );
+        expect(fixture.writeCalls, 0);
       },
     );
 
@@ -529,6 +569,30 @@ void main() {
       );
     });
 
+    test(
+      'Method refresh() continues reading approved fields after one field throws',
+      () {
+        final fixture =
+            _SessionFixture()
+              ..profile = _profile(twoFields: true)
+              ..controller.connect()
+              ..readErrorFieldId = 'bolts'
+              ..readError = StateError('bolts read failed');
+
+        fixture.controller.refresh();
+
+        expect(
+          fixture.controller.state.readResults['bolts']?.status,
+          GameReadStatus.readFailed,
+        );
+        expect(fixture.controller.state.readResults['weapons']?.value, 7);
+        expect(
+          fixture.controller.state.errorMessage,
+          contains('bolts read failed'),
+        );
+      },
+    );
+
     test('Method refresh() skips fields that are not approved for reading', () {
       final fixture =
           _SessionFixture()
@@ -583,6 +647,8 @@ void main() {
 
       expect(result.status, GameWriteStatus.invalidValue);
       expect(fixture.writeCalls, 0);
+      expect(fixture.controller.state.profile?.id, fixture.profile.id);
+      expect(fixture.controller.state.readResults['bolts']?.value, 100);
     });
 
     test('Method writeField() rejects a value below the field bounds', () {
@@ -601,6 +667,7 @@ void main() {
 
       expect(result.status, GameWriteStatus.unsupportedField);
       expect(fixture.writeCalls, 0);
+      expect(fixture.controller.state.readResults['bolts']?.value, 100);
     });
 
     test('Method writeField() rejects a read-only field before writing', () {
@@ -690,6 +757,21 @@ void main() {
       expect(fixture.controller.state.readResults, isEmpty);
     });
 
+    test(
+      'Method writeField() blocks an executable hash change with the same profile id',
+      () {
+        final fixture = _SessionFixture()..controller.connect();
+        fixture.profile = _profile(executableHash: 'different-hash');
+
+        final result = fixture.controller.writeField('bolts', 101);
+
+        expect(result.succeeded, isFalse);
+        expect(fixture.writeCalls, 0);
+        expect(fixture.controller.state.profile, isNull);
+        expect(fixture.controller.state.readResults, isEmpty);
+      },
+    );
+
     test('Method writeField() blocks a changed memory base', () {
       final fixture = _SessionFixture()..controller.connect();
       fixture.memoryBase = 0x400000000;
@@ -721,6 +803,7 @@ void main() {
       () {
         final fixture =
             _SessionFixture()
+              ..profile = _profile(twoFields: true)
               ..controller.connect()
               ..writeResult = const GameWriteResult(
                 status: GameWriteStatus.preliminaryReadFailed,
@@ -733,7 +816,11 @@ void main() {
         expect(result.status, GameWriteStatus.preliminaryReadFailed);
         expect(result.succeeded, isFalse);
         expect(fixture.writeCalls, 1);
-        expect(fixture.controller.state.readResults, isEmpty);
+        expect(
+          fixture.controller.state.readResults.containsKey('bolts'),
+          isFalse,
+        );
+        expect(fixture.controller.state.readResults['weapons']?.value, 7);
       },
     );
 
@@ -742,6 +829,7 @@ void main() {
       () {
         final fixture =
             _SessionFixture()
+              ..profile = _profile(twoFields: true)
               ..controller.connect()
               ..writeResult = const GameWriteResult(
                 status: GameWriteStatus.incompleteWrite,
@@ -753,7 +841,63 @@ void main() {
 
         expect(result.status, GameWriteStatus.incompleteWrite);
         expect(result.succeeded, isFalse);
-        expect(fixture.controller.state.readResults, isEmpty);
+        expect(
+          fixture.controller.state.readResults.containsKey('bolts'),
+          isFalse,
+        );
+        expect(fixture.controller.state.readResults['weapons']?.value, 7);
+      },
+    );
+
+    test(
+      'Method writeField() removes only the attempted field after a native write failure',
+      () {
+        final fixture =
+            _SessionFixture()
+              ..profile = _profile(twoFields: true)
+              ..controller.connect()
+              ..writeResult = const GameWriteResult(
+                status: GameWriteStatus.writeFailed,
+                fieldId: 'bolts',
+                requestedValue: 101,
+              );
+
+        final result = fixture.controller.writeField('bolts', 101);
+
+        expect(result.succeeded, isFalse);
+        expect(fixture.controller.state.lastWriteResult?.succeeded, isFalse);
+        expect(
+          fixture.controller.state.readResults.containsKey('bolts'),
+          isFalse,
+        );
+        expect(fixture.controller.state.readResults['weapons']?.value, 7);
+        expect(fixture.controller.state.profile?.id, fixture.profile.id);
+      },
+    );
+
+    test(
+      'Method writeField() removes only the attempted field after a read-back failure',
+      () {
+        final fixture =
+            _SessionFixture()
+              ..profile = _profile(twoFields: true)
+              ..controller.connect()
+              ..writeResult = const GameWriteResult(
+                status: GameWriteStatus.readBackFailed,
+                fieldId: 'bolts',
+                requestedValue: 101,
+              );
+
+        final result = fixture.controller.writeField('bolts', 101);
+
+        expect(result.succeeded, isFalse);
+        expect(fixture.controller.state.lastWriteResult?.succeeded, isFalse);
+        expect(
+          fixture.controller.state.readResults.containsKey('bolts'),
+          isFalse,
+        );
+        expect(fixture.controller.state.readResults['weapons']?.value, 7);
+        expect(fixture.controller.state.profile?.id, fixture.profile.id);
       },
     );
 
@@ -762,6 +906,7 @@ void main() {
       () {
         final fixture =
             _SessionFixture()
+              ..profile = _profile(twoFields: true)
               ..controller.connect()
               ..writeResult = const GameWriteResult(
                 status: GameWriteStatus.readBackMismatch,
@@ -774,12 +919,19 @@ void main() {
 
         expect(result.succeeded, isFalse);
         expect(result.readBackValue, 99);
-        expect(fixture.controller.state.readResults, isEmpty);
+        expect(
+          fixture.controller.state.readResults.containsKey('bolts'),
+          isFalse,
+        );
+        expect(fixture.controller.state.readResults['weapons']?.value, 7);
       },
     );
 
     test('Method writeField() reports writer exceptions without success', () {
-      final fixture = _SessionFixture()..controller.connect();
+      final fixture =
+          _SessionFixture()
+            ..profile = _profile(twoFields: true)
+            ..controller.connect();
       fixture.writeError = StateError('writer failed');
 
       final result = fixture.controller.writeField('bolts', 101);
@@ -787,6 +939,12 @@ void main() {
       expect(result.status, GameWriteStatus.writeFailed);
       expect(result.succeeded, isFalse);
       expect(fixture.controller.state.errorMessage, contains('writer failed'));
+      expect(fixture.controller.state.profile?.id, fixture.profile.id);
+      expect(
+        fixture.controller.state.readResults.containsKey('bolts'),
+        isFalse,
+      );
+      expect(fixture.controller.state.readResults['weapons']?.value, 7);
     });
   });
 }
@@ -804,6 +962,7 @@ class _SessionFixture {
   Object? baseError;
   Object? detectionError;
   Object? readError;
+  String? readErrorFieldId;
   Object? writeError;
   int? detectionProcessId;
   int metadataReads = 0;
@@ -842,11 +1001,19 @@ class _SessionFixture {
     },
     readField: (processId, selectedProfile, base, fieldId) {
       readCalls++;
-      if (readError case final error?) throw error;
+      if (readError case final error?
+          when readErrorFieldId == null || readErrorFieldId == fieldId) {
+        throw error;
+      }
       return GameReadResult(
         status: readStatus,
         fieldId: fieldId,
-        value: readStatus == GameReadStatus.success ? 100 : null,
+        value:
+            readStatus == GameReadStatus.success
+                ? fieldId == 'weapons'
+                    ? 7
+                    : 100
+                : null,
       );
     },
     writeField: (processId, selectedProfile, base, fieldId, value, confirmed) {
@@ -866,15 +1033,17 @@ class _SessionFixture {
 
 GameProfile _profile({
   String id = 'rc2-collection',
+  String executableHash = 'profile-hash',
   bool writeEnabled = true,
   bool fieldWriteEnabled = true,
   bool withUnreadableField = false,
+  bool twoFields = false,
 }) => GameProfile(
   id: id,
   gameName: 'Ratchet & Clank 2',
   buildId: 'BCUS98282',
   executable: 'RC2.ppu.self',
-  executableHash: 'profile-hash',
+  executableHash: executableHash,
   readStatus: VerificationStatus.verified,
   writeStatus:
       writeEnabled
@@ -903,6 +1072,15 @@ GameProfile _profile({
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
         readStatus: VerificationStatus.none,
+      ),
+    if (twoFields)
+      'weapons': GameField(
+        id: 'weapons',
+        name: 'Weapons',
+        guestOffset: 0x2000,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus: VerificationStatus.verified,
       ),
   },
 );

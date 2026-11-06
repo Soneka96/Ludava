@@ -229,15 +229,10 @@ class TrainerSessionController {
     final processId = _state.selectedProcessId;
     final previousMetadata = _state.processMetadata;
     if (processId == null || previousMetadata == null) return;
-    _publish(
-      TrainerSessionState(
-        processIds: _state.processIds,
-        selectedProcessId: processId,
-        processMetadata: previousMetadata,
-      ),
-    );
+    var processIds = _state.processIds;
+    var currentMetadata = previousMetadata;
     try {
-      final processIds = _discoverProcessIds();
+      processIds = _discoverProcessIds();
       if (!processIds.contains(processId)) {
         _publish(
           TrainerSessionState(
@@ -253,6 +248,18 @@ class TrainerSessionController {
         return;
       }
       final metadata = _readProcessMetadata(processId);
+      currentMetadata = metadata;
+      if (metadata.startedAtUtc != previousMetadata.startedAtUtc) {
+        _publish(
+          TrainerSessionState(
+            processIds: processIds,
+            selectedProcessId: processId,
+            processMetadata: metadata,
+            errorMessage: 'The RPCS3 session changed. Re-detect the game.',
+          ),
+        );
+        return;
+      }
       final detection = _detectGame(processId, metadata);
       if (detection.processId != processId) {
         _publish(
@@ -280,10 +287,6 @@ class TrainerSessionController {
           memoryBase: base,
         ),
       );
-      if (metadata.startedAtUtc != previousMetadata.startedAtUtc) {
-        _publish(_withError('The RPCS3 session changed. Re-detect the game.'));
-        return;
-      }
       if (detection.status != GameDetectionStatus.supportedGame) return;
       if (base == null) {
         _publish(_withError('The current game memory base is unavailable.'));
@@ -291,7 +294,14 @@ class TrainerSessionController {
       }
       _readAvailableFields(processId, detection, base);
     } catch (error) {
-      _publish(_withError(error.toString()));
+      _publish(
+        TrainerSessionState(
+          processIds: processIds,
+          selectedProcessId: processId,
+          processMetadata: currentMetadata,
+          errorMessage: error.toString(),
+        ),
+      );
     }
   }
 
@@ -416,6 +426,7 @@ class TrainerSessionController {
         fieldId,
         value,
         error.toString(),
+        invalidateFieldValue: true,
       );
     }
   }
@@ -501,12 +512,19 @@ class TrainerSessionController {
     int value,
     String message, {
     bool invalidateSession = false,
+    bool invalidateFieldValue = false,
   }) {
     final result = GameWriteResult(
       status: status,
       fieldId: fieldId,
       requestedValue: value,
     );
+    final readResults =
+        invalidateSession ? <String, GameReadResult>{} : _state.readResults;
+    final retainedReadResults =
+        invalidateFieldValue
+            ? (Map<String, GameReadResult>.of(readResults)..remove(fieldId))
+            : readResults;
     _publish(
       TrainerSessionState(
         processIds: _state.processIds,
@@ -514,6 +532,7 @@ class TrainerSessionController {
         processMetadata: invalidateSession ? null : _state.processMetadata,
         detection: invalidateSession ? null : _state.detection,
         memoryBase: invalidateSession ? null : _state.memoryBase,
+        readResults: retainedReadResults,
         lastWriteResult: result,
         errorMessage: message,
       ),

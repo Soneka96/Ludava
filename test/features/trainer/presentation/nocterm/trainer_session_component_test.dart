@@ -5,6 +5,7 @@ import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity
 import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
+import 'package:ludava/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
@@ -128,6 +129,140 @@ void main() {
 
           expect(fixture.detectCalls, greaterThan(initialDetections));
           expect(tester.terminalState, containsText('100'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent preserves the selected row on same-session refresh',
+      () async {
+        await testNocterm('same-session refresh selection', (tester) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendArrowDown();
+
+          expect(tester.terminalState, containsText('❯ 2. Weapons'));
+          await tester.sendKey(LogicalKey.keyR);
+
+          expect(
+            tester.terminalState,
+            containsText('Ratchet & Clank 2 · PS3 Collection'),
+          );
+          expect(tester.terminalState, containsText('❯ 2. Weapons'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent closes stale editing state when refresh loses the field value',
+      () async {
+        await testNocterm('field becomes unavailable during refresh', (
+          tester,
+        ) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT BOLTS'));
+
+          fixture.readStatus = GameReadStatus.readFailed;
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(tester.terminalState, containsText('Unavailable'));
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+          expect(fixture.writeCalls, 0);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent clears the old session on process restart until re-detection',
+      () async {
+        await testNocterm('process restarts during refresh', (tester) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendArrowDown();
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT WEAPONS'));
+
+          fixture.startedAtUtc = DateTime.utc(2026, 11, 6, 11);
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(fixture.controller.state.profile, isNull);
+          expect(fixture.controller.state.memoryBase, isNull);
+          expect(fixture.controller.state.readResults, isEmpty);
+          expect(tester.terminalState, isNot(containsText('EDIT WEAPONS')));
+          expect(tester.terminalState, isNot(containsText('Weapons')));
+          expect(tester.terminalState, containsText('session changed'));
+
+          await tester.sendKey(LogicalKey.keyG);
+
+          expect(fixture.controller.state.profile?.id, 'rc2-collection');
+          expect(fixture.controller.state.readResults['bolts']?.value, 100);
+          expect(tester.terminalState, containsText('Ratchet & Clank 2'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent resets selection and closes the editor when the detected game changes',
+      () async {
+        await testNocterm('game changes during refresh', (tester) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendArrowDown();
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT WEAPONS'));
+
+          fixture.profile = Rc1CollectionProfile.profile;
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(fixture.controller.state.profile?.id, 'rc1-collection');
+          expect(
+            tester.terminalState,
+            containsText('Ratchet & Clank · PS3 Collection'),
+          );
+          expect(tester.terminalState, isNot(containsText('EDIT WEAPONS')));
+          expect(tester.terminalState, isNot(containsText('Weapons')));
+          expect(tester.terminalState, containsText('❯ 1. Bolts'));
+          expect(fixture.writeCalls, 0);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent closes the editor and resets selection when the executable hash changes',
+      () async {
+        await testNocterm('executable hash changes during refresh', (
+          tester,
+        ) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendArrowDown();
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT WEAPONS'));
+
+          fixture.profile = _profile(
+            twoFields: true,
+            executableHash: 'different-hash',
+          );
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(fixture.controller.state.profile?.id, 'rc2-collection');
+          expect(
+            fixture.controller.state.detection?.executableHash,
+            'different-hash',
+          );
+          expect(tester.terminalState, isNot(containsText('EDIT WEAPONS')));
+          expect(tester.terminalState, containsText('❯ 1. Bolts'));
+          expect(fixture.writeCalls, 0);
         });
       },
     );
@@ -546,6 +681,7 @@ class _SessionFixture {
   int detectCalls = 0;
   int writeCalls = 0;
   bool? lastConfirmed;
+  GameReadStatus readStatus = GameReadStatus.success;
   GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame;
 
   late final TrainerSessionController controller = TrainerSessionController(
@@ -583,9 +719,14 @@ class _SessionFixture {
     readField: (processId, selectedProfile, memoryBase, fieldId) {
       readCalls++;
       return GameReadResult(
-        status: GameReadStatus.success,
+        status: readStatus,
         fieldId: fieldId,
-        value: fieldId == 'weapons' ? 7 : 100,
+        value:
+            readStatus == GameReadStatus.success
+                ? fieldId == 'weapons'
+                    ? 7
+                    : 100
+                : null,
       );
     },
     writeField: (
@@ -608,35 +749,38 @@ class _SessionFixture {
   );
 }
 
-GameProfile _profile({String id = 'rc2-collection', bool twoFields = false}) =>
-    GameProfile(
-      id: id,
-      gameName: 'Ratchet & Clank 2',
-      buildId: 'BCUS98282',
-      executable: 'RC2.ppu.self',
-      executableHash: 'measured-hash',
+GameProfile _profile({
+  String id = 'rc2-collection',
+  String executableHash = 'measured-hash',
+  bool twoFields = false,
+}) => GameProfile(
+  id: id,
+  gameName: 'Ratchet & Clank 2',
+  buildId: 'BCUS98282',
+  executable: 'RC2.ppu.self',
+  executableHash: executableHash,
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.researchConfirmed,
+  fields: {
+    'bolts': GameField(
+      id: 'bolts',
+      name: 'Bolts',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
       readStatus: VerificationStatus.verified,
       writeStatus: VerificationStatus.researchConfirmed,
-      fields: {
-        'bolts': GameField(
-          id: 'bolts',
-          name: 'Bolts',
-          guestOffset: 0x1000,
-          valueType: MemoryValueType.unsigned32,
-          byteOrder: ByteOrder.big,
-          readStatus: VerificationStatus.verified,
-          writeStatus: VerificationStatus.researchConfirmed,
-          minimumValue: 0,
-          maximumValue: GameMemoryConstants.maxUnsigned32,
-        ),
-        if (twoFields)
-          'weapons': GameField(
-            id: 'weapons',
-            name: 'Weapons',
-            guestOffset: 0x2000,
-            valueType: MemoryValueType.unsigned32,
-            byteOrder: ByteOrder.big,
-            readStatus: VerificationStatus.verified,
-          ),
-      },
-    );
+      minimumValue: 0,
+      maximumValue: GameMemoryConstants.maxUnsigned32,
+    ),
+    if (twoFields)
+      'weapons': GameField(
+        id: 'weapons',
+        name: 'Weapons',
+        guestOffset: 0x2000,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus: VerificationStatus.verified,
+      ),
+  },
+);
