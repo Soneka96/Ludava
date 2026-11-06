@@ -47,13 +47,31 @@ features       → shared/constants and narrowly shared platform types
 
 Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The app composition root in `lib/app/` constructs concrete sources and command workflows; `bin/ludava.dart` and `bin/ludava_cli.dart` remain thin executable adapters.
 
+## Future Dart workspace decision
+
+The long-term target is one Git repository managed as a Dart workspace, with three separately organized projects sharing the Ludava codebase:
+
+```text
+packages/ludava_sdk/
+apps/ludava_tui/
+apps/ludava_app/
+```
+
+`ludava_sdk` will own the reusable trainer engine: RPCS3 integration, process discovery, game detection and profiles, memory operations, session validation, field constraints, structured results, reactive state, and UI-independent application operations. Windows-specific native integration may remain in the SDK. It must not depend on Flutter or Nocterm.
+
+`ludava_tui` will own Nocterm, terminal input and rendering, navigation, focus, editor interaction state, TUI components, and the CLI executable. It depends on `ludava_sdk`. `ludava_app` will own Flutter, desktop windows, widgets, navigation, layout, themes, and GUI interaction state. It also depends on `ludava_sdk`; the two frontends do not depend on each other.
+
+Within each frontend, organize screens and components by the user-facing feature they implement. Keep shared application operations and authoritative trainer state in the SDK; keep temporary selection, focus, cursor, and unsaved editor text in the owning frontend. A terminal key handler and a Flutter control call the same typed SDK operation directly. Do not route ordinary operations through presentation-specific input events or a generic dispatcher.
+
+This is a future extraction target, not the current repository layout. Until a separately scoped migration is approved, continue following the existing feature boundaries and paths above. Do not create empty workspace scaffolding or move files as part of unrelated PRs.
+
 ## Adding capability
 
 - **Supported game or build:** add a profile definition and register it in `game_catalog`. Preserve the source and evidence status for each field. Do not create a per-game memory engine.
 - **Game identity evidence:** parse RPCS3 log syntax in `game_detection/data`; update detection policy in `game_detection`. Keep raw file reading and process/session ownership in `rpcs3_connection`.
 - **Trainer field:** add the researched field to its game profile. Reuse the generic address, read, and write use cases in `game_memory`; add focused profile and operation tests.
 - **Emulator integration:** add process/log/session adapters under a dedicated connection feature. Keep emulator-specific process and log details out of `game_memory`.
-- **Future Flutter UI:** add a Flutter presentation under `trainer/presentation` and call trainer workflows and feature use cases. Do not call Windows adapters directly from widgets.
+- **Future frontends:** keep shared operations in the SDK boundary and let each frontend call those operations from its own feature-organized presentation. Do not call Windows adapters directly from widgets or terminal components.
 
 ## Trainer state and presentation boundaries
 
