@@ -11,11 +11,27 @@ void main() {
       'Method create() exposes typed capabilities without native operations',
       () async {
         final api = FakeWindowsMemoryApi();
+        var discoveryCalls = 0;
+        var metadataCalls = 0;
+        var detectionCalls = 0;
         final sdk = LudavaSdk.create(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
-          discoverProcessIds: () => const [],
+          discoverProcessIds: () {
+            discoveryCalls++;
+            return const [];
+          },
+          readProcessMetadata: (_) {
+            metadataCalls++;
+            return _metadata;
+          },
+          detectGame: (_, __) {
+            detectionCalls++;
+            return _confirmedIdentity(
+              GameProfileCatalog.find('rc2-collection')!,
+            );
+          },
         );
 
         expect(sdk.session, isA<TrainerSessionController>());
@@ -23,6 +39,9 @@ void main() {
         expect(api.openCalls, 0);
         expect(api.readCalls, 0);
         expect(api.writeCalls, 0);
+        expect(discoveryCalls, 0);
+        expect(metadataCalls, 0);
+        expect(detectionCalls, 0);
 
         await sdk.dispose();
       },

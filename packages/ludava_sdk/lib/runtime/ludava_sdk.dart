@@ -44,8 +44,9 @@ class LudavaSdk {
        _resolveMemoryBaseCandidate = resolveMemoryBaseCandidate,
        _detectGame = detectGame,
        _gameIdentityLogDataSource = gameIdentityLogDataSource {
-    session = _createTrainerSessionController();
-    diagnostics = _createDiagnosticGameMemoryService();
+    final detectGameOperation = _createGameDetectionOperation();
+    session = _createTrainerSessionController(detectGameOperation);
+    diagnostics = _createDiagnosticGameMemoryService(detectGameOperation);
   }
 
   final ProcessGameMemoryOperations _memoryOperations;
@@ -67,55 +68,58 @@ class LudavaSdk {
   Future<void> dispose() => _disposeFuture ??= session.dispose();
 
   /// Creates the trainer session with RPCS3, detection, and memory capabilities.
-  TrainerSessionController _createTrainerSessionController() =>
-      TrainerSessionController(
-        discoverProcessIds: _findRpcs3ProcessIds,
-        readProcessMetadata: _readMetadata,
-        resolveMemoryBaseCandidate: _resolveBaseCandidate,
-        detectGame: _detectCurrentGame,
-        readField: (processId, profile, memoryBase, fieldId) {
-          final result = _memoryOperations.readField(
-            processId: processId,
-            profile: profile,
-            memoryBase: memoryBase,
-            fieldId: fieldId,
-          );
-          if (result.operationError case final error?) throw error;
-          if (result.cleanupError case final error?) throw error;
-          return result.readResult!;
-        },
-        writeField: (
-          processId,
-          profile,
-          memoryBase,
-          fieldId,
-          value,
-          confirmed,
-        ) {
-          final result = _memoryOperations.writeField(
-            processId: processId,
-            profile: profile,
-            memoryBase: memoryBase,
-            fieldId: fieldId,
-            value: value,
-            confirmed: confirmed,
-          );
-          if (result.operationError case final error?) throw error;
-          if (result.cleanupError case final error?) throw error;
-          return result.writeResult!;
-        },
+  TrainerSessionController _createTrainerSessionController(
+    GameDetectionResult Function(
+      int processId,
+      Rpcs3ProcessMetadata processMetadata,
+    )
+    detectGameOperation,
+  ) => TrainerSessionController(
+    discoverProcessIds: _findRpcs3ProcessIds,
+    readProcessMetadata: _readMetadata,
+    resolveMemoryBaseCandidate: _resolveBaseCandidate,
+    detectGame: detectGameOperation,
+    readField: (processId, profile, memoryBase, fieldId) {
+      final result = _memoryOperations.readField(
+        processId: processId,
+        profile: profile,
+        memoryBase: memoryBase,
+        fieldId: fieldId,
       );
+      if (result.operationError case final error?) throw error;
+      if (result.cleanupError case final error?) throw error;
+      return result.readResult!;
+    },
+    writeField: (processId, profile, memoryBase, fieldId, value, confirmed) {
+      final result = _memoryOperations.writeField(
+        processId: processId,
+        profile: profile,
+        memoryBase: memoryBase,
+        fieldId: fieldId,
+        value: value,
+        confirmed: confirmed,
+      );
+      if (result.operationError case final error?) throw error;
+      if (result.cleanupError case final error?) throw error;
+      return result.writeResult!;
+    },
+  );
 
   /// Creates the structured diagnostic workflow with the same SDK boundaries.
-  DiagnosticGameMemoryService _createDiagnosticGameMemoryService() =>
-      DiagnosticGameMemoryService(
-        memoryOperations: _memoryOperations,
-        discoverProcessIds: _findRpcs3ProcessIds,
-        readProcessMetadata: _readMetadata,
-        resolveMemoryBaseCandidate: _resolveBaseCandidate,
-        detectGame: _detectCurrentGame,
-        gameIdentityLogDataSource: _gameIdentityLogDataSource,
-      );
+  DiagnosticGameMemoryService _createDiagnosticGameMemoryService(
+    GameDetectionResult Function(
+      int processId,
+      Rpcs3ProcessMetadata processMetadata,
+    )
+    detectGameOperation,
+  ) => DiagnosticGameMemoryService(
+    memoryOperations: _memoryOperations,
+    discoverProcessIds: _findRpcs3ProcessIds,
+    readProcessMetadata: _readMetadata,
+    resolveMemoryBaseCandidate: _resolveBaseCandidate,
+    detectGame: detectGameOperation,
+    gameIdentityLogDataSource: _gameIdentityLogDataSource,
+  );
 
   /// Uses the injected discovery seam or the Windows process adapter.
   List<int> _findRpcs3ProcessIds() =>
@@ -138,18 +142,21 @@ class LudavaSdk {
     );
   }
 
-  /// Uses injected detection behavior or fresh RPCS3 log evidence.
-  GameDetectionResult _detectCurrentGame(
+  /// Assembles the feature-owned detection workflow or injected test seam.
+  GameDetectionResult Function(
     int processId,
     Rpcs3ProcessMetadata processMetadata,
-  ) =>
-      _detectGame?.call(processId, processMetadata) ??
-      Rpcs3GameDetectionWorkflow(
-        discoverProcessIds: _findRpcs3ProcessIds,
-        readProcessMetadata: _readMetadata,
-        readIdentityLogCandidates:
-            (metadata) =>
-                (_gameIdentityLogDataSource ?? Rpcs3GameIdentityLogDataSource())
-                    .readCandidates(metadata),
-      ).detect(processId, processMetadata);
+  )
+  _createGameDetectionOperation() {
+    final injectedDetection = _detectGame;
+    if (injectedDetection != null) return injectedDetection;
+    return Rpcs3GameDetectionWorkflow(
+      discoverProcessIds: _findRpcs3ProcessIds,
+      readProcessMetadata: _readMetadata,
+      readIdentityLogCandidates:
+          (metadata) =>
+              (_gameIdentityLogDataSource ?? Rpcs3GameIdentityLogDataSource())
+                  .readCandidates(metadata),
+    ).detect;
+  }
 }
