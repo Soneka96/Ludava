@@ -1,12 +1,12 @@
 # Roadmap
 
-Milestones describe verified outcomes, not completed code alone.
+Milestones describe verified outcomes, not completed code alone. The sequence below follows project dependencies from the evidence foundation through the future frontend. Historical evidence and each milestone's completion state are preserved.
 
-## Long-term workspace decision
+## Current workspace status
 
-The owner has chosen one Dart workspace in this Git repository with three separately organized projects: `packages/ludava_sdk`, `apps/ludava_tui`, and `apps/ludava_app`. The SDK will hold the reusable trainer engine; the Nocterm TUI and Flutter desktop app will be independent frontends over that SDK. See [ARCHITECTURE.md](ARCHITECTURE.md) for ownership and dependency boundaries.
+The owner-approved Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. The SDK exposes the lifecycle-owned `LudavaSdk` runtime; the TUI consumes its public capabilities. The legacy interactive text menu is removed, while Nocterm and explicit diagnostic commands remain. `apps/ludava_app` is a future Flutter application and is not part of the current workspace. See [ARCHITECTURE.md](ARCHITECTURE.md) for the actual directory structure and ownership.
 
-This decision does not authorize migrating the current repository as part of PR #6. Keep the present layout until a dedicated migration is planned and verified.
+The final focused SDK cleanup gives `game_memory` ownership of shared field execution, keeps detection execution in `game_detection`, and makes disposal terminal across retained SDK capabilities. The TUI awaits SDK cleanup on every command path. Local checks are recorded for the current checkout; GitHub Actions and real Windows acceptance remain separate PR #7 merge gates. Keep PR #7 as a draft until both gates pass. Existing live-game observations and their compatibility limits are documented in [COMPATIBILITY.md](COMPATIBILITY.md); the structural cleanup does not change those claims.
 
 ## M0 — Project and documentation foundation
 
@@ -40,24 +40,16 @@ This decision does not authorize migrating the current repository as part of PR 
 
 **Exit:** one Ludava edit is validated end to end, with its runtime assumptions documented and unknown fields still disabled.
 
-## M3 — Minimal Flutter desktop interface
-
-- [ ] Show process/build status, selected field, value, and meaningful errors.
-- [ ] Enable edits only for a verified writable build and field.
-- [ ] Test the Windows build and the real-game scenario.
-
-**Exit:** a usable first release with accurate compatibility status.
-
-## M4 — Incremental expansion
+## M3 — Incremental game and field expansion
 
 - [x] Add RC1 and RC3 Collection bolt-only profiles from owner-confirmed RatchetHax research.
 - [x] Owner-tested RC1 and RC3 Ludava bolt reads and writes with matching in-game HUD screenshots on 2026-11-05, using session base `0x300000000`; their PPU hashes were later measured in a separate runtime session.
-- [ ] Reuse the generic reader/writer instead of creating duplicate game features.
+- [x] Reuse the generic reader/writer instead of creating duplicate game features.
 - [ ] Reevaluate architecture only when a new capability creates a real boundary.
 
 **Not planned now:** a large dashboard, plugin framework, cloud services, additional emulator backends, or unverified feature tables.
 
-## M5 — RPCS3 game detection
+## M4 — RPCS3 game detection
 
 - [x] Add domain detection outcomes, confidence, evidence, and profile-driven field exposure.
 - [x] Preserve RPCS3 log title/serial/path observations without treating history as active identity.
@@ -69,3 +61,27 @@ This decision does not authorize migrating the current repository as part of PR 
 - [x] Owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during testing on a Windows laptop and a ROG Ally. The available notes do not map each game to each device or identify the exact RPCS3 build.
 
 **Current limit:** executable hashes were measured in one RPCS3 build and the log lifecycle was observed in one-process sessions. The final compiled CLI was live-smoke-tested with RC2; the later owner confirmation covers all three embedded games, but does not include a per-device game matrix or exact runtime build. Other RPCS3 builds, unsupported titles, and concurrent processes that share logs remain unverified. See [game-detection investigation](GAME_DETECTION.md).
+
+## M5 — SDK and TUI workspace extraction
+
+- [x] Document the approved ownership and runtime conventions before implementation.
+- [x] Establish `packages/ludava_sdk` as the reusable engine and `apps/ludava_tui` as its Nocterm/diagnostic frontend.
+- [x] Move diagnostic application workflows into the trainer feature and add the lifecycle-owned `LudavaSdk` runtime.
+- [x] Make the TUI consume public SDK capabilities and remove the legacy text-based interactive menu.
+- [x] Move shared process-memory handle management and field execution into `game_memory`; keep trainer and diagnostic authorization policies in their owning services.
+- [x] Assemble the feature-owned detection workflow in the SDK runtime without executing detection there.
+- [x] Reject operations through retained session and diagnostic capabilities once disposal starts, and await TUI cleanup.
+- [x] Keep root commands as thin compatibility entry points; add workspace boundary checks and fixture tests.
+- [x] Verify local package analysis and tests, root compatibility tests, workspace boundaries, Windows build, and relocated executable help in the current checkout.
+- [ ] Confirm GitHub Actions on PR #7; it must run SDK, TUI, root compatibility, boundary, formatting, Windows build, and relocated native-discovery checks.
+- [ ] Record real Windows acceptance, including physical keyboard behavior and live RPCS3 checks for RC1, RC2, and RC3.
+
+**Exit:** local workspace checks pass, GitHub Actions passes, and real Windows acceptance is recorded. Do not merge PR #7 while either remote CI or required Windows acceptance remains unverified.
+
+## M6 — Minimal Flutter desktop interface
+
+- [ ] Show process/build status, selected field, value, and meaningful errors.
+- [ ] Enable edits only for a verified writable build and field.
+- [ ] Test the Windows build and the real-game scenario.
+
+**Exit:** a usable first release with accurate compatibility status.

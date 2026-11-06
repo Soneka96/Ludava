@@ -8,7 +8,8 @@ $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $outputDirectory = Join-Path $projectRoot 'build'
 $executablePath = Join-Path $outputDirectory 'Ludava.exe'
 $nativeLibraryPath = Join-Path $outputDirectory 'ludava_process_discovery.dll'
-$nativeLibrarySource = Join-Path $projectRoot 'lib\features\rpcs3_connection\data\datasources\native\windows_process_discovery.c'
+$nativeLibrarySource = Join-Path $projectRoot 'packages\ludava_sdk\lib\features\rpcs3_connection\data\datasources\native\windows_process_discovery.c'
+$tuiEntrypoint = Join-Path $projectRoot 'apps\ludava_tui\bin\ludava.dart'
 
 $clang = Get-Command clang.exe -ErrorAction SilentlyContinue
 if ($null -eq $clang) {
@@ -56,7 +57,7 @@ try {
         throw "Native Windows process-discovery library build failed with exit code $LASTEXITCODE."
     }
 
-    dart compile exe bin/ludava.dart -o $executablePath
+    dart compile exe $tuiEntrypoint -o $executablePath
     if ($LASTEXITCODE -ne 0) {
         throw "Dart executable compilation failed with exit code $LASTEXITCODE."
     }

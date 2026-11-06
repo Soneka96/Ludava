@@ -4,7 +4,7 @@ This document defines the target architecture for new and materially changed cod
 
 ## Feature ownership
 
-Ludava separates the game catalog, RPCS3 connection, game detection, game memory, and trainer experience. A game or build is profile data in `game_catalog`, not a separate feature. Adding a supported game adds its researched profile and fields with their actual evidence status; it reuses the existing detection and read/write workflows. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
+Ludava separates the game catalog, RPCS3 connection, game detection, game memory, shared trainer application behavior, and frontend presentation. A game or build is profile data in `game_catalog`, not a separate feature. Adding a supported game adds its researched profile and fields with their actual evidence status; it reuses the existing detection and read/write workflows. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
 
 Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires a deliberate user action and matching read-back. The interactive TUI applies on Enter; diagnostic writes require `--confirm-write`.
 
@@ -14,21 +14,42 @@ Keep game-specific offsets, value types, endianness, write bounds, and evidence 
 | `rpcs3_connection` | RPCS3 process discovery and metadata, raw RPCS3 log reading, and session memory-base resolution. |
 | `game_detection` | Semantic interpretation of current-session log events, detection outcomes, and profile matching. |
 | `game_memory` | Generic address resolution, value encoding/decoding, checked reads and writes, and memory safety policy. |
-| `trainer` | Nocterm and diagnostic command presentation plus current write-target revalidation. |
+| `trainer` | Shared trainer workflows, state, and current write-target revalidation. |
 
 The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU loads and process-finished events into identity evidence, then deciding whether that evidence selects a supported profile, belongs to `game_detection`.
+
+`game_memory` owns the shared process-memory operation that opens a process handle, executes the generic field read or guarded write use case, records operation and cleanup failures separately, and closes the handle. Trainer-session and diagnostic services share this operation while keeping their distinct identity and authorization policies. `game_detection` owns the RPCS3 evidence workflow and profile decision; session and diagnostic services request detection through that feature capability.
+
+## Directory ownership and composition rules
+
+These rules are permanent admission criteria for new and materially changed code. Existing legacy paths that conflict with them are migration work, not precedent. Each significant directory must have a named feature, architectural layer, narrowly scoped shared concern, or narrowly scoped runtime/composition responsibility. Document its purpose and what belongs there; do not add a directory only to give a class a home or create unnecessary one-file directories.
+
+Names such as `app`, `common`, `shared`, `services`, `helpers`, `utils`, `runtime`, and `composition` are not blanket-forbidden, but none may be an unrestricted container. `shared` means reused within a defined scope. `runtime` owns assembly and lifetime, not business logic. Remove or reorganize directories without a coherent responsibility.
+
+Trainer session coordination, diagnostic workflows, validation policies, and their structured request/result models belong to the trainer feature's application layer. Do not put unrelated application workflows under the SDK root. Feature-first Clean Architecture ownership remains in force.
+
+SDK composition may construct dependencies, connect adapters to use cases, create feature application services, own resources, and coordinate startup/disposal. It must not implement game detection, memory-write policy, value decoding, session transitions, or duplicate application workflows.
+
+Nocterm and future Flutter frontends consume public typed SDK contracts. They do not assemble native memory adapters, construct internal repositories/use cases, duplicate detection or write authorization, or parse formatted SDK output to recover business data. Presentation owns input, rendering, navigation, and user-facing messages. Nocterm is the sole supported interactive terminal; explicit diagnostic commands remain. Remove the obsolete text menu and its menu-only logic and tests. Keep a compatibility exception only for a documented, supported use case.
+
+Prefer small typed capabilities over redundant abstractions. Do not add a service locator, dependency-injection framework, command bus, generic action registry, unnecessary factory, behaviorless base class, or interface without a meaningful replacement/testing purpose.
+
+When a durable architectural rule is accepted, update the authoritative documentation, review it for consistency, commit that documentation, then implement and verify the change. See [`DEVELOPMENT.md`](DEVELOPMENT.md#keeping-conventions-authoritative) for the workflow.
+
+The SDK runtime is the primary public object for one engine instance. It owns SDK capabilities and their lifetimes; feature application services own behavior; the trainer session controller owns authoritative game/session state. Immutable snapshots contain application facts, never service instances, native handles, or dependency containers. The runtime is neither the state object nor a generic dependency registry. Frontends observe session state and invoke operations through typed runtime capabilities.
 
 ## Layers and dependency direction
 
 ```text
-lib/app/                         # concrete application composition and command wiring
-lib/features/game_catalog/       # profile and field definitions shared by detection and memory
-lib/features/rpcs3_connection/   # RPCS3 process, raw log, and memory-base adapters
-lib/features/game_detection/     # identity events, profile matching, and detection workflow
-lib/features/game_memory/        # generic memory operations and Windows process-memory adapter
-lib/features/trainer/            # trainer workflows and CLI presentation
-lib/shared/constants/            # central app enums and cross-cutting constants
-lib/shared/platform/              # narrowly shared Windows platform errors
+packages/ludava_sdk/lib/runtime/                     # SDK capability assembly and resource lifetime
+packages/ludava_sdk/lib/features/game_catalog/       # profiles and fields
+packages/ludava_sdk/lib/features/rpcs3_connection/   # process, log, native, and base adapters
+packages/ludava_sdk/lib/features/game_detection/     # identity events and profile matching
+packages/ludava_sdk/lib/features/game_memory/        # generic memory operations and Windows adapter
+packages/ludava_sdk/lib/features/trainer/            # UI-independent workflows and state
+packages/ludava_sdk/lib/shared/                      # SDK-owned shared declarations
+apps/ludava_tui/lib/features/                        # feature-first Nocterm and CLI presentation
+apps/ludava_tui/lib/shared/                          # TUI-local shared components
 ```
 
 Only create a layer or subfolder when it contains a real responsibility. In particular, a simple operation belongs in its use case; an application workflow is for coordination across multiple operations. Do not create empty `domain/`, `data/`, `application/`, or `presentation/` folders for symmetry.
@@ -39,17 +60,18 @@ Feature dependencies remain acyclic:
 game_detection → game_catalog + rpcs3_connection
 game_memory    → game_catalog
 trainer        → game_detection + game_catalog + rpcs3_connection + game_memory
-app            → trainer + concrete feature data sources
-features       → shared/constants and narrowly shared platform types
+SDK runtime    → trainer application services + concrete SDK feature data sources
+TUI            → SDK public API
+future Flutter → SDK public API
 ```
 
-`game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No feature imports `lib/app`, and no feature outside `trainer` imports trainer code.
+`game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No SDK feature imports the SDK runtime, and no feature outside `trainer` imports trainer code. Frontends use declared SDK package dependencies rather than relative paths across package boundaries.
 
-Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The app composition root in `lib/app/` constructs concrete sources and command workflows; `bin/ludava.dart` and `bin/ludava_cli.dart` remain thin executable adapters.
+Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The SDK runtime constructs concrete sources and feature application services, and owns their resource lifetime. It contains no business policy. Frontend entry points remain thin adapters that delegate to their package's command or application runner.
 
-## Future Dart workspace decision
+## Dart workspace and package ownership
 
-The long-term target is one Git repository managed as a Dart workspace, with three separately organized projects sharing the Ludava codebase:
+The approved repository structure is one Dart workspace containing independently organized packages and applications:
 
 ```text
 packages/ludava_sdk/
@@ -57,13 +79,23 @@ apps/ludava_tui/
 apps/ludava_app/
 ```
 
-`ludava_sdk` will own the reusable trainer engine: RPCS3 integration, process discovery, game detection and profiles, memory operations, session validation, field constraints, structured results, reactive state, and UI-independent application operations. Windows-specific native integration may remain in the SDK. It must not depend on Flutter or Nocterm.
+`ludava_sdk` owns the reusable trainer engine: RPCS3 integration, process discovery, game detection and profiles, memory operations, session validation, field constraints, structured results, reactive state, and UI-independent application operations. Windows-specific native source and integration belong to the SDK. The SDK must not depend on Flutter or Nocterm, and it must be independently analyzable and testable without initializing a terminal.
 
-`ludava_tui` will own Nocterm, terminal input and rendering, navigation, focus, editor interaction state, TUI components, and the CLI executable. It depends on `ludava_sdk`. `ludava_app` will own Flutter, desktop windows, widgets, navigation, layout, themes, and GUI interaction state. It also depends on `ludava_sdk`; the two frontends do not depend on each other.
+`ludava_tui` owns Nocterm, terminal input and rendering, navigation, focus, editor interaction state, TUI components, diagnostic CLI presentation, and its executable packaging. It depends on `ludava_sdk`. The future `ludava_app` will own Flutter, desktop windows, widgets, navigation, layout, themes, GUI interaction state, and its executable packaging. It will depend on `ludava_sdk`; the two frontends must not depend on each other. The Flutter package is a later project and is not created as part of the workspace migration.
+
+The repository root owns workspace configuration, shared dependency resolution, top-level documentation, and build/CI orchestration. Each package owns its `lib/`, `test/`, package dependencies, and package-specific integration tests. Keep one workspace lockfile and do not commit generated package configuration directories.
+
+The allowed dependency direction is:
+
+```text
+ludava_tui → ludava_sdk ← ludava_app (future)
+```
+
+No production or test import may point from the SDK to a frontend, from one frontend to the other, or across package boundaries using relative paths. Frontends call typed SDK operations directly; do not add a presentation-specific event dispatcher or duplicate engine behavior.
 
 Within each frontend, organize screens and components by the user-facing feature they implement. Keep shared application operations and authoritative trainer state in the SDK; keep temporary selection, focus, cursor, and unsaved editor text in the owning frontend. A terminal key handler and a Flutter control call the same typed SDK operation directly. Do not route ordinary operations through presentation-specific input events or a generic dispatcher.
 
-This is a future extraction target, not the current repository layout. Until a separately scoped migration is approved, continue following the existing feature boundaries and paths above. Do not create empty workspace scaffolding or move files as part of unrelated PRs.
+The approved migration moves existing capabilities without changing runtime behavior. Preserve the feature ownership, safety rules, and evidence limits in this document while adapting source and test paths to their owning package. Organize each frontend by user-facing feature; put reusable UI components in a feature or a frontend-local shared area only when multiple features use them. Do not create empty package or feature scaffolding.
 
 ## Adding capability
 
@@ -79,7 +111,9 @@ The trainer application layer owns the one authoritative `TrainerSessionState`. 
 
 Keep only transient interaction state in presentation: for example, the selected row, an unsaved editor buffer, cursor position, and focus. Do not copy process identity, detected profile, memory base, or verified field values into a second presentation model. When the authoritative session changes, clear or re-evaluate presentation state tied to the previous process, game, profile, or memory base. Revalidate identity and memory evidence before every write; a presentation snapshot never grants write authority.
 
-The root Nocterm component observes application state, chooses the active screen, coordinates navigation, and cleans up its subscription. Connection, trainer, and editor screens render their own flows and dispatch explicit actions; they do not open native process handles or duplicate application workflows. Extract reusable components when they own a meaningful rendering or interaction responsibility, not just to wrap a single text element. Keep Nocterm-specific types in `trainer/presentation/nocterm`; the application controller and state contract remain reusable by another UI.
+The TUI's root Nocterm component observes SDK state, chooses the active screen, coordinates navigation, and cleans up its subscription. Connection, trainer, and editor screens render their own flows and call typed SDK operations; they do not open native process handles or duplicate application workflows. Extract reusable components when they own a meaningful rendering or interaction responsibility, not just to wrap a single text element. Keep Nocterm-specific types under the owning feature in `apps/ludava_tui/lib/`; the SDK controller and state contract remain reusable by another UI.
+
+The diagnostics feature follows the same boundary: the TUI owns command syntax, argument parsing, human-readable output, and CLI exit codes. The SDK owns reusable diagnostic operation orchestration, including process discovery, identity and memory-base evaluation, memory access, and structured result classifications. Preserve the read policy: a manually selected profile may be read without matching current identity when the request does not require current identity, and the SDK must classify that result as unverified. A request that requires current identity must fail when identity does not match. Writes always require matching current process identity and memory base, explicit confirmation, and the existing complete read/write/read-back checks. TUI command runners must call typed SDK operations; they must not construct memory repositories or use cases, open native process-memory adapters, or decide diagnostic write authorization. Keep message formatting in the TUI and operation status in typed SDK results rather than parsing SDK error strings.
 
 Construct application services and presentation dependencies explicitly at the composition root. Prefer constructor injection and small behavior-owning interfaces for replaceable boundaries. Do not add a global service locator or a state-management framework unless a concrete requirement justifies it. See [`DEVELOPMENT.md`](DEVELOPMENT.md) for source, keyboard, and component testing conventions.
 
@@ -95,13 +129,13 @@ Construct application services and presentation dependencies explicitly at the c
 
 ## Enums, constants, and type aliases
 
-- Put every handwritten app enum in `lib/shared/constants/enums.dart`, including enums used by only one feature. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
+- Put handwritten SDK and cross-package enums in `packages/ludava_sdk/lib/shared/constants/enums.dart`. Frontend-only enums stay with their frontend. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
 - Put `none` first in every enum as the unset/error sentinel; it is not a real selected game value or a default compatibility claim. Give the enum and each member a concise `///` comment.
-- Put cross-cutting business constants in `lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
-- Keep layout and widget sizing constants in `layout_constants.dart` if a UI introduces them; do not mix presentation sizing into business constants. Create a constants file only when there are constants of that kind to own.
+- Put SDK business constants in `packages/ludava_sdk/lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
+- Keep layout and widget sizing constants in the owning frontend, such as `apps/ludava_tui/lib/shared/constants/layout_constants.dart`; do not mix presentation sizing into SDK business constants. Create a constants file only when there are constants of that kind to own.
 - Keep platform/API implementation details such as Windows access flags beside the adapter that owns them, as private `static const` members. Do not move implementation-only values into shared application constants.
 - Do not add handwritten `typedef`s, including function aliases or aliases for record-shaped results. Use a named class with fields for data and an owning class/interface for behavior or injected callbacks. Generated/third-party declarations are exempt. Keep a typedef only where Dart or a native/framework interop API requires it, and document why at the declaration.
-- The central enum and constants files are deliberate grouping exceptions to the one-class-per-file rule: enums share `enums.dart`; each constants class is grouped in the file for its constant kind.
+- Central enum and constants files are deliberate grouping exceptions to the one-class-per-file rule within the owning package: SDK enums share `enums.dart`; each constants class is grouped in the file for its constant kind.
 
 ## Dart documentation
 
@@ -115,11 +149,13 @@ Construct application services and presentation dependencies explicitly at the c
 - Test behavior at its owner. Use fakes for deterministic memory boundaries and test the Windows adapter through an injected native API; unit tests must not read or write a live game's memory.
 - Test pure value/codec/address behavior directly. Test use cases with fake repository contracts, repositories with fake data sources, and data sources with fake native APIs.
 - Add a small number of integration tests for important seams. Passing automated tests does not establish game/build compatibility; that requires recorded live-game evidence in `docs/COMPATIBILITY.md`.
+- Keep tests for root compatibility entry points and run those checks in workspace CI alongside the SDK and TUI suites.
 - Use one top-level group per public method, named `Method methodName() behaves correctly`. Name each scenario `Method methodName() <outcome>` and add `when <condition>` when the condition is not already clear from the outcome. Use clear outcomes such as `returns`, `preserves`, `rejects`, and `throws`.
 - Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
 - For entity/model construction tests, use `Class TypeName construction` and `Class TypeName initializes ...`. Keep each test name specific about the input and expected result.
 - Do not use nested test groups. Cover negative and boundary cases for every safety check, and pair a test that expects a collaborator call with a test proving it is not called when the precondition fails.
-- Keep test files at the same relative path as production files, for example `lib/features/game_memory/domain/usecases/read_game_field.usecase.dart` maps to `test/features/game_memory/domain/usecases/read_game_field.usecase_test.dart`.
+- Keep test files at the same relative path as production files within their package, for example `packages/ludava_sdk/lib/features/game_memory/domain/usecases/read_game_field.usecase.dart` maps to `packages/ludava_sdk/test/features/game_memory/domain/usecases/read_game_field.usecase_test.dart`.
+- Mirror production paths under each owning package's `test/` directory. SDK tests must run without Nocterm or interactive stdin; TUI tests should use SDK fakes at the package boundary. Workspace CI must explicitly analyze and run both package suites rather than assuming a root test command discovers every workspace package.
 
 ## Safety invariants
 
@@ -134,10 +170,65 @@ Construct application services and presentation dependencies explicitly at the c
 
 Compatibility is recorded per exact game/build and capability. Keep experimental, read-verified, write-verified, and unsupported states distinct. A process ID, selected profile, passing unit test, or plausible value is not proof of game identity or compatibility. See [COMPATIBILITY.md](COMPATIBILITY.md) for the evidence required to change a status.
 
+## SDK runtime API
+
+`LudavaSdk` is the public object for one engine instance. `LudavaSdk.create()` assembles the SDK's feature services and exposes typed `session` and `diagnostics` capabilities. It owns both capabilities and their lifetime; it does not hold trainer state itself or provide a general dependency registry. The runtime constructs the game-detection workflow and one shared process-memory operation capability, then passes them into the owning trainer and diagnostic services. Those feature services execute detection and memory operations.
+
+`TrainerSessionController` owns the authoritative mutable session lifecycle and publishes immutable `TrainerSessionState` snapshots. A snapshot contains application facts such as process identity, profile, memory base, field reads, and write results. The `DiagnosticGameMemoryService` is a trainer application service: it coordinates diagnostic operations and returns structured `DiagnosticGameMemoryResult` values. The TUI owns command parsing, display formatting, and exit codes. Nocterm and diagnostic commands use the same SDK runtime capabilities.
+
+Disposal is terminal and begins synchronously. `LudavaSdk.dispose()` marks both capabilities unavailable before awaiting cleanup; repeated or concurrent calls share the same completion. Calls through a retained session or diagnostics reference throw `StateError` as soon as disposal starts, before process discovery, metadata lookup, game detection, or memory access. Session state remains readable as the last immutable snapshot. Existing `stateChanges` subscriptions close, new subscriptions complete without emitting a snapshot, and no later state transition is published. A disposed capability cannot authorize a native read or write. Independently created SDK runtimes have independent lifetimes.
+
+```dart
+final sdk = LudavaSdk.create();
+try {
+  sdk.session.connect();
+  final state = sdk.session.state;
+  // Build request from the selected process and its current session base.
+  final result = sdk.diagnostics.execute(request);
+} finally {
+  await sdk.dispose();
+}
+```
+
+Here, `request` is a `DiagnosticGameMemoryRequest` prepared by the caller from the selected profile, process, and current session memory base. The diagnostic result reports identity, memory, operation, and cleanup status as typed data. Presentation code formats that result; it does not infer business facts from formatted output. Do not reintroduce the former `LudavaTrainerFactory` or place feature behavior in the runtime.
+
 ## Current implementation
 
-The implementation uses the features listed above. `game_memory` contains generic read/write use cases and Windows process-memory access. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
+The checked-in Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. Its high-level source ownership is:
 
-The `game_detection` log data source preserves ordered PPU-load and process-finished events in addition to historical title, serial, and path values. The detection workflow evaluates fresh logs for the selected process and refuses automatic matching when multiple RPCS3 processes share a log directory, multiple fresh logs conflict, or evidence is incomplete. A stop event or the measured Collection EBOOT hash cannot select an RC profile. Memory-base resolution requires agreement across fresh candidate logs and runs after game detection. Automatic reads and writes recheck process session, identity, and base; failed refresh reads clear the displayed value. The Nocterm TUI does not poll continuously. Diagnostic reads may specify a profile without current identity evidence and remain labeled unverified.
+```text
+Ludava/
+├── packages/ludava_sdk/
+│   ├── lib/ludava_sdk.dart                 # Public SDK API
+│   ├── lib/runtime/ludava_sdk.dart         # Capability assembly and lifecycle
+│   ├── lib/features/
+│   │   ├── game_catalog/                    # Profiles and fields
+│   │   ├── game_detection/                  # Identity evidence and matching
+│   │   ├── game_memory/                     # Generic reads, writes, Windows memory
+│   │   ├── rpcs3_connection/                # RPCS3 process, log, and native adapters
+│   │   └── trainer/                         # Session state and application workflows
+│   │       └── application/diagnostics/     # Typed diagnostic orchestration
+│   ├── lib/shared/                          # Scoped SDK declarations
+│   └── test/                                # Mirrored SDK tests and integrations
+├── apps/ludava_tui/
+│   ├── bin/                                 # TUI package entry points
+│   ├── lib/app/                             # CLI composition and command runner
+│   ├── lib/features/                        # Connection, trainer, editor, diagnostics UI
+│   ├── lib/shared/                          # TUI-local constants and terminal backend
+│   └── test/                                # Mirrored TUI tests
+├── bin/                                     # Root compatibility entry points
+├── lib/app/ludava_cli.dart                  # Root compatibility export
+├── test/                                    # Root compatibility tests
+├── docs/
+└── tool/                                    # Build and boundary checks
+```
+
+The SDK has no root `lib/app/`. The TUI has no interactive text menu; it owns Nocterm presentation and the explicit diagnostic CLI. Root `bin/`, `lib/`, and `test/` are compatibility surfaces, not another trainer implementation. The future Flutter package `apps/ludava_app` has not been created.
+
+The SDK's `game_memory` feature contains generic read/write use cases, Windows process-memory access, and shared process-handle operation ownership. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
+
+The `game_detection` log data source preserves ordered PPU-load and process-finished events in addition to historical title, serial, and path values. The feature workflow evaluates fresh logs for the selected process and refuses automatic matching when multiple RPCS3 processes share a log directory, multiple fresh logs conflict, or evidence is incomplete. A stop event or the measured Collection EBOOT hash cannot select an RC profile. Memory-base resolution requires agreement across fresh candidate logs and runs after game detection. Automatic reads and writes recheck process session, identity, and base; failed refresh reads clear the displayed value. The SDK runtime constructs the workflow and passes its typed operation into the session and diagnostics; detection runs only when those feature services request it. The Nocterm TUI does not poll continuously. Diagnostic reads may specify a profile without current identity evidence and remain labeled unverified.
+
+The TUI command runner exposes an asynchronous lifecycle that awaits `LudavaSdk.dispose()` after diagnostics, interactive shutdown, startup failure, and nonterminal exits. Do not add a synchronous command path that starts asynchronous SDK disposal without awaiting it.
 
 The owner measured distinct Collection EBOOT, RC1, RC2, and RC3 PPU hashes and lifecycle transitions in RPCS3 `0.0.43-20565-eee3f0f7`. The observed base was `0x300000000` in two process sessions. The final compiled CLI was live-smoke-tested with RC2: it matched the profile and base and read `0`, which does not prove gameplay was active. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing; the records do not map each game to each device or identify the exact RPCS3 build for that confirmation. Other RPCS3 builds remain unverified. The shared write use case still requires a complete valid preliminary field read, a deliberate user action, a complete native transfer, and matching read-back.

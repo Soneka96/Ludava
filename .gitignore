@@ -1,3 +1,5 @@
 .dart_tool/
 /build/
 /coverage/
+/packages/*/pubspec.lock
+/apps/*/pubspec.lock
