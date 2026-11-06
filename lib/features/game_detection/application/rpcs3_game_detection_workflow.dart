@@ -140,12 +140,10 @@ class Rpcs3GameDetectionWorkflow {
   GameDetectionResult _ambiguousDetection(
     int processId,
     String evidenceDescription,
-  ) =>
-      GameDetectionResult(
-        status: GameDetectionStatus.ambiguous,
-        processId: processId,
-        confidence: GameIdentityConfidence.uncertain,
-        evidenceDescription: evidenceDescription,
-      );
-
+  ) => GameDetectionResult(
+    status: GameDetectionStatus.ambiguous,
+    processId: processId,
+    confidence: GameIdentityConfidence.uncertain,
+    evidenceDescription: evidenceDescription,
+  );
 }

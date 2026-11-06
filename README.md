@@ -62,7 +62,7 @@ dart format --output=none --set-exit-if-changed lib test bin
 
 ## Architecture
 
-`lib/features/game_memory` owns shared profile-based reads and writes. Games and builds are profile data; adding a game means adding its researched profile and registering it, not copying the reader. See [Architecture and testing](docs/ARCHITECTURE.md) for layer boundaries, class/file order, documentation links, and test naming.
+Ludava separates `game_catalog`, `rpcs3_connection`, `game_detection`, `game_memory`, and `trainer`. Profiles are shared catalog data; detection owns identity policy, the connection feature owns RPCS3 process/log infrastructure, and memory access remains generic. See [Architecture and testing](docs/ARCHITECTURE.md) for dependency rules, extension points, and test organization.
 
 - [MVP scope and acceptance gates](docs/MVP.md)
 - [Compatibility evidence matrix](docs/COMPATIBILITY.md)
@@ -77,7 +77,7 @@ Technical references: [Dart native interop](https://dart.dev/interop/c-interop),
 ## Engineering principles
 
 1. Add abstractions only for a real boundary or requirement.
-2. Keep game profiles, memory access, and CLI responsibilities separate.
+2. Keep catalog data, RPCS3 integration, game detection, generic memory access, and trainer presentation in their owning features.
 3. Test each behavior at its owner, using fakes for process-memory boundaries.
 4. A failed read is never a zero; fields without write-enabling research stay disabled.
 5. Automated tests and plausible values do not prove game/build compatibility.

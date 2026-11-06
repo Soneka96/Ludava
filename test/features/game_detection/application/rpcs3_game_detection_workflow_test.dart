@@ -121,13 +121,14 @@ void main() {
       final result = _workflow(
         processIds: const [41],
         readMetadata: (_) => _metadata('other'),
-        readLogs: (_) => [
-          _snapshot(
-            events: const [
-              Rpcs3GameIdentityLogEvent(processFinished: true),
+        readLogs:
+            (_) => [
+              _snapshot(
+                events: const [
+                  Rpcs3GameIdentityLogEvent(processFinished: true),
+                ],
+              ),
             ],
-          ),
-        ],
       ).detect(41, _metadata('selected'));
 
       expect(result.status, GameDetectionStatus.noActiveGame);
@@ -138,80 +139,87 @@ void main() {
       final result = _workflow(
         processIds: const [41],
         readMetadata: (_) => _metadata('other'),
-        readLogs: (_) => [
-          _snapshot(
-            events: const [
-              Rpcs3GameIdentityLogEvent(
-                titleId: 'BCUS98282',
-                executable: 'EBOOT.BIN',
-                executableHash: 'PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5',
+        readLogs:
+            (_) => [
+              _snapshot(
+                events: const [
+                  Rpcs3GameIdentityLogEvent(
+                    titleId: 'BCUS98282',
+                    executable: 'EBOOT.BIN',
+                    executableHash:
+                        'PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5',
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
       ).detect(41, _metadata('selected'));
 
       expect(result.status, GameDetectionStatus.noActiveGame);
       expect(result.profile, isNull);
     });
 
-    test('Method detect() leaves identity unresolved while the PPU hash is pending', () {
-      final result = _workflow(
-        processIds: const [41],
-        readMetadata: (_) => _metadata('other'),
-        readLogs: (_) => [
-          _snapshot(
-            events: const [
-              Rpcs3GameIdentityLogEvent(
-                titleId: 'BCUS98282',
-                executable: 'RC2.ppu.self',
-              ),
-            ],
-          ),
-        ],
-      ).detect(41, _metadata('selected'));
-
-      expect(result.status, GameDetectionStatus.ambiguous);
-      expect(result.profile, isNull);
-    });
-
-    test('Method detect() resolves a supported profile from current PPU evidence', () {
-      final result = _workflow(
-        processIds: const [41],
-        readMetadata: (_) => _metadata('other'),
-        readLogs: (_) => [_supportedSnapshot()],
-      ).detect(41, _metadata('selected'));
-
-      expect(result.status, GameDetectionStatus.supportedGame);
-      expect(result.profile, same(Rc2CollectionProfile.profile));
-      expect(result.confidence, GameIdentityConfidence.confirmed);
-    });
-
     test(
-      'Method detect() selects the latest game boot after a stop event',
+      'Method detect() leaves identity unresolved while the PPU hash is pending',
       () {
-        final profile = Rc2CollectionProfile.profile;
         final result = _workflow(
           processIds: const [41],
           readMetadata: (_) => _metadata('other'),
-          readLogs: (_) => [
-            _snapshot(
-              events: [
-                const Rpcs3GameIdentityLogEvent(processFinished: true),
-                Rpcs3GameIdentityLogEvent(
-                  titleId: profile.buildId,
-                  executable: profile.executable,
-                  executableHash: profile.executableHash,
+          readLogs:
+              (_) => [
+                _snapshot(
+                  events: const [
+                    Rpcs3GameIdentityLogEvent(
+                      titleId: 'BCUS98282',
+                      executable: 'RC2.ppu.self',
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
+        ).detect(41, _metadata('selected'));
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+      },
+    );
+
+    test(
+      'Method detect() resolves a supported profile from current PPU evidence',
+      () {
+        final result = _workflow(
+          processIds: const [41],
+          readMetadata: (_) => _metadata('other'),
+          readLogs: (_) => [_supportedSnapshot()],
         ).detect(41, _metadata('selected'));
 
         expect(result.status, GameDetectionStatus.supportedGame);
-        expect(result.profile, same(profile));
+        expect(result.profile, same(Rc2CollectionProfile.profile));
+        expect(result.confidence, GameIdentityConfidence.confirmed);
       },
     );
+
+    test('Method detect() selects the latest game boot after a stop event', () {
+      final profile = Rc2CollectionProfile.profile;
+      final result = _workflow(
+        processIds: const [41],
+        readMetadata: (_) => _metadata('other'),
+        readLogs:
+            (_) => [
+              _snapshot(
+                events: [
+                  const Rpcs3GameIdentityLogEvent(processFinished: true),
+                  Rpcs3GameIdentityLogEvent(
+                    titleId: profile.buildId,
+                    executable: profile.executable,
+                    executableHash: profile.executableHash,
+                  ),
+                ],
+              ),
+            ],
+      ).detect(41, _metadata('selected'));
+
+      expect(result.status, GameDetectionStatus.supportedGame);
+      expect(result.profile, same(profile));
+    });
   });
 }
 
@@ -222,12 +230,11 @@ Rpcs3GameDetectionWorkflow _workflow({
     Rpcs3ProcessMetadata processMetadata,
   )
   readLogs,
-}) =>
-    Rpcs3GameDetectionWorkflow(
-      discoverProcessIds: () => processIds,
-      readProcessMetadata: readMetadata,
-      readIdentityLogCandidates: readLogs,
-    );
+}) => Rpcs3GameDetectionWorkflow(
+  discoverProcessIds: () => processIds,
+  readProcessMetadata: readMetadata,
+  readIdentityLogCandidates: readLogs,
+);
 
 Rpcs3ProcessMetadata _metadata(String directory) => Rpcs3ProcessMetadata(
   executablePath:
@@ -250,13 +257,12 @@ Rpcs3GameIdentityLogSnapshot _snapshot({
   List<String> titles = const [],
   List<String> serials = const [],
   List<String> bootPaths = const [],
-}) =>
-    Rpcs3GameIdentityLogSnapshot(
-      titles: titles,
-      serials: serials,
-      bootPaths: bootPaths,
-      events: events,
-      logPath: 'RPCS3.log',
-      logModifiedAtUtc: DateTime.utc(2026),
-      processStartedAtUtc: DateTime.utc(2026),
-    );
+}) => Rpcs3GameIdentityLogSnapshot(
+  titles: titles,
+  serials: serials,
+  bootPaths: bootPaths,
+  events: events,
+  logPath: 'RPCS3.log',
+  logModifiedAtUtc: DateTime.utc(2026),
+  processStartedAtUtc: DateTime.utc(2026),
+);
