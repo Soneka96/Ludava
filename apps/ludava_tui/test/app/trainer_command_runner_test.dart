@@ -125,6 +125,58 @@ void main() {
       },
     );
 
+    test(
+      'Method run() delegates diagnostic operations to an injected SDK service',
+      () {
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
+        final runner = TrainerCommandRunner(
+          diagnosticGameMemoryService: DiagnosticGameMemoryService(
+            api: api.adapter,
+            isWindows: true,
+            pointerSize: 8,
+            discoverProcessIds: () => const [],
+          ),
+          discoverProcessIds: () => throw StateError('runner must delegate'),
+        );
+
+        final exitCode = runner.run([
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+        ], output: output);
+
+        expect(exitCode, 0);
+        expect(output.toString(), contains('Value: 42'));
+        expect(output.toString(), contains('manual or unverified'));
+        expect(api.openCalls, 1);
+        expect(api.writeCalls, 0);
+        expect(api.closeCalls, 1);
+      },
+    );
+
+    test(
+      'Method run() does not call the SDK service when arguments are invalid',
+      () {
+        final service = _CountingDiagnosticGameMemoryService();
+        final errorOutput = StringBuffer();
+
+        final exitCode = TrainerCommandRunner(
+          diagnosticGameMemoryService: service,
+        ).run(['read', '--pid', '42'], errorOutput: errorOutput);
+
+        expect(exitCode, 2);
+        expect(errorOutput.toString(), contains('--game, --field, --pid'));
+        expect(service.executeCalls, 0);
+      },
+    );
+
     test('Method run() reports direct read failures and closes the handle', () {
       final output = StringBuffer();
       final api =
@@ -1169,6 +1221,23 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       },
     );
   });
+}
+
+class _CountingDiagnosticGameMemoryService extends DiagnosticGameMemoryService {
+  /// Number of diagnostic requests accepted by this test service.
+  int executeCalls = 0;
+
+  /// Creates a service fake that records diagnostic operation calls.
+  _CountingDiagnosticGameMemoryService();
+
+  /// Records execution so parse failures can prove they stop before the SDK.
+  @override
+  DiagnosticGameMemoryResult execute(DiagnosticGameMemoryRequest request) {
+    executeCalls++;
+    return const DiagnosticGameMemoryResult(
+      status: DiagnosticGameMemoryStatus.invalidRequest,
+    );
+  }
 }
 
 TrainerCommandRunner _writeCapableCli(

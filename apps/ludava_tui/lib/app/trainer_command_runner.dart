@@ -2,16 +2,9 @@ import 'dart:io';
 
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava_tui/features/diagnostics/data/datasources/windows_console.datasource.dart';
-import 'package:ludava_sdk/shared/platform/windows_memory_exception.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
-import 'package:ludava_sdk/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
-import 'package:ludava_sdk/features/game_memory/data/repositories/game_memory.repository.dart';
 import 'package:ludava_sdk/features/game_detection/application/rpcs3_game_detection_workflow.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/params/read_game_field.params.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/params/write_game_field.params.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/read_game_field.usecase.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/write_game_field.usecase.dart';
 import 'package:ludava_tui/features/diagnostics/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava_tui/features/diagnostics/presentation/cli/diagnostic_arguments.dart';
 import 'package:ludava_tui/features/diagnostics/presentation/cli/game_memory_output.dart';
@@ -28,6 +21,7 @@ class TrainerCommandRunner {
     WindowsMemoryApi? api,
     bool? isWindows,
     int? pointerSize,
+    DiagnosticGameMemoryService? diagnosticGameMemoryService,
     InteractiveTrainerCli? interactiveCli,
     List<int> Function()? discoverProcessIds,
     Rpcs3ProcessMetadata Function(int processId)? readProcessMetadata,
@@ -45,6 +39,7 @@ class TrainerCommandRunner {
   }) : _api = api,
        _isWindows = isWindows,
        _pointerSize = pointerSize,
+       _diagnosticGameMemoryService = diagnosticGameMemoryService,
        _hasTerminal = hasTerminal,
        _runNocterm = runNocterm,
        _interactiveCli = interactiveCli,
@@ -57,6 +52,7 @@ class TrainerCommandRunner {
   final WindowsMemoryApi? _api;
   final bool? _isWindows;
   final int? _pointerSize;
+  final DiagnosticGameMemoryService? _diagnosticGameMemoryService;
   final bool? _hasTerminal;
   final Future<void> Function(TrainerSessionController sessionController)?
   _runNocterm;
@@ -102,195 +98,87 @@ class TrainerCommandRunner {
       return 2;
     }
 
-    final profile = GameProfileCatalog.find(options.gameId);
-    if (profile == null) {
-      stderrSink.writeln('Unknown game profile: ${options.gameId}');
-      return 2;
-    }
+    final result = (_diagnosticGameMemoryService ??
+            _createDiagnosticGameMemoryService())
+        .execute(
+          DiagnosticGameMemoryRequest(
+            gameId: options.gameId,
+            fieldId: options.fieldId,
+            processId: options.processId,
+            memoryBase: options.memoryBase,
+            action: options.action,
+            value: options.value,
+            confirmed: options.confirmed,
+            requireCurrentIdentity: options.requireCurrentIdentity,
+          ),
+        );
 
-    final isWrite = options.action == GameMemoryAction.write;
-    final field = profile.findField(options.fieldId);
-    if (isWrite) {
-      if (!profile.canWrite) {
-        stdoutSink.writeln(
-          GameMemoryOutput.writeResult(
-            profile,
-            GameWriteResult(
-              status: GameWriteStatus.unsupportedProfile,
-              fieldId: options.fieldId,
-              requestedValue: options.value,
-            ),
-          ),
-        );
-        return 1;
-      }
-      if (field == null || !field.canWrite) {
-        stdoutSink.writeln(
-          GameMemoryOutput.writeResult(
-            profile,
-            GameWriteResult(
-              status: GameWriteStatus.unsupportedField,
-              fieldId: options.fieldId,
-              requestedValue: options.value,
-            ),
-          ),
-        );
-        return 1;
-      }
-    } else {
-      if (field == null || !field.canRead) {
-        stdoutSink.writeln(
-          GameMemoryOutput.readResult(
-            profile,
-            GameReadResult(
-              status: GameReadStatus.unsupportedField,
-              fieldId: options.fieldId,
-            ),
-          ),
-        );
-        return 1;
-      }
-      if (!profile.canRead) {
-        stdoutSink.writeln(
-          GameMemoryOutput.readResult(
-            profile,
-            GameReadResult(
-              status: GameReadStatus.unsupportedProfile,
-              fieldId: options.fieldId,
-            ),
-          ),
-        );
-        return 1;
-      }
-    }
-
-    Rpcs3ProcessMetadata? processMetadata;
-    GameDetectionResult? gameIdentity;
-    try {
-      if (_findRpcs3ProcessIds().contains(options.processId)) {
-        processMetadata = _readMetadata(options.processId);
-        gameIdentity = _detectCurrentGame(options.processId, processMetadata);
-      }
-    } on Exception catch (error) {
-      if (isWrite) {
+    final profile = result.profile;
+    switch (result.status) {
+      case DiagnosticGameMemoryStatus.unknownGame:
+        stderrSink.writeln('Unknown game profile: ${options.gameId}');
+        return 2;
+      case DiagnosticGameMemoryStatus.identityMismatch:
+        final operation =
+            options.action == GameMemoryAction.write ? 'Write' : 'Read';
         stderrSink.writeln(
-          'Write blocked: RPCS3 identity could not be checked: $error',
+          '$operation blocked: current RPCS3 game identity does not match ${options.gameId}.',
         );
         return 1;
-      }
-    } on UnsupportedError catch (error) {
-      if (isWrite) {
+      case DiagnosticGameMemoryStatus.identityCheckFailed:
         stderrSink.writeln(
-          'Write blocked: RPCS3 identity could not be checked: $error',
+          'Write blocked: RPCS3 identity could not be checked: ${result.error}',
         );
         return 1;
-      }
-    }
-
-    final identityConfirmed = _identityMatchesProfile(
-      gameIdentity,
-      options.processId,
-      profile,
-    );
-    if (isWrite && !identityConfirmed) {
-      stderrSink.writeln(
-        'Write blocked: current RPCS3 game identity does not match ${profile.id}.',
-      );
-      return 1;
-    }
-    if (options.requireCurrentIdentity && !identityConfirmed) {
-      stderrSink.writeln(
-        'Read blocked: current RPCS3 game identity does not match ${profile.id}.',
-      );
-      return 1;
-    }
-    if (isWrite) {
-      Rpcs3MemoryBaseCandidate? currentBase;
-      try {
-        final metadata = processMetadata;
-        if (metadata != null) {
-          currentBase = _resolveBaseCandidate(metadata);
-        }
-      } on Exception catch (error) {
-        stderrSink.writeln(
-          'Write blocked: current RPCS3 memory base could not be checked: $error',
-        );
-        return 1;
-      } on UnsupportedError catch (error) {
-        stderrSink.writeln(
-          'Write blocked: current RPCS3 memory base could not be checked: $error',
-        );
-        return 1;
-      }
-      if (currentBase == null || currentBase.memoryBase != options.memoryBase) {
+      case DiagnosticGameMemoryStatus.memoryBaseMismatch:
         stderrSink.writeln(
           'Write blocked: the supplied memory base does not match the current RPCS3 session.',
         );
         return 1;
-      }
+      case DiagnosticGameMemoryStatus.memoryBaseCheckFailed:
+        stderrSink.writeln(
+          'Write blocked: current RPCS3 memory base could not be checked: ${result.error}',
+        );
+        return 1;
+      case DiagnosticGameMemoryStatus.nativeFailure:
+        stderrSink.writeln(result.error ?? 'Diagnostic memory access failed.');
+        return 1;
+      case DiagnosticGameMemoryStatus.invalidRequest:
+      case DiagnosticGameMemoryStatus.none:
+        stderrSink.writeln('Invalid diagnostic memory request.');
+        return 2;
+      case DiagnosticGameMemoryStatus.cleanupFailed:
+      case DiagnosticGameMemoryStatus.completed:
+      case DiagnosticGameMemoryStatus.memoryOperationFailed:
+        if (profile == null) {
+          stderrSink.writeln('Diagnostic operation returned no game profile.');
+          return 1;
+        }
+        if (result.readResult case final readResult?) {
+          stdoutSink.writeln(
+            GameMemoryOutput.readResult(
+              profile,
+              readResult,
+              identityConfirmed: result.identityConfirmed,
+            ),
+          );
+        } else if (result.writeResult case final writeResult?) {
+          stdoutSink.writeln(
+            GameMemoryOutput.writeResult(
+              profile,
+              writeResult,
+              identityConfirmed: result.identityConfirmed,
+            ),
+          );
+        } else {
+          stderrSink.writeln('Diagnostic operation returned no field result.');
+          return 1;
+        }
+        if (result.cleanupError != null) {
+          stderrSink.writeln(result.cleanupError);
+        }
+        return result.succeeded ? 0 : 1;
     }
-
-    WindowsProcessMemoryDataSource? dataSource;
-    var exitCode = 0;
-    try {
-      dataSource = WindowsProcessMemoryDataSource.open(
-        options.processId,
-        api: _api,
-        isWindows: _isWindows,
-        pointerSize: _pointerSize,
-        allowWrites: isWrite,
-      );
-      final repository = GameMemoryRepository(dataSource);
-      if (isWrite) {
-        final result = WriteGameFieldUseCase(repository).execute(
-          WriteGameFieldParams(
-            profile: profile,
-            fieldId: options.fieldId,
-            memoryBase: options.memoryBase,
-            value: options.value!,
-            confirmed: options.confirmed,
-          ),
-        );
-        stdoutSink.writeln(
-          GameMemoryOutput.writeResult(
-            profile,
-            result,
-            identityConfirmed: identityConfirmed,
-          ),
-        );
-        if (!result.succeeded) exitCode = 1;
-      } else {
-        final result = ReadGameFieldUseCase(repository).execute(
-          ReadGameFieldParams(
-            profile: profile,
-            fieldId: options.fieldId,
-            memoryBase: options.memoryBase,
-          ),
-        );
-        stdoutSink.writeln(
-          GameMemoryOutput.readResult(
-            profile,
-            result,
-            identityConfirmed: identityConfirmed,
-          ),
-        );
-        if (!result.succeeded) exitCode = 1;
-      }
-    } on WindowsMemoryException catch (error) {
-      stderrSink.writeln(error);
-      exitCode = 1;
-    } on UnsupportedError catch (error) {
-      stderrSink.writeln(error);
-      exitCode = 1;
-    } finally {
-      try {
-        dataSource?.close();
-      } on WindowsMemoryException catch (error) {
-        stderrSink.writeln(error);
-        exitCode = 1;
-      }
-    }
-    return exitCode;
   }
 
   /// Runs diagnostic commands or starts the Nocterm app for no arguments.
@@ -331,6 +219,19 @@ class TrainerCommandRunner {
             run(arguments, output: output, errorOutput: errorOutput),
     clearScreen: WindowsConsoleDataSource().clearScreen,
   );
+
+  /// Builds the reusable SDK service for CLI diagnostic operations.
+  DiagnosticGameMemoryService _createDiagnosticGameMemoryService() =>
+      DiagnosticGameMemoryService(
+        api: _api,
+        isWindows: _isWindows,
+        pointerSize: _pointerSize,
+        discoverProcessIds: _findRpcs3ProcessIds,
+        readProcessMetadata: _readMetadata,
+        resolveMemoryBaseCandidate: _resolveBaseCandidate,
+        detectGame: _detectCurrentGame,
+        gameIdentityLogDataSource: _gameIdentityLogDataSource,
+      );
 
   /// Runs the terminal application until its shutdown action completes.
   Future<void> _runNoctermTrainer(
@@ -399,18 +300,4 @@ class TrainerCommandRunner {
             (_gameIdentityLogDataSource ?? Rpcs3GameIdentityLogDataSource())
                 .readCandidates(metadata),
   ).detect(processId, processMetadata);
-
-  /// Checks whether [identity] confirms the same process and [profile].
-  bool _identityMatchesProfile(
-    GameDetectionResult? identity,
-    int processId,
-    GameProfile profile,
-  ) =>
-      identity?.processId == processId &&
-      identity?.status == GameDetectionStatus.supportedGame &&
-      identity?.confidence == GameIdentityConfidence.confirmed &&
-      identity?.profile?.id == profile.id &&
-      profile.executableHash != null &&
-      identity?.executableHash?.toLowerCase() ==
-          profile.executableHash!.toLowerCase();
 }
