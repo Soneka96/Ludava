@@ -19,20 +19,30 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 This process-scoped setting ends when that PowerShell session closes. Use the
 script so the native discovery library and executable are built together.
+The script resolves the repository root from its own location, so it can also
+be invoked by absolute path while the current directory is elsewhere.
 
 The script resolves Dart packages, compiles the process-discovery native shim,
-and compiles `bin/ludava.dart` into `build\Ludava.exe`. The output includes
+and compiles `apps/ludava_tui/bin/ludava.dart` into `build\Ludava.exe`. The output includes
 `build\ludava_process_discovery.dll`, which must remain beside the executable.
 The executable includes the Dart runtime; the companion DLL captures Win32
 last-error values at the native call boundary. `build/` is ignored by Git.
 
-The source CLI checks are:
+The root CLI remains available as a compatibility entry point. For the TUI
+package-native command, run `dart run bin/ludava.dart` from `apps/ludava_tui`.
+Diagnostic help is available from either directory with `dart run bin/ludava.dart --help`.
+
+Resolve the workspace and analyze the root and both packages:
 
 ```powershell
+dart pub get
+dart pub workspace list
 dart analyze
-dart test
-dart format --output=none --set-exit-if-changed lib test bin
 ```
+
+Run `dart analyze` and `dart test` from each package directory, then `dart test`
+at the repository root for compatibility entry points. Root commands do not
+automatically replace the package suites.
 
 ## Copy to a ROG Ally
 

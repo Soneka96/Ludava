@@ -62,6 +62,8 @@ Behaviorless type declarations do not need artificial tests. Every class with be
 
 The repository root owns Dart Pub Workspace membership, the shared lockfile, top-level documentation, and build/CI orchestration. Do not add package-local lockfiles or commit generated `.dart_tool/` directories. Each package owns its manifest, production sources, tests, and dependencies. Use `ludava_sdk` from frontends through declared package dependencies; do not use relative paths across package boundaries. Run analysis and tests for each package explicitly because root commands are not assumed to discover all workspace members. Preserve tests for any root compatibility entry points and run those tests in workspace CI too.
 
+From the repository root, run `dart pub get`, `dart pub workspace list`, and `dart analyze`. Then run `dart analyze` and `dart test` from each of `packages/ludava_sdk` and `apps/ludava_tui`. Run `dart test` at the repository root for compatibility entry points. The Windows release build is `tool/build_windows.ps1`; it can be invoked from outside the repository root.
+
 The SDK owns the native process-discovery source and its reusable integration boundary. The TUI build tooling owns packaging the SDK integration into `Ludava.exe` and the companion DLL. Keep the executable and DLL names, same-directory loading, Windows x64 target, and current safety behavior stable when changing build paths. The future Flutter app and its build tooling are introduced in a later project.
 
 These rules are internal quality standards; they are **not** contributor instructions or an invitation to submit changes.

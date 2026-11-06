@@ -107,13 +107,13 @@ Construct application services and presentation dependencies explicitly at the c
 
 ## Enums, constants, and type aliases
 
-- Put every handwritten app enum in `lib/shared/constants/enums.dart`, including enums used by only one feature. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
+- Put handwritten SDK and cross-package enums in `packages/ludava_sdk/lib/shared/constants/enums.dart`. Frontend-only enums stay with their frontend. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
 - Put `none` first in every enum as the unset/error sentinel; it is not a real selected game value or a default compatibility claim. Give the enum and each member a concise `///` comment.
-- Put cross-cutting business constants in `lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
-- Keep layout and widget sizing constants in `layout_constants.dart` if a UI introduces them; do not mix presentation sizing into business constants. Create a constants file only when there are constants of that kind to own.
+- Put SDK business constants in `packages/ludava_sdk/lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
+- Keep layout and widget sizing constants in the owning frontend, such as `apps/ludava_tui/lib/shared/constants/layout_constants.dart`; do not mix presentation sizing into SDK business constants. Create a constants file only when there are constants of that kind to own.
 - Keep platform/API implementation details such as Windows access flags beside the adapter that owns them, as private `static const` members. Do not move implementation-only values into shared application constants.
 - Do not add handwritten `typedef`s, including function aliases or aliases for record-shaped results. Use a named class with fields for data and an owning class/interface for behavior or injected callbacks. Generated/third-party declarations are exempt. Keep a typedef only where Dart or a native/framework interop API requires it, and document why at the declaration.
-- The central enum and constants files are deliberate grouping exceptions to the one-class-per-file rule: enums share `enums.dart`; each constants class is grouped in the file for its constant kind.
+- Central enum and constants files are deliberate grouping exceptions to the one-class-per-file rule within the owning package: SDK enums share `enums.dart`; each constants class is grouped in the file for its constant kind.
 
 ## Dart documentation
 
@@ -132,7 +132,7 @@ Construct application services and presentation dependencies explicitly at the c
 - Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
 - For entity/model construction tests, use `Class TypeName construction` and `Class TypeName initializes ...`. Keep each test name specific about the input and expected result.
 - Do not use nested test groups. Cover negative and boundary cases for every safety check, and pair a test that expects a collaborator call with a test proving it is not called when the precondition fails.
-- Keep test files at the same relative path as production files, for example `lib/features/game_memory/domain/usecases/read_game_field.usecase.dart` maps to `test/features/game_memory/domain/usecases/read_game_field.usecase_test.dart`.
+- Keep test files at the same relative path as production files within their package, for example `packages/ludava_sdk/lib/features/game_memory/domain/usecases/read_game_field.usecase.dart` maps to `packages/ludava_sdk/test/features/game_memory/domain/usecases/read_game_field.usecase_test.dart`.
 - Mirror production paths under each owning package's `test/` directory. SDK tests must run without Nocterm or interactive stdin; TUI tests should use SDK fakes at the package boundary. Workspace CI must explicitly analyze and run both package suites rather than assuming a root test command discovers every workspace package.
 
 ## Safety invariants
@@ -150,7 +150,9 @@ Compatibility is recorded per exact game/build and capability. Keep experimental
 
 ## Current implementation
 
-The implementation uses the features listed above. `game_memory` contains generic read/write use cases and Windows process-memory access. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
+The implementation is a Dart workspace containing `packages/ludava_sdk` and `apps/ludava_tui`. The SDK's public entry point is `packages/ludava_sdk/lib/ludava_sdk.dart`; `LudavaTrainerFactory` composes an injectable `TrainerSessionController` without initializing a terminal. The TUI package owns Nocterm screens, the diagnostic CLI, and package-native entry points. Root `bin/ludava.dart` and `bin/ludava_cli.dart` remain compatibility commands that delegate to the TUI package. The future Flutter application is not present.
+
+The SDK's `game_memory` feature contains generic read/write use cases and Windows process-memory access. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
 
 The `game_detection` log data source preserves ordered PPU-load and process-finished events in addition to historical title, serial, and path values. The detection workflow evaluates fresh logs for the selected process and refuses automatic matching when multiple RPCS3 processes share a log directory, multiple fresh logs conflict, or evidence is incomplete. A stop event or the measured Collection EBOOT hash cannot select an RC profile. Memory-base resolution requires agreement across fresh candidate logs and runs after game detection. Automatic reads and writes recheck process session, identity, and base; failed refresh reads clear the displayed value. The Nocterm TUI does not poll continuously. Diagnostic reads may specify a profile without current identity evidence and remain labeled unverified.
 

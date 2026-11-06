@@ -8,6 +8,23 @@ The owner has approved migrating this repository to one Dart workspace with `pac
 
 The migration preserves existing game behavior, write safety, diagnostic commands, Windows executable and DLL packaging, and test coverage. It does not add trainer features or alter compatibility claims.
 
+The local workspace migration is implemented and verified on Windows. The
+updated workflow has not yet run in GitHub Actions, and this work has not been
+validated in a live RPCS3 session. Keep the existing live-game evidence and its
+limitations unchanged.
+
+## M6 — SDK and TUI workspace extraction
+
+- [x] Record the package ownership, dependency, and test conventions before moving code.
+- [x] Extract the reusable trainer engine, state, factory, profiles, and native integrations into `packages/ludava_sdk`.
+- [x] Move Nocterm screens, diagnostic CLI, and package-native entry points into `apps/ludava_tui`.
+- [x] Configure shared workspace resolution and retain root compatibility commands.
+- [x] Verify package analysis, package tests, root compatibility tests, Windows build, and copied EXE/DLL launch from another working directory locally.
+- [ ] Confirm the Windows workflow on PR #7; it must run SDK, TUI, root compatibility, boundary, and Windows build checks.
+- [ ] Record migration-build physical keyboard and live RPCS3 acceptance, or keep those checks explicitly unverified.
+
+**Exit:** GitHub Actions passes on PR #7 and the migration's Windows acceptance status is recorded. The Flutter app remains a later project.
+
 ## M0 — Project and documentation foundation
 
 - [x] Choose project name: Ludava.

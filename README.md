@@ -12,6 +12,10 @@ Launch the Nocterm trainer in a Windows terminal:
 dart run bin/ludava.dart
 ```
 
+This root command remains as a compatibility entry point. To run the TUI
+package's own entry point, change to `apps/ludava_tui` and run
+`dart run bin/ludava.dart` there.
+
 Run `.\tool\build_windows.ps1` first to create the native process-discovery
 library used by `dart run` and the compiled executable.
 
@@ -64,17 +68,51 @@ Ally, keeping them in the same directory. Dart and Flutter are not required on
 the Ally. See [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md) for the
 build and transfer steps.
 
-Run the automated checks with:
+## Dart workspace
+
+The repository contains two workspace packages:
+
+- `packages/ludava_sdk` owns the reusable trainer engine, session state, profiles, RPCS3 integration, memory safety, and native process-discovery source.
+- `apps/ludava_tui` owns the Nocterm interface, diagnostic CLI, and Windows executable packaging.
+
+Both use the SDK's public API from `packages/ludava_sdk/lib/ludava_sdk.dart`.
+The root `bin/` commands remain compatibility wrappers. The future Flutter
+application will be added as `apps/ludava_app` in a later project; it is not
+part of this workspace yet.
+
+Resolve and inspect the shared workspace from the repository root:
 
 ```powershell
+dart pub get
+dart pub workspace list
+dart analyze
+```
+
+Run the SDK checks from its package directory:
+
+Start each package command block from the repository root in a new shell.
+
+```powershell
+Set-Location packages/ludava_sdk
 dart analyze
 dart test
-dart format --output=none --set-exit-if-changed lib test bin
 ```
+
+Run the TUI checks from its package directory:
+
+```powershell
+Set-Location apps/ludava_tui
+dart analyze
+dart test
+```
+
+Run root compatibility entry-point tests from the repository root with
+`dart test`. Workspace tests are run per package; root test commands do not
+replace the SDK and TUI package suites.
 
 ## Architecture
 
-Ludava separates `game_catalog`, `rpcs3_connection`, `game_detection`, `game_memory`, and `trainer`. Profiles are shared catalog data; detection owns identity policy, the connection feature owns RPCS3 process/log infrastructure, and memory access remains generic. See [Architecture and testing](docs/ARCHITECTURE.md) for dependency rules, extension points, and test organization.
+Ludava separates `game_catalog`, `rpcs3_connection`, `game_detection`, `game_memory`, and `trainer`. Profiles are shared catalog data; detection owns identity policy, the connection feature owns RPCS3 process/log infrastructure, and memory access remains generic. See [Architecture and testing](docs/ARCHITECTURE.md) for package ownership, dependency rules, extension points, and test organization.
 
 - [MVP scope and acceptance gates](docs/MVP.md)
 - [Compatibility evidence matrix](docs/COMPATIBILITY.md)
