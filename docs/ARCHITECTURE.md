@@ -4,7 +4,7 @@ This document defines the target architecture for new and materially changed cod
 
 ## Feature ownership
 
-Ludava separates the game catalog, RPCS3 connection, game detection, game memory, and trainer experience. A game or build is profile data in `game_catalog`, not a separate feature. Adding a supported game adds its researched profile and fields with their actual evidence status; it reuses the existing detection and read/write workflows. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
+Ludava separates the game catalog, RPCS3 connection, game detection, game memory, shared trainer application behavior, and frontend presentation. A game or build is profile data in `game_catalog`, not a separate feature. Adding a supported game adds its researched profile and fields with their actual evidence status; it reuses the existing detection and read/write workflows. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
 
 Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires a deliberate user action and matching read-back. The interactive TUI applies on Enter; diagnostic writes require `--confirm-write`.
 
@@ -14,21 +14,22 @@ Keep game-specific offsets, value types, endianness, write bounds, and evidence 
 | `rpcs3_connection` | RPCS3 process discovery and metadata, raw RPCS3 log reading, and session memory-base resolution. |
 | `game_detection` | Semantic interpretation of current-session log events, detection outcomes, and profile matching. |
 | `game_memory` | Generic address resolution, value encoding/decoding, checked reads and writes, and memory safety policy. |
-| `trainer` | Nocterm and diagnostic command presentation plus current write-target revalidation. |
+| `trainer` | Shared trainer workflows, state, and current write-target revalidation. |
 
 The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU loads and process-finished events into identity evidence, then deciding whether that evidence selects a supported profile, belongs to `game_detection`.
 
 ## Layers and dependency direction
 
 ```text
-lib/app/                         # concrete application composition and command wiring
-lib/features/game_catalog/       # profile and field definitions shared by detection and memory
-lib/features/rpcs3_connection/   # RPCS3 process, raw log, and memory-base adapters
-lib/features/game_detection/     # identity events, profile matching, and detection workflow
-lib/features/game_memory/        # generic memory operations and Windows process-memory adapter
-lib/features/trainer/            # trainer workflows and CLI presentation
-lib/shared/constants/            # central app enums and cross-cutting constants
-lib/shared/platform/              # narrowly shared Windows platform errors
+packages/ludava_sdk/lib/app/                         # shared service composition
+packages/ludava_sdk/lib/features/game_catalog/       # profiles and fields
+packages/ludava_sdk/lib/features/rpcs3_connection/   # process, log, native, and base adapters
+packages/ludava_sdk/lib/features/game_detection/     # identity events and profile matching
+packages/ludava_sdk/lib/features/game_memory/        # generic memory operations and Windows adapter
+packages/ludava_sdk/lib/features/trainer/            # UI-independent workflows and state
+packages/ludava_sdk/lib/shared/                      # SDK-owned shared declarations
+apps/ludava_tui/lib/features/                        # feature-first Nocterm and CLI presentation
+apps/ludava_tui/lib/shared/                          # TUI-local shared components
 ```
 
 Only create a layer or subfolder when it contains a real responsibility. In particular, a simple operation belongs in its use case; an application workflow is for coordination across multiple operations. Do not create empty `domain/`, `data/`, `application/`, or `presentation/` folders for symmetry.
@@ -39,17 +40,18 @@ Feature dependencies remain acyclic:
 game_detection → game_catalog + rpcs3_connection
 game_memory    → game_catalog
 trainer        → game_detection + game_catalog + rpcs3_connection + game_memory
-app            → trainer + concrete feature data sources
-features       → shared/constants and narrowly shared platform types
+SDK app        → trainer + concrete SDK feature data sources
+TUI            → SDK public API
+future Flutter → SDK public API
 ```
 
-`game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No feature imports `lib/app`, and no feature outside `trainer` imports trainer code.
+`game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No SDK feature imports the SDK composition root, and no feature outside `trainer` imports trainer code. Frontends use declared SDK package dependencies rather than relative paths across package boundaries.
 
-Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The app composition root in `lib/app/` constructs concrete sources and command workflows; `bin/ludava.dart` and `bin/ludava_cli.dart` remain thin executable adapters.
+Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The SDK composition root constructs concrete sources and shared application workflows. Frontend entry points remain thin adapters that delegate to their package's command or application runner.
 
-## Future Dart workspace decision
+## Dart workspace and package ownership
 
-The long-term target is one Git repository managed as a Dart workspace, with three separately organized projects sharing the Ludava codebase:
+The approved repository structure is one Dart workspace containing independently organized packages and applications:
 
 ```text
 packages/ludava_sdk/
@@ -57,13 +59,23 @@ apps/ludava_tui/
 apps/ludava_app/
 ```
 
-`ludava_sdk` will own the reusable trainer engine: RPCS3 integration, process discovery, game detection and profiles, memory operations, session validation, field constraints, structured results, reactive state, and UI-independent application operations. Windows-specific native integration may remain in the SDK. It must not depend on Flutter or Nocterm.
+`ludava_sdk` owns the reusable trainer engine: RPCS3 integration, process discovery, game detection and profiles, memory operations, session validation, field constraints, structured results, reactive state, and UI-independent application operations. Windows-specific native source and integration belong to the SDK. The SDK must not depend on Flutter or Nocterm, and it must be independently analyzable and testable without initializing a terminal.
 
-`ludava_tui` will own Nocterm, terminal input and rendering, navigation, focus, editor interaction state, TUI components, and the CLI executable. It depends on `ludava_sdk`. `ludava_app` will own Flutter, desktop windows, widgets, navigation, layout, themes, and GUI interaction state. It also depends on `ludava_sdk`; the two frontends do not depend on each other.
+`ludava_tui` owns Nocterm, terminal input and rendering, navigation, focus, editor interaction state, TUI components, diagnostic CLI presentation, and its executable packaging. It depends on `ludava_sdk`. The future `ludava_app` will own Flutter, desktop windows, widgets, navigation, layout, themes, GUI interaction state, and its executable packaging. It will depend on `ludava_sdk`; the two frontends must not depend on each other. The Flutter package is a later project and is not created as part of the workspace migration.
+
+The repository root owns workspace configuration, shared dependency resolution, top-level documentation, and build/CI orchestration. Each package owns its `lib/`, `test/`, package dependencies, and package-specific integration tests. Keep one workspace lockfile and do not commit generated package configuration directories.
+
+The allowed dependency direction is:
+
+```text
+ludava_tui → ludava_sdk ← ludava_app (future)
+```
+
+No production or test import may point from the SDK to a frontend, from one frontend to the other, or across package boundaries using relative paths. Frontends call typed SDK operations directly; do not add a presentation-specific event dispatcher or duplicate engine behavior.
 
 Within each frontend, organize screens and components by the user-facing feature they implement. Keep shared application operations and authoritative trainer state in the SDK; keep temporary selection, focus, cursor, and unsaved editor text in the owning frontend. A terminal key handler and a Flutter control call the same typed SDK operation directly. Do not route ordinary operations through presentation-specific input events or a generic dispatcher.
 
-This is a future extraction target, not the current repository layout. Until a separately scoped migration is approved, continue following the existing feature boundaries and paths above. Do not create empty workspace scaffolding or move files as part of unrelated PRs.
+The approved migration moves existing capabilities without changing runtime behavior. Preserve the feature ownership, safety rules, and evidence limits in this document while adapting source and test paths to their owning package. Organize each frontend by user-facing feature; put reusable UI components in a feature or a frontend-local shared area only when multiple features use them. Do not create empty package or feature scaffolding.
 
 ## Adding capability
 
@@ -79,7 +91,7 @@ The trainer application layer owns the one authoritative `TrainerSessionState`. 
 
 Keep only transient interaction state in presentation: for example, the selected row, an unsaved editor buffer, cursor position, and focus. Do not copy process identity, detected profile, memory base, or verified field values into a second presentation model. When the authoritative session changes, clear or re-evaluate presentation state tied to the previous process, game, profile, or memory base. Revalidate identity and memory evidence before every write; a presentation snapshot never grants write authority.
 
-The root Nocterm component observes application state, chooses the active screen, coordinates navigation, and cleans up its subscription. Connection, trainer, and editor screens render their own flows and dispatch explicit actions; they do not open native process handles or duplicate application workflows. Extract reusable components when they own a meaningful rendering or interaction responsibility, not just to wrap a single text element. Keep Nocterm-specific types in `trainer/presentation/nocterm`; the application controller and state contract remain reusable by another UI.
+The TUI's root Nocterm component observes SDK state, chooses the active screen, coordinates navigation, and cleans up its subscription. Connection, trainer, and editor screens render their own flows and call typed SDK operations; they do not open native process handles or duplicate application workflows. Extract reusable components when they own a meaningful rendering or interaction responsibility, not just to wrap a single text element. Keep Nocterm-specific types under the owning feature in `apps/ludava_tui/lib/`; the SDK controller and state contract remain reusable by another UI.
 
 Construct application services and presentation dependencies explicitly at the composition root. Prefer constructor injection and small behavior-owning interfaces for replaceable boundaries. Do not add a global service locator or a state-management framework unless a concrete requirement justifies it. See [`DEVELOPMENT.md`](DEVELOPMENT.md) for source, keyboard, and component testing conventions.
 
@@ -115,11 +127,13 @@ Construct application services and presentation dependencies explicitly at the c
 - Test behavior at its owner. Use fakes for deterministic memory boundaries and test the Windows adapter through an injected native API; unit tests must not read or write a live game's memory.
 - Test pure value/codec/address behavior directly. Test use cases with fake repository contracts, repositories with fake data sources, and data sources with fake native APIs.
 - Add a small number of integration tests for important seams. Passing automated tests does not establish game/build compatibility; that requires recorded live-game evidence in `docs/COMPATIBILITY.md`.
+- Keep tests for root compatibility entry points and run those checks in workspace CI alongside the SDK and TUI suites.
 - Use one top-level group per public method, named `Method methodName() behaves correctly`. Name each scenario `Method methodName() <outcome>` and add `when <condition>` when the condition is not already clear from the outcome. Use clear outcomes such as `returns`, `preserves`, `rejects`, and `throws`.
 - Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
 - For entity/model construction tests, use `Class TypeName construction` and `Class TypeName initializes ...`. Keep each test name specific about the input and expected result.
 - Do not use nested test groups. Cover negative and boundary cases for every safety check, and pair a test that expects a collaborator call with a test proving it is not called when the precondition fails.
 - Keep test files at the same relative path as production files, for example `lib/features/game_memory/domain/usecases/read_game_field.usecase.dart` maps to `test/features/game_memory/domain/usecases/read_game_field.usecase_test.dart`.
+- Mirror production paths under each owning package's `test/` directory. SDK tests must run without Nocterm or interactive stdin; TUI tests should use SDK fakes at the package boundary. Workspace CI must explicitly analyze and run both package suites rather than assuming a root test command discovers every workspace package.
 
 ## Safety invariants
 

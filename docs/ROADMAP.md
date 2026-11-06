@@ -2,11 +2,11 @@
 
 Milestones describe verified outcomes, not completed code alone.
 
-## Long-term workspace decision
+## Approved workspace migration
 
-The owner has chosen one Dart workspace in this Git repository with three separately organized projects: `packages/ludava_sdk`, `apps/ludava_tui`, and `apps/ludava_app`. The SDK will hold the reusable trainer engine; the Nocterm TUI and Flutter desktop app will be independent frontends over that SDK. See [ARCHITECTURE.md](ARCHITECTURE.md) for ownership and dependency boundaries.
+The owner has approved migrating this repository to one Dart workspace with `packages/ludava_sdk` and `apps/ludava_tui`. The SDK holds the reusable trainer engine; the Nocterm TUI is an independent frontend over that SDK. `apps/ludava_app` remains a future Flutter application for a later project; it is not created by the workspace migration. See [ARCHITECTURE.md](ARCHITECTURE.md) for package ownership and dependency boundaries.
 
-This decision does not authorize migrating the current repository as part of PR #6. Keep the present layout until a dedicated migration is planned and verified.
+The migration preserves existing game behavior, write safety, diagnostic commands, Windows executable and DLL packaging, and test coverage. It does not add trainer features or alter compatibility claims.
 
 ## M0 — Project and documentation foundation
 
