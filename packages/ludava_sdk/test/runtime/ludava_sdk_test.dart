@@ -246,6 +246,40 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
     );
 
     test(
+      'Method create() shares feature-owned memory operations with diagnostics',
+      () async {
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 61];
+        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final sdk = _createSdk(
+          api,
+          currentIdentity: () => _confirmedIdentity(profile),
+        );
+
+        try {
+          sdk.session.connect();
+          final diagnosticResult = sdk.diagnostics.execute(
+            DiagnosticGameMemoryRequest(
+              gameId: profile.id,
+              fieldId: 'bolts',
+              processId: 42,
+              memoryBase: 0x300000000,
+              action: GameMemoryAction.read,
+            ),
+          );
+
+          expect(sdk.session.state.readResults['bolts']?.value, 61);
+          expect(diagnosticResult.readResult?.value, 61);
+          expect(api.openCalls, 2);
+          expect(api.readCalls, 2);
+          expect(api.writeCalls, 0);
+          expect(api.closeCalls, 2);
+        } finally {
+          await sdk.dispose();
+        }
+      },
+    );
+
+    test(
       'Method create() rejects values outside the field range before writing',
       () async {
         final api = FakeWindowsMemoryApi();

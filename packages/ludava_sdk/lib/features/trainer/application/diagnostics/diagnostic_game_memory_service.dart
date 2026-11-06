@@ -6,21 +6,15 @@ import 'package:ludava_sdk/features/game_detection/application/rpcs3_game_detect
 import 'package:ludava_sdk/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/data/datasources/windows_memory_api.dart';
-import 'package:ludava_sdk/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
-import 'package:ludava_sdk/features/game_memory/data/repositories/game_memory.repository.dart';
+import 'package:ludava_sdk/features/game_memory/data/process_game_memory_operations.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/params/read_game_field.params.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/params/write_game_field.params.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/read_game_field.usecase.dart';
-import 'package:ludava_sdk/features/game_memory/domain/usecases/write_game_field.usecase.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
-import 'package:ludava_sdk/shared/platform/windows_memory_exception.dart';
 
 /// Coordinates safe diagnostic reads and writes without frontend dependencies.
 class DiagnosticGameMemoryService {
@@ -29,6 +23,7 @@ class DiagnosticGameMemoryService {
     WindowsMemoryApi? api,
     bool? isWindows,
     int? pointerSize,
+    ProcessGameMemoryOperations? memoryOperations,
     List<int> Function()? discoverProcessIds,
     Rpcs3ProcessMetadata Function(int processId)? readProcessMetadata,
     Rpcs3MemoryBaseCandidate? Function(Rpcs3ProcessMetadata processMetadata)?
@@ -39,18 +34,20 @@ class DiagnosticGameMemoryService {
     )?
     detectGame,
     Rpcs3GameIdentityLogDataSource? gameIdentityLogDataSource,
-  }) : _api = api,
-       _isWindows = isWindows,
-       _pointerSize = pointerSize,
+  }) : _memoryOperations =
+           memoryOperations ??
+           ProcessGameMemoryOperations(
+             api: api,
+             isWindows: isWindows,
+             pointerSize: pointerSize,
+           ),
        _discoverProcessIds = discoverProcessIds,
        _readProcessMetadata = readProcessMetadata,
        _resolveMemoryBaseCandidate = resolveMemoryBaseCandidate,
        _detectGame = detectGame,
        _gameIdentityLogDataSource = gameIdentityLogDataSource;
 
-  final WindowsMemoryApi? _api;
-  final bool? _isWindows;
-  final int? _pointerSize;
+  final ProcessGameMemoryOperations _memoryOperations;
   final List<int> Function()? _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId)? _readProcessMetadata;
   final Rpcs3MemoryBaseCandidate? Function(
@@ -152,50 +149,28 @@ class DiagnosticGameMemoryService {
       }
     }
 
-    WindowsProcessMemoryDataSource? dataSource;
     GameReadResult? readResult;
     GameWriteResult? writeResult;
-    Object? operationError;
-    Object? cleanupError;
-    try {
-      dataSource = WindowsProcessMemoryDataSource.open(
-        request.processId,
-        api: _api,
-        isWindows: _isWindows,
-        pointerSize: _pointerSize,
-        allowWrites: isWrite,
-      );
-      final repository = GameMemoryRepository(dataSource);
-      if (isWrite) {
-        writeResult = WriteGameFieldUseCase(repository).execute(
-          WriteGameFieldParams(
-            profile: profile,
-            fieldId: request.fieldId,
-            memoryBase: request.memoryBase,
-            value: request.value!,
-            confirmed: request.confirmed,
-          ),
-        );
-      } else {
-        readResult = ReadGameFieldUseCase(repository).execute(
-          ReadGameFieldParams(
-            profile: profile,
-            fieldId: request.fieldId,
-            memoryBase: request.memoryBase,
-          ),
-        );
-      }
-    } on WindowsMemoryException catch (error) {
-      operationError = error;
-    } on UnsupportedError catch (error) {
-      operationError = error;
-    } finally {
-      try {
-        dataSource?.close();
-      } on WindowsMemoryException catch (error) {
-        cleanupError = error;
-      }
-    }
+    final operation =
+        isWrite
+            ? _memoryOperations.writeField(
+              processId: request.processId,
+              profile: profile,
+              memoryBase: request.memoryBase,
+              fieldId: request.fieldId,
+              value: request.value!,
+              confirmed: request.confirmed,
+            )
+            : _memoryOperations.readField(
+              processId: request.processId,
+              profile: profile,
+              memoryBase: request.memoryBase,
+              fieldId: request.fieldId,
+            );
+    readResult = operation.readResult;
+    writeResult = operation.writeResult;
+    final operationError = operation.operationError;
+    final cleanupError = operation.cleanupError;
 
     final memorySucceeded =
         readResult?.succeeded ?? writeResult?.succeeded ?? false;

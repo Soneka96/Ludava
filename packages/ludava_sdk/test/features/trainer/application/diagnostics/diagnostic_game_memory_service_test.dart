@@ -2,6 +2,7 @@ import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_g
 import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_service.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/data/process_game_memory_operations.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
@@ -17,9 +18,11 @@ void main() {
       () {
         final api = FakeWindowsMemoryApi();
         final result = DiagnosticGameMemoryService(
-          api: api.adapter,
-          isWindows: true,
-          pointerSize: 8,
+          memoryOperations: ProcessGameMemoryOperations(
+            api: api.adapter,
+            isWindows: true,
+            pointerSize: 8,
+          ),
           discoverProcessIds: () => const [],
         ).execute(_readRequest());
 
