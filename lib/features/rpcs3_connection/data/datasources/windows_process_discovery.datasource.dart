@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:ludava/shared/platform/windows_memory_exception.dart';
 import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_discovery_api.dart';
+import 'package:ludava/features/rpcs3_connection/data/models/windows_process_discovery_call_result.model.dart';
 
 /// Finds running RPCS3 process identifiers through the Windows Tool Help API.
 class WindowsProcessDiscoveryDataSource {
@@ -36,51 +37,79 @@ class WindowsProcessDiscoveryDataSource {
     }
 
     final api = _api ?? WindowsProcessDiscoveryApi.system();
-    final snapshot = api.createToolhelp32Snapshot(_th32csSnapProcess, 0);
+    final snapshotResult = api.createToolhelp32Snapshot(_th32csSnapProcess, 0);
+    final snapshot = snapshotResult.value;
     final invalidHandle = Pointer<Void>.fromAddress(-1);
     if (snapshot.address == 0 || snapshot.address == invalidHandle.address) {
       throw WindowsMemoryException(
         operation: 'CreateToolhelp32Snapshot',
-        errorCode: api.getLastError(),
+        errorCode: snapshotResult.errorCode,
       );
     }
 
     Pointer<ProcessEntry32W> entry = nullptr;
+    List<int>? processIds;
+    Object? primaryError;
+    StackTrace? primaryStackTrace;
+    WindowsMemoryException? closeError;
     try {
       entry = calloc<ProcessEntry32W>();
       entry.ref.dwSize = sizeOf<ProcessEntry32W>();
-      var hasEntry = api.process32FirstW(snapshot, entry) != 0;
-      if (!hasEntry) {
-        _throwUnlessEnumerationComplete(api, 'Process32FirstW');
-        return const [];
+      final firstResult = api.process32FirstW(snapshot, entry);
+      if (!firstResult.value) {
+        _throwUnlessEnumerationComplete(firstResult, 'Process32FirstW');
+        processIds = const [];
+      } else {
+        processIds = <int>[];
+        var nextResult = firstResult;
+        do {
+          if (_executableName(entry.ref.szExeFile).toLowerCase() ==
+              'rpcs3.exe') {
+            processIds.add(entry.ref.th32ProcessID);
+          }
+          nextResult = api.process32NextW(snapshot, entry);
+        } while (nextResult.value);
+
+        _throwUnlessEnumerationComplete(nextResult, 'Process32NextW');
+        processIds = List.unmodifiable(processIds);
       }
-
-      final processIds = <int>[];
-      do {
-        if (_executableName(entry.ref.szExeFile).toLowerCase() == 'rpcs3.exe') {
-          processIds.add(entry.ref.th32ProcessID);
-        }
-        hasEntry = api.process32NextW(snapshot, entry) != 0;
-      } while (hasEntry);
-
-      _throwUnlessEnumerationComplete(api, 'Process32NextW');
-      return List.unmodifiable(processIds);
+    } catch (error, stackTrace) {
+      primaryError = error;
+      primaryStackTrace = stackTrace;
     } finally {
-      if (entry.address != 0) calloc.free(entry);
-      if (api.closeHandle(snapshot) == 0) {
-        throw WindowsMemoryException(
-          operation: 'CloseHandle',
-          errorCode: api.getLastError(),
-        );
+      try {
+        if (entry.address != 0) calloc.free(entry);
+      } finally {
+        final closeResult = api.closeHandle(snapshot);
+        if (!closeResult.value) {
+          closeError = WindowsMemoryException(
+            operation: 'CloseHandle',
+            errorCode: closeResult.errorCode,
+          );
+        }
       }
     }
+
+    if (primaryError != null) {
+      if (primaryError is WindowsMemoryException && closeError != null) {
+        primaryError = WindowsMemoryException(
+          operation: primaryError.operation,
+          errorCode: primaryError.errorCode,
+          processId: primaryError.processId,
+          secondaryException: closeError,
+        );
+      }
+      Error.throwWithStackTrace(primaryError, primaryStackTrace!);
+    }
+    if (closeError != null) throw closeError;
+    return processIds!;
   }
 
   void _throwUnlessEnumerationComplete(
-    WindowsProcessDiscoveryApi api,
+    WindowsProcessDiscoveryCallResult<bool> result,
     String operation,
   ) {
-    final errorCode = api.getLastError();
+    final errorCode = result.errorCode;
     if (errorCode != _errorNoMoreFiles) {
       throw WindowsMemoryException(operation: operation, errorCode: errorCode);
     }

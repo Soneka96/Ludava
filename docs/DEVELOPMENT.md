@@ -38,6 +38,17 @@ Behaviorless type declarations do not need artificial tests. Every class with be
 
 These rules are internal quality standards; they are **not** contributor instructions or an invitation to submit changes.
 
+## Windows last-error capture
+
+For Win32 calls that report errors through `GetLastError`, the owning adapter
+primes the last-error FFI binding before its first operation and captures the
+error in the same API method that invokes the failing function. It returns the
+operation result and error code together; data sources must not make a later,
+separate `GetLastError` call. The error is meaningful only when the native
+return value indicates failure. This follows the capture pattern documented by
+`package:win32` while keeping Tool Help calls in the `rpcs3_connection`
+boundary.
+
 ## Third-party research and licensing
 
 Ludava is intended as an independently implemented project. Historical research may be cited, but do not copy or mechanically translate copyright-protected source or curated data without checking its terms and obtaining any necessary permission. Credits and licensing requirements of third-party materials remain applicable.

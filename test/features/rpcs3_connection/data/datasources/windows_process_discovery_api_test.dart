@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_discovery_api.dart';
+import 'package:ludava/features/rpcs3_connection/data/models/windows_process_discovery_call_result.model.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -28,45 +29,58 @@ void main() {
         final api = WindowsProcessDiscoveryApi(
           createToolhelp32Snapshot: (flags, processId) {
             snapshotCalled = flags == 2 && processId == 0;
-            return Pointer<Void>.fromAddress(1);
+            return WindowsProcessDiscoveryCallResult<Pointer<Void>>(
+              value: Pointer<Void>.fromAddress(1),
+              errorCode: 0,
+            );
           },
           process32FirstW: (_, __) {
             firstCalled = true;
-            return 1;
+            return const WindowsProcessDiscoveryCallResult<bool>(
+              value: true,
+              errorCode: 0,
+            );
           },
           process32NextW: (_, __) {
             nextCalled = true;
-            return 0;
+            return const WindowsProcessDiscoveryCallResult<bool>(
+              value: false,
+              errorCode: 18,
+            );
           },
           closeHandle: (_) {
             closeCalled = true;
-            return 1;
+            return const WindowsProcessDiscoveryCallResult<bool>(
+              value: true,
+              errorCode: 0,
+            );
           },
-          getLastError: () => 18,
         );
 
-        expect(api.createToolhelp32Snapshot(2, 0).address, 1);
+        final snapshot = api.createToolhelp32Snapshot(2, 0);
+        expect(snapshot.value.address, 1);
+        expect(snapshot.errorCode, 0);
         expect(
-          api.process32FirstW(
-            Pointer<Void>.fromAddress(1),
-            nullptr.cast<ProcessEntry32W>(),
-          ),
-          1,
+          api
+              .process32FirstW(
+                Pointer<Void>.fromAddress(1),
+                nullptr.cast<ProcessEntry32W>(),
+              )
+              .value,
+          isTrue,
         );
-        expect(
-          api.process32NextW(
-            Pointer<Void>.fromAddress(1),
-            nullptr.cast<ProcessEntry32W>(),
-          ),
-          0,
+        final nextResult = api.process32NextW(
+          Pointer<Void>.fromAddress(1),
+          nullptr.cast<ProcessEntry32W>(),
         );
-        expect(api.closeHandle(Pointer<Void>.fromAddress(1)), 1);
+        expect(nextResult.value, isFalse);
+        expect(nextResult.errorCode, 18);
+        expect(api.closeHandle(Pointer<Void>.fromAddress(1)).value, isTrue);
 
         expect(snapshotCalled, isTrue);
         expect(firstCalled, isTrue);
         expect(nextCalled, isTrue);
         expect(closeCalled, isTrue);
-        expect(api.getLastError(), 18);
       },
     );
   });

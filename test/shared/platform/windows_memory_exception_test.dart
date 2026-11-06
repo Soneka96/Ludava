@@ -24,5 +24,21 @@ void main() {
         'OpenProcess for process 42 failed (Windows error 5).',
       );
     });
+
+    test('Method toString() reports a secondary cleanup failure', () {
+      const exception = WindowsMemoryException(
+        operation: 'Process32NextW',
+        errorCode: 5,
+        secondaryException: WindowsMemoryException(
+          operation: 'CloseHandle',
+          errorCode: 6,
+        ),
+      );
+
+      expect(
+        exception.toString(),
+        'Process32NextW failed (Windows error 5). Additionally, CloseHandle failed (Windows error 6).',
+      );
+    });
   });
 }

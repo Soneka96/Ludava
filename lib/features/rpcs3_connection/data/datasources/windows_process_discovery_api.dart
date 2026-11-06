@@ -1,5 +1,7 @@
 import 'dart:ffi';
 
+import 'package:ludava/features/rpcs3_connection/data/models/windows_process_discovery_call_result.model.dart';
+
 /// Mirrors the Windows `PROCESSENTRY32W` structure used by Tool Help.
 ///
 /// [Uint16] represents Windows `WCHAR` elements. Its native layout, including
@@ -49,19 +51,26 @@ final class ProcessEntry32W extends Struct {
 /// Holds the Windows Tool Help process-enumeration calls.
 class WindowsProcessDiscoveryApi {
   /// Creates a Tool Help process snapshot.
-  final Pointer<Void> Function(int, int) createToolhelp32Snapshot;
+  final WindowsProcessDiscoveryCallResult<Pointer<Void>> Function(int, int)
+  createToolhelp32Snapshot;
 
   /// Loads the first process entry from a snapshot.
-  final int Function(Pointer<Void>, Pointer<ProcessEntry32W>) process32FirstW;
+  final WindowsProcessDiscoveryCallResult<bool> Function(
+    Pointer<Void>,
+    Pointer<ProcessEntry32W>,
+  )
+  process32FirstW;
 
   /// Loads the next process entry from a snapshot.
-  final int Function(Pointer<Void>, Pointer<ProcessEntry32W>) process32NextW;
+  final WindowsProcessDiscoveryCallResult<bool> Function(
+    Pointer<Void>,
+    Pointer<ProcessEntry32W>,
+  )
+  process32NextW;
 
   /// Closes a native snapshot handle.
-  final int Function(Pointer<Void>) closeHandle;
-
-  /// Returns the calling thread's last Windows error code.
-  final int Function() getLastError;
+  final WindowsProcessDiscoveryCallResult<bool> Function(Pointer<Void>)
+  closeHandle;
 
   /// Creates an API adapter from injectable Windows functions.
   const WindowsProcessDiscoveryApi({
@@ -69,35 +78,100 @@ class WindowsProcessDiscoveryApi {
     required this.process32FirstW,
     required this.process32NextW,
     required this.closeHandle,
-    required this.getLastError,
   });
 
   /// Binds the API adapter to `kernel32.dll` and `kernel32` Tool Help exports.
   factory WindowsProcessDiscoveryApi.system() {
     final kernel32 = DynamicLibrary.open('kernel32.dll');
+    final getLastError = kernel32
+        .lookupFunction<Uint32 Function(), int Function()>(
+          'GetLastError',
+          isLeaf: true,
+        );
+    var lastErrorIsResolved = false;
+
+    void resolveLastError() {
+      if (lastErrorIsResolved) return;
+      getLastError();
+      lastErrorIsResolved = true;
+    }
+
+    final createToolhelp32Snapshot = kernel32.lookupFunction<
+      Pointer<Void> Function(Uint32, Uint32),
+      Pointer<Void> Function(int, int)
+    >('CreateToolhelp32Snapshot');
+    final process32FirstW = kernel32.lookupFunction<
+      Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
+      int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
+    >('Process32FirstW');
+    final process32NextW = kernel32.lookupFunction<
+      Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
+      int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
+    >('Process32NextW');
+    final closeHandle = kernel32.lookupFunction<
+      Int32 Function(Pointer<Void>),
+      int Function(Pointer<Void>)
+    >('CloseHandle');
+
+    @pragma('vm:prefer-inline')
+    WindowsProcessDiscoveryCallResult<Pointer<Void>> createSnapshot(
+      int flags,
+      int processId,
+    ) {
+      resolveLastError();
+      final snapshot = createToolhelp32Snapshot(flags, processId);
+      final failed =
+          snapshot.address == 0 ||
+          snapshot.address == Pointer<Void>.fromAddress(-1).address;
+      return WindowsProcessDiscoveryCallResult<Pointer<Void>>(
+        value: snapshot,
+        errorCode: failed ? getLastError() : 0,
+      );
+    }
+
+    @pragma('vm:prefer-inline')
+    WindowsProcessDiscoveryCallResult<bool> readFirst(
+      Pointer<Void> snapshot,
+      Pointer<ProcessEntry32W> entry,
+    ) {
+      resolveLastError();
+      final succeeded = process32FirstW(snapshot, entry) != 0;
+      return WindowsProcessDiscoveryCallResult<bool>(
+        value: succeeded,
+        errorCode: succeeded ? 0 : getLastError(),
+      );
+    }
+
+    @pragma('vm:prefer-inline')
+    WindowsProcessDiscoveryCallResult<bool> readNext(
+      Pointer<Void> snapshot,
+      Pointer<ProcessEntry32W> entry,
+    ) {
+      resolveLastError();
+      final succeeded = process32NextW(snapshot, entry) != 0;
+      return WindowsProcessDiscoveryCallResult<bool>(
+        value: succeeded,
+        errorCode: succeeded ? 0 : getLastError(),
+      );
+    }
+
+    @pragma('vm:prefer-inline')
+    WindowsProcessDiscoveryCallResult<bool> closeSnapshot(
+      Pointer<Void> snapshot,
+    ) {
+      resolveLastError();
+      final succeeded = closeHandle(snapshot) != 0;
+      return WindowsProcessDiscoveryCallResult<bool>(
+        value: succeeded,
+        errorCode: succeeded ? 0 : getLastError(),
+      );
+    }
+
     return WindowsProcessDiscoveryApi(
-      createToolhelp32Snapshot: kernel32.lookupFunction<
-        Pointer<Void> Function(Uint32, Uint32),
-        Pointer<Void> Function(int, int)
-      >('CreateToolhelp32Snapshot', isLeaf: true),
-      process32FirstW: kernel32.lookupFunction<
-        Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
-        int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
-      >('Process32FirstW', isLeaf: true),
-      process32NextW: kernel32.lookupFunction<
-        Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
-        int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
-      >('Process32NextW', isLeaf: true),
-      closeHandle: kernel32.lookupFunction<
-        Int32 Function(Pointer<Void>),
-        int Function(Pointer<Void>)
-      >('CloseHandle', isLeaf: true),
-      // Keep these calls on the direct leaf-call path so Dart's native-call
-      // transition cannot disturb Win32's thread-local last-error value.
-      getLastError: kernel32.lookupFunction<Uint32 Function(), int Function()>(
-        'GetLastError',
-        isLeaf: true,
-      ),
+      createToolhelp32Snapshot: createSnapshot,
+      process32FirstW: readFirst,
+      process32NextW: readNext,
+      closeHandle: closeSnapshot,
     );
   }
 }

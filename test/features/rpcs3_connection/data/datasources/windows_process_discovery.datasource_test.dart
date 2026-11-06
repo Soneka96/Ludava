@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'package:ludava/shared/platform/windows_memory_exception.dart';
 import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
 import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_discovery_api.dart';
+import 'package:ludava/features/rpcs3_connection/data/models/windows_process_discovery_call_result.model.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -71,6 +72,40 @@ void main() {
                   'Process32NextW',
                 )
                 .having((error) => error.errorCode, 'errorCode', 5),
+          ),
+        );
+        expect(api.closeCalls, 1);
+      },
+    );
+
+    test(
+      'Method findRpcs3ProcessIds() preserves enumeration and close errors',
+      () {
+        final api =
+            _FakeWindowsProcessDiscoveryApi([_ProcessInfo(51, 'rpcs3.exe')])
+              ..nextError = 5
+              ..closeResult = 0;
+
+        expect(
+          () => _dataSource(api).findRpcs3ProcessIds(),
+          throwsA(
+            isA<WindowsMemoryException>()
+                .having(
+                  (error) => error.operation,
+                  'operation',
+                  'Process32NextW',
+                )
+                .having((error) => error.errorCode, 'errorCode', 5)
+                .having(
+                  (error) => error.secondaryException?.operation,
+                  'secondary operation',
+                  'CloseHandle',
+                )
+                .having(
+                  (error) => error.secondaryException?.errorCode,
+                  'secondary errorCode',
+                  6,
+                ),
           ),
         );
         expect(api.closeCalls, 1);
@@ -189,6 +224,29 @@ void main() {
       expect(api.closeCalls, 1);
     });
 
+    test(
+      'Method findRpcs3ProcessIds() throws when failure has error code zero',
+      () {
+        final api = _FakeWindowsProcessDiscoveryApi([
+          _ProcessInfo(51, 'rpcs3.exe'),
+        ])..nextError = 0;
+
+        expect(
+          () => _dataSource(api).findRpcs3ProcessIds(),
+          throwsA(
+            isA<WindowsMemoryException>()
+                .having(
+                  (error) => error.operation,
+                  'operation',
+                  'Process32NextW',
+                )
+                .having((error) => error.errorCode, 'errorCode', 0),
+          ),
+        );
+        expect(api.closeCalls, 1);
+      },
+    );
+
     test('Method findRpcs3ProcessIds() supports repeated discovery calls', () {
       final api = _FakeWindowsProcessDiscoveryApi([
         _ProcessInfo(51, 'rpcs3.exe'),
@@ -245,7 +303,6 @@ class _FakeWindowsProcessDiscoveryApi {
   int? snapshotProcessId;
   int? entrySize;
   int _index = -1;
-  int _lastError = 0;
   bool failFirst = false;
 
   _FakeWindowsProcessDiscoveryApi(this.processes);
@@ -255,34 +312,48 @@ class _FakeWindowsProcessDiscoveryApi {
       snapshotCalls++;
       snapshotFlags = flags;
       snapshotProcessId = processId;
-      _lastError = snapshotError;
-      return Pointer<Void>.fromAddress(snapshotAddress);
+      return WindowsProcessDiscoveryCallResult<Pointer<Void>>(
+        value: Pointer<Void>.fromAddress(snapshotAddress),
+        errorCode:
+            snapshotAddress == 0 || snapshotAddress == -1 ? snapshotError : 0,
+      );
     },
     process32FirstW: (_, entry) {
       entrySize = entry.ref.dwSize;
       if (processes.isEmpty || failFirst) {
-        _lastError = firstError;
-        return 0;
+        return WindowsProcessDiscoveryCallResult<bool>(
+          value: false,
+          errorCode: firstError,
+        );
       }
       _index = 0;
       _writeEntry(entry);
-      return 1;
+      return const WindowsProcessDiscoveryCallResult<bool>(
+        value: true,
+        errorCode: 0,
+      );
     },
     process32NextW: (_, entry) {
       _index++;
       if (_index >= processes.length) {
-        _lastError = nextError;
-        return 0;
+        return WindowsProcessDiscoveryCallResult<bool>(
+          value: false,
+          errorCode: nextError,
+        );
       }
       _writeEntry(entry);
-      return 1;
+      return const WindowsProcessDiscoveryCallResult<bool>(
+        value: true,
+        errorCode: 0,
+      );
     },
     closeHandle: (_) {
       closeCalls++;
-      if (closeResult == 0) _lastError = closeError;
-      return closeResult;
+      return WindowsProcessDiscoveryCallResult<bool>(
+        value: closeResult != 0,
+        errorCode: closeResult == 0 ? closeError : 0,
+      );
     },
-    getLastError: () => _lastError,
   );
 
   void _writeEntry(Pointer<ProcessEntry32W> entry) {
