@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/domain/profiles/rc2_collection_profile.dart';
+import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava/features/game_memory/domain/usecases/params/read_game_field.params.dart';
 import 'package:test/test.dart';
 

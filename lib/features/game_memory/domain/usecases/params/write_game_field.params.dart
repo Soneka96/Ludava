@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/usecases/write_game_field.usecase.dart';
 
 /// Parameters for [WriteGameFieldUseCase].

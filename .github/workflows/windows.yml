@@ -1,0 +1,37 @@
+name: Windows x64 verification
+
+on:
+  push:
+    branches:
+      - main
+      - refactor/feature-boundaries
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Resolve dependencies
+        run: dart pub get
+
+      - name: Analyze
+        run: dart analyze
+
+      - name: Build Windows executable and discovery library
+        run: .\tool\build_windows.ps1
+
+      - name: Test
+        run: dart test
+        env:
+          LUDAVA_EXPECT_NO_RPCS3: '1'

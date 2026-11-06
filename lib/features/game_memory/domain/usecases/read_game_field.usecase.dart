@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:ludava/features/game_memory/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/memory_read_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/repositories/Igame_memory.repository.dart';
@@ -100,8 +100,8 @@ class ReadGameFieldUseCase {
           fieldId: field.id,
         );
       case MemoryReadStatus.none ||
-            MemoryReadStatus.invalidRequest ||
-            MemoryReadStatus.invalidByteCount:
+          MemoryReadStatus.invalidRequest ||
+          MemoryReadStatus.invalidByteCount:
         return GameReadResult(
           status: GameReadStatus.invalidReadResult,
           fieldId: field.id,

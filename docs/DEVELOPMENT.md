@@ -21,13 +21,13 @@ The project's own development work follows these rules:
 
 These conventions apply to new code and files materially changed by a task:
 
-1. Organize code under the feature that owns the capability, then by the layer that owns each responsibility. Follow [`ARCHITECTURE.md`](ARCHITECTURE.md); do not create empty layers or a new game feature when a new game profile can reuse an existing capability.
+1. Organize code under the feature that owns the capability, then by the layer that owns each responsibility. Profiles belong in `game_catalog`; RPCS3 process/session and raw log adapters belong in `rpcs3_connection`; identity policy belongs in `game_detection`; generic memory operations belong in `game_memory`; user workflows and terminal presentation belong in `trainer`. Follow [`ARCHITECTURE.md`](ARCHITECTURE.md); do not create empty layers or a new game feature when a new game profile can reuse an existing capability.
 2. Give each public class its own focused file and put behavior on the class that owns it. The intentional grouping exceptions are all app enums in `lib/shared/constants/enums.dart` and constants classes grouped by kind in `lib/shared/constants/`.
 3. Order class members as public fields, primary/unnamed constructor, named constructors, factory constructors, private fields, public methods/getters, then private methods/getters. Put static constants before ordinary fields within their visibility group.
 4. Document public classes, methods, and properties with concise Dart `///` comments. Link code references as `[Type]`, `[Type.member]`, or an in-scope `[parameter]` so IDE hovers can navigate. Documentation-only references do not add runtime coupling.
 5. Put every handwritten enum in `lib/shared/constants/enums.dart`, with `none` first as the unset/error sentinel and a doc comment on the enum and each member. Put cross-cutting business constants in feature- or concern-specific classes inside `app_constants.dart`; keep UI sizing in `layout_constants.dart` if a UI needs it. Keep platform/API implementation constants with their owning class. Do not create empty constants files.
 6. Do not add handwritten `typedef`s, including function aliases or record aliases. Use named classes for data and class/interface collaborators for behavior. Keep typedefs only when generated code or a Dart/native/framework interop API requires them, and document the reason.
-7. Mirror each production file's path under `test/` and append `_test.dart`. For example, `read_game_field.usecase.dart` maps to `read_game_field.usecase_test.dart`.
+7. Mirror each production file's path under `test/` and append `_test.dart`. For example, `lib/features/game_memory/domain/usecases/read_game_field.usecase.dart` maps to `test/features/game_memory/domain/usecases/read_game_field.usecase_test.dart`. Windows runtime seams stay under `test/integration/features/<owning-feature>/`.
 8. Group unit tests by public method: `Method methodName() behaves correctly`. Name each test `Method methodName() <outcome>` and add `when <condition>` when the condition is not already clear from the outcome. Use an outcome that says what the method returns, preserves, rejects, or throws.
 9. Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
 10. Test through public behavior. Use fakes at memory/repository boundaries and injected native API fakes for Windows calls. Never access a live game from an automated test.
@@ -37,6 +37,17 @@ These conventions apply to new code and files materially changed by a task:
 Behaviorless type declarations do not need artificial tests. Every class with behavior does; see the test strategy in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 These rules are internal quality standards; they are **not** contributor instructions or an invitation to submit changes.
+
+## Windows last-error capture
+
+For Tool Help calls that report errors through `GetLastError`, the
+`rpcs3_connection` adapter calls a small native wrapper. The wrapper invokes the
+Win32 operation, reads `GetLastError` immediately on failure, and returns both
+values together through its output parameter. Dart must not make a later,
+separate `GetLastError` call: the Dart FFI transition can lose the thread-local
+value. The build script compiles the wrapper as
+`build/ludava_process_discovery.dll`; keep this native code limited to the
+process-discovery boundary.
 
 ## Third-party research and licensing
 

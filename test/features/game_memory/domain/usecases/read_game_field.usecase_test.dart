@@ -1,5 +1,5 @@
-import 'package:ludava/features/game_memory/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_profile.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/memory_read_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/memory_write_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/repositories/Igame_memory.repository.dart';
@@ -74,32 +74,34 @@ void main() {
       expect(repository.readCalls, 0);
     });
 
-    test('Method execute() rejects missing or unapproved fields before reading',
-        () {
-      final repository = _ReadGameFieldTestData.repository();
-      final profile = _ReadGameFieldTestData.profile(
-        fieldReadStatus: VerificationStatus.unsupported,
-      );
+    test(
+      'Method execute() rejects missing or unapproved fields before reading',
+      () {
+        final repository = _ReadGameFieldTestData.repository();
+        final profile = _ReadGameFieldTestData.profile(
+          fieldReadStatus: VerificationStatus.unsupported,
+        );
 
-      final unsupported = ReadGameFieldUseCase(repository).execute(
-        ReadGameFieldParams(
-          profile: profile,
-          fieldId: 'bolts',
-          memoryBase: 0x300000000,
-        ),
-      );
-      final missing = ReadGameFieldUseCase(repository).execute(
-        ReadGameFieldParams(
-          profile: profile,
-          fieldId: 'health',
-          memoryBase: 0x300000000,
-        ),
-      );
+        final unsupported = ReadGameFieldUseCase(repository).execute(
+          ReadGameFieldParams(
+            profile: profile,
+            fieldId: 'bolts',
+            memoryBase: 0x300000000,
+          ),
+        );
+        final missing = ReadGameFieldUseCase(repository).execute(
+          ReadGameFieldParams(
+            profile: profile,
+            fieldId: 'health',
+            memoryBase: 0x300000000,
+          ),
+        );
 
-      expect(unsupported.status, GameReadStatus.unsupportedField);
-      expect(missing.status, GameReadStatus.unsupportedField);
-      expect(repository.readCalls, 0);
-    });
+        expect(unsupported.status, GameReadStatus.unsupportedField);
+        expect(missing.status, GameReadStatus.unsupportedField);
+        expect(repository.readCalls, 0);
+      },
+    );
 
     test('Method execute() rejects invalid mappings before reading', () {
       final repository = _ReadGameFieldTestData.repository();
@@ -116,86 +118,94 @@ void main() {
       expect(repository.readCalls, 0);
     });
 
-    test('Method execute() maps failed and partial reads to explicit outcomes',
-        () {
-      final failedRepository = _ReadGameFieldTestData.repository(
-        readResult: MemoryReadResult(
-          status: MemoryReadStatus.nativeFailure,
-          bytes: [],
-          bytesRead: 0,
-          requestedBytes: 4,
-          errorCode: 299,
-        ),
-      );
-      final partialRepository = _ReadGameFieldTestData.repository(
-        readResult: MemoryReadResult(
-          status: MemoryReadStatus.partial,
-          bytes: [0, 0],
-          bytesRead: 2,
-          requestedBytes: 4,
-        ),
-      );
-      final params = ReadGameFieldParams(
-        profile: _ReadGameFieldTestData.profile(),
-        fieldId: 'bolts',
-        memoryBase: 0x300000000,
-      );
+    test(
+      'Method execute() maps failed and partial reads to explicit outcomes',
+      () {
+        final failedRepository = _ReadGameFieldTestData.repository(
+          readResult: MemoryReadResult(
+            status: MemoryReadStatus.nativeFailure,
+            bytes: [],
+            bytesRead: 0,
+            requestedBytes: 4,
+            errorCode: 299,
+          ),
+        );
+        final partialRepository = _ReadGameFieldTestData.repository(
+          readResult: MemoryReadResult(
+            status: MemoryReadStatus.partial,
+            bytes: [0, 0],
+            bytesRead: 2,
+            requestedBytes: 4,
+          ),
+        );
+        final params = ReadGameFieldParams(
+          profile: _ReadGameFieldTestData.profile(),
+          fieldId: 'bolts',
+          memoryBase: 0x300000000,
+        );
 
-      final failed = ReadGameFieldUseCase(failedRepository).execute(params);
-      final partial = ReadGameFieldUseCase(partialRepository).execute(params);
+        final failed = ReadGameFieldUseCase(failedRepository).execute(params);
+        final partial = ReadGameFieldUseCase(partialRepository).execute(params);
 
-      expect(failed.status, GameReadStatus.readFailed);
-      expect(failed.errorCode, 299);
-      expect(failed.value, isNull);
-      expect(partial.status, GameReadStatus.incompleteRead);
-      expect(partial.value, isNull);
-    });
+        expect(failed.status, GameReadStatus.readFailed);
+        expect(failed.errorCode, 299);
+        expect(failed.value, isNull);
+        expect(partial.status, GameReadStatus.incompleteRead);
+        expect(partial.value, isNull);
+      },
+    );
 
-    test('Method execute() rejects inconsistent and unsupported value data',
-        () {
-      final inconsistentRepository = _ReadGameFieldTestData.repository(
-        readResult: MemoryReadResult(
-          status: MemoryReadStatus.complete,
-          bytes: [0, 0],
-          bytesRead: 2,
-          requestedBytes: 4,
-        ),
-      );
-      final unsupportedTypeRepository = _ReadGameFieldTestData.repository();
-      final unsupportedTypeProfile = _ReadGameFieldTestData.profile(
-        valueType: MemoryValueType.none,
-      );
-      final unsupportedByteOrderRepository = _ReadGameFieldTestData.repository(
-        readResult: MemoryReadResult(
-          status: MemoryReadStatus.complete,
-          bytes: [0, 0, 0, 42],
-          bytesRead: 4,
-          requestedBytes: 4,
-        ),
-      );
-      final unsupportedByteOrderProfile = _ReadGameFieldTestData.profile(
-        byteOrder: ByteOrder.none,
-      );
-      final params = (GameProfile profile) => ReadGameFieldParams(
-            profile: profile,
-            fieldId: 'bolts',
-            memoryBase: 0x300000000,
-          );
+    test(
+      'Method execute() rejects inconsistent and unsupported value data',
+      () {
+        final inconsistentRepository = _ReadGameFieldTestData.repository(
+          readResult: MemoryReadResult(
+            status: MemoryReadStatus.complete,
+            bytes: [0, 0],
+            bytesRead: 2,
+            requestedBytes: 4,
+          ),
+        );
+        final unsupportedTypeRepository = _ReadGameFieldTestData.repository();
+        final unsupportedTypeProfile = _ReadGameFieldTestData.profile(
+          valueType: MemoryValueType.none,
+        );
+        final unsupportedByteOrderRepository =
+            _ReadGameFieldTestData.repository(
+              readResult: MemoryReadResult(
+                status: MemoryReadStatus.complete,
+                bytes: [0, 0, 0, 42],
+                bytesRead: 4,
+                requestedBytes: 4,
+              ),
+            );
+        final unsupportedByteOrderProfile = _ReadGameFieldTestData.profile(
+          byteOrder: ByteOrder.none,
+        );
+        final params =
+            (GameProfile profile) => ReadGameFieldParams(
+              profile: profile,
+              fieldId: 'bolts',
+              memoryBase: 0x300000000,
+            );
 
-      final inconsistent = ReadGameFieldUseCase(inconsistentRepository)
-          .execute(params(_ReadGameFieldTestData.profile()));
-      final unsupportedType = ReadGameFieldUseCase(unsupportedTypeRepository)
-          .execute(params(unsupportedTypeProfile));
-      final unsupportedByteOrder =
-          ReadGameFieldUseCase(unsupportedByteOrderRepository)
-              .execute(params(unsupportedByteOrderProfile));
+        final inconsistent = ReadGameFieldUseCase(
+          inconsistentRepository,
+        ).execute(params(_ReadGameFieldTestData.profile()));
+        final unsupportedType = ReadGameFieldUseCase(
+          unsupportedTypeRepository,
+        ).execute(params(unsupportedTypeProfile));
+        final unsupportedByteOrder = ReadGameFieldUseCase(
+          unsupportedByteOrderRepository,
+        ).execute(params(unsupportedByteOrderProfile));
 
-      expect(inconsistent.status, GameReadStatus.invalidReadResult);
-      expect(unsupportedType.status, GameReadStatus.invalidReadResult);
-      expect(unsupportedTypeRepository.readCalls, 0);
-      expect(unsupportedByteOrder.status, GameReadStatus.invalidReadResult);
-      expect(unsupportedByteOrder.value, isNull);
-    });
+        expect(inconsistent.status, GameReadStatus.invalidReadResult);
+        expect(unsupportedType.status, GameReadStatus.invalidReadResult);
+        expect(unsupportedTypeRepository.readCalls, 0);
+        expect(unsupportedByteOrder.status, GameReadStatus.invalidReadResult);
+        expect(unsupportedByteOrder.value, isNull);
+      },
+    );
   });
 }
 
@@ -205,13 +215,14 @@ class _ReadGameFieldTestData implements IGameMemoryRepository {
   int? lastByteCount;
 
   _ReadGameFieldTestData([MemoryReadResult? readResult])
-      : _readResult = readResult ??
-            MemoryReadResult(
-              status: MemoryReadStatus.complete,
-              bytes: [0, 0, 0, 42],
-              bytesRead: 4,
-              requestedBytes: 4,
-            );
+    : _readResult =
+          readResult ??
+          MemoryReadResult(
+            status: MemoryReadStatus.complete,
+            bytes: [0, 0, 0, 42],
+            bytesRead: 4,
+            requestedBytes: 4,
+          );
 
   final MemoryReadResult _readResult;
 
@@ -220,28 +231,25 @@ class _ReadGameFieldTestData implements IGameMemoryRepository {
     VerificationStatus fieldReadStatus = VerificationStatus.experimental,
     MemoryValueType valueType = MemoryValueType.unsigned32,
     ByteOrder byteOrder = ByteOrder.big,
-  }) =>
-      GameProfile(
-        id: 'rc2-test',
-        gameName: 'Test game',
-        buildId: 'TEST',
-        executable: 'test.exe',
-        readStatus: readStatus,
-        fields: {
-          'bolts': GameField(
-            id: 'bolts',
-            name: 'Bolts',
-            guestOffset: 0x1329e80,
-            valueType: valueType,
-            byteOrder: byteOrder,
-            readStatus: fieldReadStatus,
-          ),
-        },
-      );
+  }) => GameProfile(
+    id: 'rc2-test',
+    gameName: 'Test game',
+    buildId: 'TEST',
+    executable: 'test.exe',
+    readStatus: readStatus,
+    fields: {
+      'bolts': GameField(
+        id: 'bolts',
+        name: 'Bolts',
+        guestOffset: 0x1329e80,
+        valueType: valueType,
+        byteOrder: byteOrder,
+        readStatus: fieldReadStatus,
+      ),
+    },
+  );
 
-  static _ReadGameFieldTestData repository({
-    MemoryReadResult? readResult,
-  }) =>
+  static _ReadGameFieldTestData repository({MemoryReadResult? readResult}) =>
       _ReadGameFieldTestData(readResult);
 
   @override
@@ -254,8 +262,8 @@ class _ReadGameFieldTestData implements IGameMemoryRepository {
 
   @override
   MemoryWriteResult write(int address, List<int> bytes) => MemoryWriteResult(
-        status: MemoryWriteStatus.invalidRequest,
-        bytesWritten: 0,
-        requestedBytes: bytes.length,
-      );
+    status: MemoryWriteStatus.invalidRequest,
+    bytesWritten: 0,
+    requestedBytes: bytes.length,
+  );
 }

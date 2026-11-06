@@ -4,50 +4,56 @@ This document defines the target architecture for new and materially changed cod
 
 ## Feature ownership
 
-The first capability is `game_memory`: reading and writing selected game values through profiles. A game or build is profile data, not a separate feature. Adding a game should add its researched profile and fields with their actual evidence status; it should reuse the same reader and writer use cases. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
+Ludava separates the game catalog, RPCS3 connection, game detection, game memory, and trainer experience. A game or build is profile data in `game_catalog`, not a separate feature. Adding a supported game adds its researched profile and fields with their actual evidence status; it reuses the existing detection and read/write workflows. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
 
 Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires explicit confirmation and matching read-back.
+
+| Feature | Owns |
+| --- | --- |
+| `game_catalog` | `GameProfile`, `GameField`, profile registration, and per-game profile definitions. |
+| `rpcs3_connection` | RPCS3 process discovery and metadata, raw RPCS3 log reading, and session memory-base resolution. |
+| `game_detection` | Semantic interpretation of current-session log events, detection outcomes, and profile matching. |
+| `game_memory` | Generic address resolution, value encoding/decoding, checked reads and writes, and memory safety policy. |
+| `trainer` | Interactive and diagnostic command presentation plus current write-target revalidation. |
+
+The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU loads and process-finished events into identity evidence, then deciding whether that evidence selects a supported profile, belongs to `game_detection`.
 
 ## Layers and dependency direction
 
 ```text
-lib/features/game_memory/
-  domain/
-    entities/       # game profile, field/value definitions, operation results
-    profiles/       # one game/build profile definition per file
-    repositories/   # contracts needed by domain use cases
-    usecases/       # one domain operation/policy per use case
-      params/        # separate parameter objects when a use case needs them
-  data/
-    datasources/    # operating-system and external I/O
-    models/         # data-layer shapes mapped to/from domain entities
-    repositories/   # implementations of domain repository contracts
-  application/      # workflows coordinating multiple use cases; add when needed
-  presentation/
-    cli/            # command parsing and terminal output
-    # a future UI belongs here
-lib/shared/constants/
-  enums.dart        # every app enum
-  app_constants.dart # grouped cross-cutting business constants
-  # layout_constants.dart only when UI sizing constants exist
+lib/app/                         # concrete application composition and command wiring
+lib/features/game_catalog/       # profile and field definitions shared by detection and memory
+lib/features/rpcs3_connection/   # RPCS3 process, raw log, and memory-base adapters
+lib/features/game_detection/     # identity events, profile matching, and detection workflow
+lib/features/game_memory/        # generic memory operations and Windows process-memory adapter
+lib/features/trainer/            # trainer workflows and CLI presentation
+lib/shared/constants/            # central app enums and cross-cutting constants
+lib/shared/platform/              # narrowly shared Windows platform errors
 ```
 
-Only create a layer or subfolder when it contains a real responsibility. In particular, a simple operation belongs in its use case; `application/` is for workflows that coordinate several operations.
+Only create a layer or subfolder when it contains a real responsibility. In particular, a simple operation belongs in its use case; an application workflow is for coordination across multiple operations. Do not create empty `domain/`, `data/`, `application/`, or `presentation/` folders for symmetry.
 
-Dependencies point inward:
+Feature dependencies remain acyclic:
 
 ```text
-presentation → application/domain
-application  → domain
-data         → domain
-target bin/ludava.dart → bin/ludava_cli.dart
-target bin/ludava_cli.dart → presentation + concrete data wiring
-features     → shared/constants
+game_detection → game_catalog + rpcs3_connection
+game_memory    → game_catalog
+trainer        → game_detection + game_catalog + rpcs3_connection + game_memory
+app            → trainer + concrete feature data sources
+features       → shared/constants and narrowly shared platform types
 ```
 
-Use cases express one domain operation or policy. Application workflows are added only when a larger task must coordinate multiple use cases or manage an application-level sequence. Domain code must not import CLI, Flutter, Windows FFI, or data-layer code; it may use `shared/constants`. Shared constants must not import feature code. Repository contracts belong in `domain/repositories`; their implementations belong in `data/repositories`. Data sources perform I/O and return data-layer results. Repositories translate those results into the domain contract. Keep a repository only when it provides a real boundary, translation, coordination, alternate implementation, or useful test seam; do not add pass-through wrappers just to fill the folder tree.
+`game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No feature imports `lib/app`, and no feature outside `trainer` imports trainer code.
 
-The executable entry point `bin/ludava.dart` delegates to `bin/ludava_cli.dart`, which is the composition root and may construct concrete data implementations. Domain code must not perform that wiring.
+Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The app composition root in `lib/app/` constructs concrete sources and command workflows; `bin/ludava.dart` and `bin/ludava_cli.dart` remain thin executable adapters.
+
+## Adding capability
+
+- **Supported game or build:** add a profile definition and register it in `game_catalog`. Preserve the source and evidence status for each field. Do not create a per-game memory engine.
+- **Game identity evidence:** parse RPCS3 log syntax in `game_detection/data`; update detection policy in `game_detection`. Keep raw file reading and process/session ownership in `rpcs3_connection`.
+- **Trainer field:** add the researched field to its game profile. Reuse the generic address, read, and write use cases in `game_memory`; add focused profile and operation tests.
+- **Emulator integration:** add process/log/session adapters under a dedicated connection feature. Keep emulator-specific process and log details out of `game_memory`.
+- **Future Flutter UI:** add a Flutter presentation under `trainer/presentation` and call trainer workflows and feature use cases. Do not call Windows adapters directly from widgets.
 
 ## Files, classes, and methods
 
@@ -102,8 +108,8 @@ Compatibility is recorded per exact game/build and capability. Keep experimental
 
 ## Current implementation
 
-The implementation uses `lib/features/game_memory` with generic read/write use cases, profile data, Windows process-memory access, Tool Help process discovery, and Windows process metadata lookup. The game-detection domain result separates process/game/profile states, confidence, observed executable hash, and the selected profile's fields. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
+The implementation uses the features listed above. `game_memory` contains generic read/write use cases and Windows process-memory access. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
 
-The RPCS3 log data source preserves ordered PPU-load and process-finished events in addition to historical title, serial, and path values. It evaluates fresh logs for the selected process and refuses automatic matching when multiple RPCS3 processes share a log directory, multiple fresh logs conflict, or evidence is incomplete. A stop event or the measured Collection EBOOT hash cannot select an RC profile. Memory-base resolution requires agreement across fresh candidate logs and runs after game detection. Automatic reads and writes recheck process session, identity, and base; failed refresh reads clear the displayed value. The interactive CLI does not poll continuously, and manual profile selection remains disclosed and read-only.
+The `game_detection` log data source preserves ordered PPU-load and process-finished events in addition to historical title, serial, and path values. The detection workflow evaluates fresh logs for the selected process and refuses automatic matching when multiple RPCS3 processes share a log directory, multiple fresh logs conflict, or evidence is incomplete. A stop event or the measured Collection EBOOT hash cannot select an RC profile. Memory-base resolution requires agreement across fresh candidate logs and runs after game detection. Automatic reads and writes recheck process session, identity, and base; failed refresh reads clear the displayed value. The interactive CLI does not poll continuously, and manual profile selection remains disclosed and read-only.
 
-The owner measured distinct Collection EBOOT, RC1, RC2, and RC3 PPU hashes and lifecycle transitions in RPCS3 `0.0.43-20565-eee3f0f7`. The observed base was `0x300000000` in two process sessions. The final compiled CLI was live-smoke-tested with RC2: it matched the profile and base and read `0`, which does not prove gameplay was active. Live Ludava detection runs for RC1 and RC3 and other RPCS3 builds remain unverified. The shared write use case still requires a complete valid preliminary field read, deliberate confirmation, a complete native transfer, and matching read-back.
+The owner measured distinct Collection EBOOT, RC1, RC2, and RC3 PPU hashes and lifecycle transitions in RPCS3 `0.0.43-20565-eee3f0f7`. The observed base was `0x300000000` in two process sessions. The final compiled CLI was live-smoke-tested with RC2: it matched the profile and base and read `0`, which does not prove gameplay was active. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing; the records do not map each game to each device or identify the exact RPCS3 build for that confirmation. Other RPCS3 builds remain unverified. The shared write use case still requires a complete valid preliminary field read, deliberate confirmation, a complete native transfer, and matching read-back.

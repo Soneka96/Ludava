@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
 import 'package:ludava/features/game_memory/data/models/process_memory_read.model.dart';
 import 'package:ludava/features/game_memory/data/models/process_memory_write.model.dart';
 import 'package:ludava/features/game_memory/domain/utils/address_resolver.dart';
@@ -37,7 +37,8 @@ class WindowsProcessMemoryDataSource {
     }
 
     final nativeApi = api ?? WindowsMemoryApi.system();
-    final access = _processVmRead |
+    final access =
+        _processVmRead |
         (allowWrites ? _processVmWrite | _processVmOperation : 0);
     final handle = nativeApi.openProcess(access, 0, processId);
     if (handle.address == 0) {
