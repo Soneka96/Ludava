@@ -1,4 +1,4 @@
-import 'package:ludava/features/trainer/application/trainer_write_validation_result.dart';
+import 'package:ludava_sdk/features/trainer/application/trainer_write_validation_result.dart';
 import 'package:test/test.dart';
 
 void main() {

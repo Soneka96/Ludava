@@ -1,22 +1,13 @@
 import 'dart:io';
 
-import 'package:ludava_sdk/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava/features/trainer/data/datasources/windows_console.datasource.dart';
-import 'package:ludava_sdk/features/game_memory/data/datasources/windows_memory_api.dart';
 import 'package:ludava_sdk/shared/platform/windows_memory_exception.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
 import 'package:ludava_sdk/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
 import 'package:ludava_sdk/features/game_memory/data/repositories/game_memory.repository.dart';
-import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava_sdk/features/game_detection/application/rpcs3_game_detection_workflow.dart';
-import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
-import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava_sdk/features/game_memory/domain/usecases/params/read_game_field.params.dart';
 import 'package:ludava_sdk/features/game_memory/domain/usecases/params/write_game_field.params.dart';
 import 'package:ludava_sdk/features/game_memory/domain/usecases/read_game_field.usecase.dart';
@@ -25,10 +16,9 @@ import 'package:ludava/features/trainer/presentation/cli/diagnostic_argument_par
 import 'package:ludava/features/trainer/presentation/cli/diagnostic_arguments.dart';
 import 'package:ludava/features/trainer/presentation/cli/game_memory_output.dart';
 import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli.dart';
-import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_session_component.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_terminal_backend.dart';
-import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart' show StdioBackend, runApp, shutdownApp;
 
 /// Runs interactive and diagnostic trainer commands.
@@ -361,73 +351,16 @@ class TrainerCommandRunner {
 
   /// Composes the reusable trainer workflow with platform adapters.
   TrainerSessionController _createTrainerSessionController() =>
-      TrainerSessionController(
+      LudavaTrainerFactory(
+        api: _api,
+        isWindows: _isWindows,
+        pointerSize: _pointerSize,
         discoverProcessIds: _findRpcs3ProcessIds,
         readProcessMetadata: _readMetadata,
         resolveMemoryBaseCandidate: _resolveBaseCandidate,
         detectGame: _detectCurrentGame,
-        readField: _readTrainerField,
-        writeField: _writeTrainerField,
-      );
-
-  /// Reads [fieldId] through the guarded memory use case.
-  GameReadResult _readTrainerField(
-    int processId,
-    GameProfile profile,
-    int memoryBase,
-    String fieldId,
-  ) {
-    WindowsProcessMemoryDataSource? dataSource;
-    try {
-      dataSource = WindowsProcessMemoryDataSource.open(
-        processId,
-        api: _api,
-        isWindows: _isWindows,
-        pointerSize: _pointerSize,
-      );
-      return ReadGameFieldUseCase(GameMemoryRepository(dataSource)).execute(
-        ReadGameFieldParams(
-          profile: profile,
-          fieldId: fieldId,
-          memoryBase: memoryBase,
-        ),
-      );
-    } finally {
-      dataSource?.close();
-    }
-  }
-
-  /// Writes [value] through the guarded memory use case.
-  GameWriteResult _writeTrainerField(
-    int processId,
-    GameProfile profile,
-    int memoryBase,
-    String fieldId,
-    int value,
-    bool confirmed,
-  ) {
-    WindowsProcessMemoryDataSource? dataSource;
-    try {
-      dataSource = WindowsProcessMemoryDataSource.open(
-        processId,
-        api: _api,
-        isWindows: _isWindows,
-        pointerSize: _pointerSize,
-        allowWrites: true,
-      );
-      return WriteGameFieldUseCase(GameMemoryRepository(dataSource)).execute(
-        WriteGameFieldParams(
-          profile: profile,
-          fieldId: fieldId,
-          memoryBase: memoryBase,
-          value: value,
-          confirmed: confirmed,
-        ),
-      );
-    } finally {
-      dataSource?.close();
-    }
-  }
+        gameIdentityLogDataSource: _gameIdentityLogDataSource,
+      ).create();
 
   /// Uses the injected discovery seam or the Windows process adapter.
   List<int> _findRpcs3ProcessIds() =>

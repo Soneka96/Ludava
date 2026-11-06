@@ -8,7 +8,7 @@ import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_proce
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/params/resolve_game_profile.params.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/resolve_game_profile.usecase.dart';
-import 'package:ludava/features/trainer/application/trainer_write_validator.dart';
+import 'package:ludava_sdk/features/trainer/application/trainer_write_validator.dart';
 import 'package:ludava/features/trainer/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava_sdk/shared/constants/app_constants.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';

@@ -2,7 +2,7 @@ import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.en
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
-import 'package:ludava/features/trainer/application/trainer_write_validation_result.dart';
+import 'package:ludava_sdk/features/trainer/application/trainer_write_validation_result.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Revalidates process session, game identity, and memory base before a write.

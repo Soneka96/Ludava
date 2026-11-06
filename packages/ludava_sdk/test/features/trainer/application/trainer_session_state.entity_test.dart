@@ -2,7 +2,7 @@ import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.en
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
+import 'package:ludava_sdk/features/trainer/application/trainer_session_state.entity.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 

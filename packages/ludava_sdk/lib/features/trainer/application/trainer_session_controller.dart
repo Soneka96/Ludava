@@ -6,9 +6,9 @@ import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result
 import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
-import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
-import 'package:ludava/features/trainer/application/trainer_write_validation_result.dart';
-import 'package:ludava/features/trainer/application/trainer_write_validator.dart';
+import 'package:ludava_sdk/features/trainer/application/trainer_session_state.entity.dart';
+import 'package:ludava_sdk/features/trainer/application/trainer_write_validation_result.dart';
+import 'package:ludava_sdk/features/trainer/application/trainer_write_validator.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Coordinates a reusable trainer session without depending on a UI toolkit.
