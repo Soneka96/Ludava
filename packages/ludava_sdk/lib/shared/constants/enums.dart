@@ -83,6 +83,42 @@ enum GameMemoryAction {
   write,
 }
 
+/// Describes how a diagnostic game-memory request ended.
+enum DiagnosticGameMemoryStatus {
+  /// No diagnostic operation has been selected.
+  none,
+
+  /// The requested field operation completed successfully.
+  completed,
+
+  /// The game identifier does not match a registered profile.
+  unknownGame,
+
+  /// The request is incomplete or uses an unsupported operation.
+  invalidRequest,
+
+  /// Current identity was required but does not match the selected profile.
+  identityMismatch,
+
+  /// Current process identity could not be checked for a write.
+  identityCheckFailed,
+
+  /// The current RPCS3 memory base does not match the requested base.
+  memoryBaseMismatch,
+
+  /// The current RPCS3 memory base could not be checked.
+  memoryBaseCheckFailed,
+
+  /// The selected field operation was rejected or did not succeed.
+  memoryOperationFailed,
+
+  /// Opening, using, or closing the native process boundary failed.
+  nativeFailure,
+
+  /// The operation result is available, but closing its process handle failed.
+  cleanupFailed,
+}
+
 /// Describes the outcome of writing bytes to a process.
 enum MemoryWriteStatus {
   /// No write has been attempted.

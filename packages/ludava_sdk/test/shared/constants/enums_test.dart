@@ -9,6 +9,10 @@ void main() {
       expect(ByteOrder.values.first, ByteOrder.none);
       expect(MemoryReadStatus.values.first, MemoryReadStatus.none);
       expect(GameMemoryAction.values.first, GameMemoryAction.none);
+      expect(
+        DiagnosticGameMemoryStatus.values.first,
+        DiagnosticGameMemoryStatus.none,
+      );
       expect(MemoryWriteStatus.values.first, MemoryWriteStatus.none);
       expect(GameReadStatus.values.first, GameReadStatus.none);
       expect(GameWriteStatus.values.first, GameWriteStatus.none);
