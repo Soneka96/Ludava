@@ -1,7 +1,7 @@
 /// Public, terminal-independent API for the Ludava trainer engine.
 library;
 
-export 'app/ludava_trainer_factory.dart' show LudavaTrainerFactory;
+export 'runtime/ludava_sdk.dart' show LudavaSdk;
 export 'features/trainer/application/diagnostics/diagnostic_game_memory_request.entity.dart'
     show DiagnosticGameMemoryRequest;
 export 'features/trainer/application/diagnostics/diagnostic_game_memory_result.entity.dart'

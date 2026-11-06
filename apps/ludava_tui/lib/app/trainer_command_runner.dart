@@ -195,16 +195,16 @@ class TrainerCommandRunner {
       stderrSink.writeln('Interactive mode requires a terminal.');
       return 2;
     }
-    TrainerSessionController? sessionController;
+    LudavaSdk? sdk;
     try {
-      sessionController = _createTrainerSessionController();
-      await (_runNocterm ?? _runNoctermTrainer)(sessionController);
+      sdk = _createSdk();
+      await (_runNocterm ?? _runNoctermTrainer)(sdk.session);
       return 0;
     } catch (error) {
       stderrSink.writeln('Nocterm could not start: $error');
       return 1;
     } finally {
-      await sessionController?.dispose();
+      await sdk?.dispose();
     }
   }
 
@@ -250,18 +250,17 @@ class TrainerCommandRunner {
     );
   }
 
-  /// Composes the reusable trainer workflow with platform adapters.
-  TrainerSessionController _createTrainerSessionController() =>
-      LudavaTrainerFactory(
-        api: _api,
-        isWindows: _isWindows,
-        pointerSize: _pointerSize,
-        discoverProcessIds: _findRpcs3ProcessIds,
-        readProcessMetadata: _readMetadata,
-        resolveMemoryBaseCandidate: _resolveBaseCandidate,
-        detectGame: _detectCurrentGame,
-        gameIdentityLogDataSource: _gameIdentityLogDataSource,
-      ).create();
+  /// Creates the lifecycle-owning SDK runtime for the interactive session.
+  LudavaSdk _createSdk() => LudavaSdk.create(
+    api: _api,
+    isWindows: _isWindows,
+    pointerSize: _pointerSize,
+    discoverProcessIds: _findRpcs3ProcessIds,
+    readProcessMetadata: _readMetadata,
+    resolveMemoryBaseCandidate: _resolveBaseCandidate,
+    detectGame: _detectCurrentGame,
+    gameIdentityLogDataSource: _gameIdentityLogDataSource,
+  );
 
   /// Uses the injected discovery seam or the Windows process adapter.
   List<int> _findRpcs3ProcessIds() =>

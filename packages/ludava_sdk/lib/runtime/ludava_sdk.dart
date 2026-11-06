@@ -17,11 +17,18 @@ import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_pr
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava_sdk/features/trainer/application/trainer_session_controller.dart';
+import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_service.dart';
 
-/// Builds a reusable trainer session with RPCS3 and Windows memory adapters.
-class LudavaTrainerFactory {
-  /// Creates a factory with optional collaborators for deterministic callers.
-  LudavaTrainerFactory({
+/// Owns the typed capabilities and resources for one Ludava SDK instance.
+class LudavaSdk {
+  /// Trainer-session capability for this runtime.
+  late final TrainerSessionController session;
+
+  /// Structured diagnostic operations for this runtime.
+  late final DiagnosticGameMemoryService diagnostics;
+
+  /// Creates an SDK runtime with optional seams for deterministic callers.
+  LudavaSdk.create({
     WindowsMemoryApi? api,
     bool? isWindows,
     int? pointerSize,
@@ -42,7 +49,10 @@ class LudavaTrainerFactory {
        _readProcessMetadata = readProcessMetadata,
        _resolveMemoryBaseCandidate = resolveMemoryBaseCandidate,
        _detectGame = detectGame,
-       _gameIdentityLogDataSource = gameIdentityLogDataSource;
+       _gameIdentityLogDataSource = gameIdentityLogDataSource {
+    session = _createTrainerSessionController();
+    diagnostics = _createDiagnosticGameMemoryService();
+  }
 
   final WindowsMemoryApi? _api;
   final bool? _isWindows;
@@ -59,16 +69,34 @@ class LudavaTrainerFactory {
   )?
   _detectGame;
   final Rpcs3GameIdentityLogDataSource? _gameIdentityLogDataSource;
+  Future<void>? _disposeFuture;
 
-  /// Creates an independent controller and its owned session state.
-  TrainerSessionController create() => TrainerSessionController(
-    discoverProcessIds: _findRpcs3ProcessIds,
-    readProcessMetadata: _readMetadata,
-    resolveMemoryBaseCandidate: _resolveBaseCandidate,
-    detectGame: _detectCurrentGame,
-    readField: _readField,
-    writeField: _writeField,
-  );
+  /// Stops this runtime's session notifications and releases owned resources.
+  Future<void> dispose() => _disposeFuture ??= session.dispose();
+
+  /// Creates the trainer session with RPCS3, detection, and memory capabilities.
+  TrainerSessionController _createTrainerSessionController() =>
+      TrainerSessionController(
+        discoverProcessIds: _findRpcs3ProcessIds,
+        readProcessMetadata: _readMetadata,
+        resolveMemoryBaseCandidate: _resolveBaseCandidate,
+        detectGame: _detectCurrentGame,
+        readField: _readField,
+        writeField: _writeField,
+      );
+
+  /// Creates the structured diagnostic workflow with the same SDK boundaries.
+  DiagnosticGameMemoryService _createDiagnosticGameMemoryService() =>
+      DiagnosticGameMemoryService(
+        api: _api,
+        isWindows: _isWindows,
+        pointerSize: _pointerSize,
+        discoverProcessIds: _findRpcs3ProcessIds,
+        readProcessMetadata: _readMetadata,
+        resolveMemoryBaseCandidate: _resolveBaseCandidate,
+        detectGame: _detectCurrentGame,
+        gameIdentityLogDataSource: _gameIdentityLogDataSource,
+      );
 
   /// Opens and closes the process around one guarded field read.
   GameReadResult _readField(
