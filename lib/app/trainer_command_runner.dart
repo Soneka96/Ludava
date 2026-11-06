@@ -316,16 +316,20 @@ class TrainerCommandRunner {
       stderrSink.writeln('Interactive mode requires a terminal.');
       return 2;
     }
+    TrainerSessionController? sessionController;
     try {
-      final sessionController = _createTrainerSessionController();
+      sessionController = _createTrainerSessionController();
       await (_runNocterm ?? _runNoctermTrainer)(sessionController);
       return 0;
     } catch (error) {
       stderrSink.writeln('Nocterm could not start: $error');
       return 1;
+    } finally {
+      await sessionController?.dispose();
     }
   }
 
+  /// Creates the diagnostic interactive CLI with application boundaries.
   InteractiveTrainerCli _createInteractiveCli() => InteractiveTrainerCli(
     discoverProcessIds: _findRpcs3ProcessIds,
     readProcessMetadata: _readMetadata,
@@ -337,6 +341,7 @@ class TrainerCommandRunner {
     clearScreen: WindowsConsoleDataSource().clearScreen,
   );
 
+  /// Runs the terminal application until its shutdown action completes.
   Future<void> _runNoctermTrainer(
     TrainerSessionController sessionController,
   ) async {
@@ -349,6 +354,7 @@ class TrainerCommandRunner {
     );
   }
 
+  /// Composes the reusable trainer workflow with platform adapters.
   TrainerSessionController _createTrainerSessionController() =>
       TrainerSessionController(
         discoverProcessIds: _findRpcs3ProcessIds,
@@ -359,6 +365,7 @@ class TrainerCommandRunner {
         writeField: _writeTrainerField,
       );
 
+  /// Reads [fieldId] through the guarded memory use case.
   GameReadResult _readTrainerField(
     int processId,
     GameProfile profile,
@@ -385,6 +392,7 @@ class TrainerCommandRunner {
     }
   }
 
+  /// Writes [value] through the guarded memory use case.
   GameWriteResult _writeTrainerField(
     int processId,
     GameProfile profile,
@@ -416,20 +424,24 @@ class TrainerCommandRunner {
     }
   }
 
+  /// Uses the injected discovery seam or the Windows process adapter.
   List<int> _findRpcs3ProcessIds() =>
       _discoverProcessIds?.call() ??
       WindowsProcessDiscoveryDataSource().findRpcs3ProcessIds();
 
+  /// Uses the injected metadata seam or the Windows metadata adapter.
   Rpcs3ProcessMetadata _readMetadata(int processId) =>
       _readProcessMetadata?.call(processId) ??
       WindowsProcessMetadataDataSource().read(processId);
 
+  /// Resolves the current session base through its injected or native adapter.
   Rpcs3MemoryBaseCandidate? _resolveBaseCandidate(
     Rpcs3ProcessMetadata processMetadata,
   ) =>
       _resolveMemoryBaseCandidate?.call(processMetadata) ??
       Rpcs3MemoryBaseResolverDataSource().resolveCandidate(processMetadata);
 
+  /// Uses injected detection behavior or the configured RPCS3 workflow.
   GameDetectionResult _detectCurrentGame(
     int processId,
     Rpcs3ProcessMetadata processMetadata,
@@ -437,6 +449,7 @@ class TrainerCommandRunner {
       _detectGame?.call(processId, processMetadata) ??
       _detectGameFromLog(processId, processMetadata);
 
+  /// Builds the game-detection workflow from current process log evidence.
   GameDetectionResult _detectGameFromLog(
     int processId,
     Rpcs3ProcessMetadata processMetadata,
@@ -449,6 +462,7 @@ class TrainerCommandRunner {
                 .readCandidates(metadata),
   ).detect(processId, processMetadata);
 
+  /// Checks whether [identity] confirms the same process and [profile].
   bool _identityMatchesProfile(
     GameDetectionResult? identity,
     int processId,

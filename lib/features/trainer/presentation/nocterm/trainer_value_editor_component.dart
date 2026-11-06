@@ -15,6 +15,9 @@ class TrainerValueEditorComponent extends StatefulComponent {
   /// Validates and writes an accepted changed value, returning its outcome.
   final GameWriteResult Function(int value) onApply;
 
+  /// Closes the editor after [onApply] returns a verified successful write.
+  final void Function()? onApplied;
+
   /// Cancels editing without applying the text.
   final void Function() onCancel;
 
@@ -23,6 +26,7 @@ class TrainerValueEditorComponent extends StatefulComponent {
     required this.field,
     required this.currentValue,
     required this.onApply,
+    this.onApplied,
     required this.onCancel,
     super.key,
   });
@@ -129,6 +133,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     },
   );
 
+  /// Whether the current field has a readable value and approved write range.
   bool get _canEdit =>
       component.field.canRead &&
       component.field.canWrite &&
@@ -136,6 +141,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
       component.field.minimumValue != null &&
       component.field.maximumValue != null;
 
+  /// Explains why the editor cannot accept input.
   String get _disabledReason {
     if (component.currentValue == null || !component.field.canRead) {
       return 'Current value unavailable.';
@@ -144,14 +150,17 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     return 'This field has no approved value range.';
   }
 
+  /// Returns the ungrouped starting value for the text buffer.
   String get _initialText =>
       component.field.canRead ? component.currentValue?.toString() ?? '' : '';
 
+  /// Formats the displayed current value while preserving the raw edit text.
   String get _formattedCurrentValue {
     final value = component.field.canRead ? component.currentValue : null;
     return value == null ? 'Unavailable' : _formatNumber(value);
   }
 
+  /// Handles cancellation without forwarding Escape to the text field.
   bool _handleEditorShortcut(KeyboardEvent event) {
     if (event.logicalKey == LogicalKey.escape) {
       component.onCancel();
@@ -160,6 +169,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     return false;
   }
 
+  /// Preserves the cursor when Nocterm's Delete handling moves it to the end.
   bool _preserveCursorAfterDelete(KeyboardEvent event) {
     if (event.logicalKey != LogicalKey.delete || !_canEdit) return false;
     final selection = _textController.selection;
@@ -181,6 +191,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     return true;
   }
 
+  /// Clears stale feedback after the user changes the proposed value.
   void _handleTextChanged(String value) {
     if (_applyAttempted || _feedback != null) {
       setState(() {
@@ -191,6 +202,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     }
   }
 
+  /// Validates the edit and dispatches at most one apply attempt.
   void _apply() {
     if (!_canEdit || _applyAttempted) return;
     final text = _textController.text;
@@ -228,20 +240,24 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     }
 
     setState(() => _applyAttempted = true);
+    late final GameWriteResult result;
     try {
-      final result = component.onApply(value);
-      setState(() {
-        _feedback = _feedbackFor(result);
-        _feedbackIsSuccess = result.succeeded;
-      });
+      result = component.onApply(value);
     } catch (error) {
       setState(() {
         _feedback = 'Write failed: $error';
         _feedbackIsSuccess = false;
       });
+      return;
     }
+    setState(() {
+      _feedback = _feedbackFor(result);
+      _feedbackIsSuccess = result.succeeded;
+    });
+    if (result.succeeded) component.onApplied?.call();
   }
 
+  /// Converts [result] into concise feedback for the editor.
   String _feedbackFor(GameWriteResult result) {
     if (result.succeeded) {
       return 'Verified value: ${_formatNumber(result.readBackValue!)}';
@@ -265,6 +281,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     };
   }
 
+  /// Groups [value] for presentation without changing the stored integer.
   String _formatNumber(int value) {
     final digits = value.toString();
     final formatted = StringBuffer();

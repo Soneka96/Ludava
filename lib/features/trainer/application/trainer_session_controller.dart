@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
@@ -54,6 +56,9 @@ class TrainerSessionController {
        );
 
   TrainerSessionState _state = TrainerSessionState();
+  final StreamController<TrainerSessionState> _stateChanges =
+      StreamController<TrainerSessionState>.broadcast(sync: true);
+  bool _disposed = false;
 
   final List<int> Function() _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId) _readProcessMetadata;
@@ -85,14 +90,37 @@ class TrainerSessionController {
   /// Current immutable session state for a presentation to render.
   TrainerSessionState get state => _state;
 
+  /// Emits the current snapshot to each subscriber, then subsequent changes.
+  Stream<TrainerSessionState> get stateChanges =>
+      Stream<TrainerSessionState>.multi((subscriber) {
+        if (_disposed) {
+          subscriber.close();
+          return;
+        }
+        final subscription = _stateChanges.stream.listen(
+          subscriber.addSync,
+          onError: subscriber.addErrorSync,
+          onDone: subscriber.close,
+        );
+        subscriber.addSync(_state);
+        subscriber.onCancel = subscription.cancel;
+      }, isBroadcast: true);
+
+  /// Stops state notifications and releases the controller's stream resources.
+  Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    await _stateChanges.close();
+  }
+
   /// Discovers RPCS3 and automatically selects it when exactly one is found.
   void connect() {
     try {
       final processIds = _discoverProcessIds();
-      _state = TrainerSessionState(processIds: processIds);
+      _publish(TrainerSessionState(processIds: processIds));
       if (processIds.length == 1) selectProcess(processIds.single);
     } catch (error) {
-      _state = TrainerSessionState(errorMessage: error.toString());
+      _publish(TrainerSessionState(errorMessage: error.toString()));
     }
   }
 
@@ -103,30 +131,35 @@ class TrainerSessionController {
       final metadata = _readProcessMetadata(processId);
       final detection = _detectGame(processId, metadata);
       if (detection.processId != processId) {
-        _state = TrainerSessionState(
-          processIds: _state.processIds,
-          selectedProcessId: processId,
-          processMetadata: metadata,
-          detection: _failedDetection(
-            processId,
-            'Detection returned another process.',
+        _publish(
+          TrainerSessionState(
+            processIds: _state.processIds,
+            selectedProcessId: processId,
+            processMetadata: metadata,
+            detection: _failedDetection(
+              processId,
+              'Detection returned another process.',
+            ),
+            errorMessage:
+                'Game detection returned evidence for another process.',
           ),
-          errorMessage: 'Game detection returned evidence for another process.',
         );
         return false;
       }
       final base = _baseFor(detection, metadata);
-      _state = TrainerSessionState(
-        processIds: _state.processIds,
-        selectedProcessId: processId,
-        processMetadata: metadata,
-        detection: detection,
-        memoryBase: base,
-        errorMessage:
-            detection.status == GameDetectionStatus.supportedGame &&
-                    base == null
-                ? 'The current game memory base is unavailable.'
-                : null,
+      _publish(
+        TrainerSessionState(
+          processIds: _state.processIds,
+          selectedProcessId: processId,
+          processMetadata: metadata,
+          detection: detection,
+          memoryBase: base,
+          errorMessage:
+              detection.status == GameDetectionStatus.supportedGame &&
+                      base == null
+                  ? 'The current game memory base is unavailable.'
+                  : null,
+        ),
       );
       if (detection.status == GameDetectionStatus.supportedGame &&
           base != null) {
@@ -134,10 +167,12 @@ class TrainerSessionController {
       }
       return true;
     } catch (error) {
-      _state = TrainerSessionState(
-        processIds: _state.processIds,
-        selectedProcessId: processId,
-        errorMessage: error.toString(),
+      _publish(
+        TrainerSessionState(
+          processIds: _state.processIds,
+          selectedProcessId: processId,
+          errorMessage: error.toString(),
+        ),
       );
       return false;
     }
@@ -161,25 +196,29 @@ class TrainerSessionController {
         profile: profile,
         evidenceDescription: 'The profile was selected manually.',
       );
-      _state = TrainerSessionState(
-        processIds: _state.processIds,
-        selectedProcessId: processId,
-        processMetadata: metadata,
-        detection: detection,
-        memoryBase: candidate?.memoryBase,
-        errorMessage:
-            candidate == null
-                ? 'The current game memory base is unavailable.'
-                : null,
+      _publish(
+        TrainerSessionState(
+          processIds: _state.processIds,
+          selectedProcessId: processId,
+          processMetadata: metadata,
+          detection: detection,
+          memoryBase: candidate?.memoryBase,
+          errorMessage:
+              candidate == null
+                  ? 'The current game memory base is unavailable.'
+                  : null,
+        ),
       );
       _readAvailableFields(processId, detection, candidate?.memoryBase);
       return true;
     } catch (error) {
-      _state = TrainerSessionState(
-        processIds: _state.processIds,
-        selectedProcessId: processId,
-        processMetadata: metadata,
-        errorMessage: error.toString(),
+      _publish(
+        TrainerSessionState(
+          processIds: _state.processIds,
+          selectedProcessId: processId,
+          processMetadata: metadata,
+          errorMessage: error.toString(),
+        ),
       );
       return false;
     }
@@ -190,60 +229,69 @@ class TrainerSessionController {
     final processId = _state.selectedProcessId;
     final previousMetadata = _state.processMetadata;
     if (processId == null || previousMetadata == null) return;
-    _state = TrainerSessionState(
-      processIds: _state.processIds,
-      selectedProcessId: processId,
-      processMetadata: previousMetadata,
+    _publish(
+      TrainerSessionState(
+        processIds: _state.processIds,
+        selectedProcessId: processId,
+        processMetadata: previousMetadata,
+      ),
     );
     try {
       final processIds = _discoverProcessIds();
       if (!processIds.contains(processId)) {
-        _state = TrainerSessionState(
-          processIds: processIds,
-          detection: _failedDetection(
-            processId,
-            'RPCS3 is no longer running.',
-            status: GameDetectionStatus.rpcs3NotRunning,
+        _publish(
+          TrainerSessionState(
+            processIds: processIds,
+            detection: _failedDetection(
+              processId,
+              'RPCS3 is no longer running.',
+              status: GameDetectionStatus.rpcs3NotRunning,
+            ),
+            errorMessage: 'RPCS3 is no longer running.',
           ),
-          errorMessage: 'RPCS3 is no longer running.',
         );
         return;
       }
       final metadata = _readProcessMetadata(processId);
       final detection = _detectGame(processId, metadata);
       if (detection.processId != processId) {
-        _state = TrainerSessionState(
-          processIds: processIds,
-          selectedProcessId: processId,
-          processMetadata: metadata,
-          detection: _failedDetection(
-            processId,
-            'Detection returned another process.',
+        _publish(
+          TrainerSessionState(
+            processIds: processIds,
+            selectedProcessId: processId,
+            processMetadata: metadata,
+            detection: _failedDetection(
+              processId,
+              'Detection returned another process.',
+            ),
+            errorMessage:
+                'Game detection returned evidence for another process.',
           ),
-          errorMessage: 'Game detection returned evidence for another process.',
         );
         return;
       }
       final base = _baseFor(detection, metadata);
-      _state = TrainerSessionState(
-        processIds: processIds,
-        selectedProcessId: processId,
-        processMetadata: metadata,
-        detection: detection,
-        memoryBase: base,
+      _publish(
+        TrainerSessionState(
+          processIds: processIds,
+          selectedProcessId: processId,
+          processMetadata: metadata,
+          detection: detection,
+          memoryBase: base,
+        ),
       );
       if (metadata.startedAtUtc != previousMetadata.startedAtUtc) {
-        _state = _withError('The RPCS3 session changed. Re-detect the game.');
+        _publish(_withError('The RPCS3 session changed. Re-detect the game.'));
         return;
       }
       if (detection.status != GameDetectionStatus.supportedGame) return;
       if (base == null) {
-        _state = _withError('The current game memory base is unavailable.');
+        _publish(_withError('The current game memory base is unavailable.'));
         return;
       }
       _readAvailableFields(processId, detection, base);
     } catch (error) {
-      _state = _withError(error.toString());
+      _publish(_withError(error.toString()));
     }
   }
 
@@ -328,6 +376,7 @@ class TrainerSessionController {
         fieldId,
         value,
         'Could not revalidate the game before writing. No write was made: $error',
+        invalidateSession: true,
       );
     }
     if (!validation.isAuthorized) {
@@ -337,6 +386,7 @@ class TrainerSessionController {
         value,
         validation.rejectionMessage ??
             'The current session rejected the write.',
+        invalidateSession: true,
       );
     }
 
@@ -358,7 +408,7 @@ class TrainerSessionController {
           value: result.readBackValue,
         );
       }
-      _state = _copyState(readResults: reads, lastWriteResult: result);
+      _publish(_copyState(readResults: reads, lastWriteResult: result));
       return result;
     } catch (error) {
       return _rejectWrite(
@@ -370,6 +420,7 @@ class TrainerSessionController {
     }
   }
 
+  /// Reads every approved field and replaces the snapshot with those results.
   void _readAvailableFields(
     int processId,
     GameDetectionResult detection,
@@ -396,14 +447,16 @@ class TrainerSessionController {
         readError = error.toString();
       }
     }
-    _state = _copyState(readResults: results, errorMessage: readError);
+    _publish(_copyState(readResults: results, errorMessage: readError));
   }
 
+  /// Resolves a memory base only for a supported detected game.
   int? _baseFor(GameDetectionResult detection, Rpcs3ProcessMetadata metadata) {
     if (detection.status != GameDetectionStatus.supportedGame) return null;
     return _resolveMemoryBaseCandidate(metadata)?.memoryBase;
   }
 
+  /// Creates an unresolved identity result for the selected process.
   GameDetectionResult _failedDetection(
     int processId,
     String message, {
@@ -415,6 +468,7 @@ class TrainerSessionController {
     evidenceDescription: message,
   );
 
+  /// Clears cached values while retaining the current target and [message].
   TrainerSessionState _withError(String message) => TrainerSessionState(
     processIds: _state.processIds,
     selectedProcessId: _state.selectedProcessId,
@@ -424,6 +478,7 @@ class TrainerSessionController {
     errorMessage: message,
   );
 
+  /// Copies the active target with updated read, write, or error information.
   TrainerSessionState _copyState({
     Map<String, GameReadResult>? readResults,
     GameWriteResult? lastWriteResult,
@@ -439,26 +494,36 @@ class TrainerSessionController {
     errorMessage: errorMessage,
   );
 
+  /// Publishes a rejected write result, optionally invalidating the target.
   GameWriteResult _rejectWrite(
     GameWriteStatus status,
     String fieldId,
     int value,
-    String message,
-  ) {
+    String message, {
+    bool invalidateSession = false,
+  }) {
     final result = GameWriteResult(
       status: status,
       fieldId: fieldId,
       requestedValue: value,
     );
-    _state = TrainerSessionState(
-      processIds: _state.processIds,
-      selectedProcessId: _state.selectedProcessId,
-      processMetadata: _state.processMetadata,
-      detection: _state.detection,
-      memoryBase: _state.memoryBase,
-      lastWriteResult: result,
-      errorMessage: message,
+    _publish(
+      TrainerSessionState(
+        processIds: _state.processIds,
+        selectedProcessId: invalidateSession ? null : _state.selectedProcessId,
+        processMetadata: invalidateSession ? null : _state.processMetadata,
+        detection: invalidateSession ? null : _state.detection,
+        memoryBase: invalidateSession ? null : _state.memoryBase,
+        lastWriteResult: result,
+        errorMessage: message,
+      ),
     );
     return result;
+  }
+
+  /// Replaces the snapshot and notifies active state subscribers.
+  void _publish(TrainerSessionState state) {
+    _state = state;
+    if (!_disposed) _stateChanges.add(state);
   }
 }

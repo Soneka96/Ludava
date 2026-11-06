@@ -11,6 +11,7 @@ import 'package:ludava/shared/constants/app_constants.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:nocterm/nocterm_test.dart'
     show LogicalKey, containsText, testNocterm;
+import 'package:nocterm/nocterm.dart' show SizedBox;
 import 'package:test/test.dart';
 
 void main() {
@@ -45,6 +46,29 @@ void main() {
 
           expect(fixture.controller.state.selectedProcessId, 43);
           expect(tester.terminalState, containsText('CONNECTED'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent stops observing after disposal',
+      () async {
+        await testNocterm('session observer cleanup', (tester) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+
+          await tester.pumpComponent(const SizedBox());
+          fixture.detectionStatus = GameDetectionStatus.unsupportedGame;
+          fixture.controller.refresh();
+
+          expect(
+            fixture.controller.state.detection?.status,
+            GameDetectionStatus.unsupportedGame,
+          );
+          expect(
+            tester.terminalState,
+            isNot(containsText('This game is not supported')),
+          );
         });
       },
     );
@@ -134,7 +158,7 @@ void main() {
     );
 
     test(
-      'Class TrainerSessionComponent applies once and shows verified read-back',
+      'Class TrainerSessionComponent closes after applying and shows read-back',
       () async {
         await testNocterm('apply from the editor', (tester) async {
           final fixture = _SessionFixture();
@@ -146,12 +170,86 @@ void main() {
 
           expect(fixture.writeCalls, 1);
           expect(fixture.lastConfirmed, isTrue);
-          expect(tester.terminalState, containsText('Verified value: 1,005'));
+          expect(tester.terminalState, containsText('Bolts updated to 1,005'));
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+
           await tester.sendEnter();
+          expect(tester.terminalState, containsText('Current value: 1,005'));
           expect(fixture.writeCalls, 1);
           await tester.sendEscape();
 
           expect(tester.terminalState, containsText('1,005'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent invalidates the editor when write validation detects a game change',
+      () async {
+        await testNocterm('game changes before apply', (tester) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          await tester.enterText('101');
+          fixture.profile = _profile(id: 'rc3-collection');
+
+          await tester.sendEnter();
+
+          expect(fixture.writeCalls, 0);
+          expect(fixture.controller.state.profile, isNull);
+          expect(fixture.controller.state.readResults, isEmpty);
+          expect(
+            tester.terminalState,
+            containsText('active game or memory base changed'),
+          );
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent invalidates the editor when the process session changes before apply',
+      () async {
+        await testNocterm('process session changes before apply', (
+          tester,
+        ) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          await tester.enterText('1');
+          fixture.startedAtUtc = DateTime.utc(2026, 11, 6, 11);
+
+          await tester.sendEnter();
+
+          expect(fixture.writeCalls, 0);
+          expect(fixture.controller.state.profile, isNull);
+          expect(fixture.controller.state.readResults, isEmpty);
+          expect(tester.terminalState, containsText('session changed'));
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent invalidates the editor when the memory base changes before apply',
+      () async {
+        await testNocterm('memory base changes before apply', (tester) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          await tester.enterText('1');
+          fixture.memoryBase = 0x400000000;
+
+          await tester.sendEnter();
+
+          expect(fixture.writeCalls, 0);
+          expect(fixture.controller.state.profile, isNull);
+          expect(fixture.controller.state.readResults, isEmpty);
+          expect(
+            tester.terminalState,
+            containsText('active game or memory base changed'),
+          );
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
         });
       },
     );
@@ -184,6 +282,8 @@ TrainerSessionComponent _app(
 class _SessionFixture {
   List<int> processIds = [42];
   GameProfile profile = _profile();
+  DateTime startedAtUtc = DateTime.utc(2026, 11, 6, 10);
+  int memoryBase = 0x300000000;
   int readCalls = 0;
   int detectCalls = 0;
   int writeCalls = 0;
@@ -195,11 +295,11 @@ class _SessionFixture {
     readProcessMetadata:
         (_) => Rpcs3ProcessMetadata(
           executablePath: r'C:\RPCS3\rpcs3.exe',
-          startedAtUtc: DateTime.utc(2026, 11, 6, 10),
+          startedAtUtc: startedAtUtc,
         ),
     resolveMemoryBaseCandidate:
-        (_) => const Rpcs3MemoryBaseCandidate(
-          memoryBase: 0x300000000,
+        (_) => Rpcs3MemoryBaseCandidate(
+          memoryBase: memoryBase,
           logPath: r'C:\RPCS3\log\RPCS3.log',
         ),
     detectGame: (processId, _) {
@@ -250,34 +350,35 @@ class _SessionFixture {
   );
 }
 
-GameProfile _profile({bool twoFields = false}) => GameProfile(
-  id: 'rc2-collection',
-  gameName: 'Ratchet & Clank 2',
-  buildId: 'BCUS98282',
-  executable: 'RC2.ppu.self',
-  executableHash: 'measured-hash',
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.researchConfirmed,
-  fields: {
-    'bolts': GameField(
-      id: 'bolts',
-      name: 'Bolts',
-      guestOffset: 0x1000,
-      valueType: MemoryValueType.unsigned32,
-      byteOrder: ByteOrder.big,
+GameProfile _profile({String id = 'rc2-collection', bool twoFields = false}) =>
+    GameProfile(
+      id: id,
+      gameName: 'Ratchet & Clank 2',
+      buildId: 'BCUS98282',
+      executable: 'RC2.ppu.self',
+      executableHash: 'measured-hash',
       readStatus: VerificationStatus.verified,
       writeStatus: VerificationStatus.researchConfirmed,
-      minimumValue: 0,
-      maximumValue: GameMemoryConstants.maxUnsigned32,
-    ),
-    if (twoFields)
-      'weapons': GameField(
-        id: 'weapons',
-        name: 'Weapons',
-        guestOffset: 0x2000,
-        valueType: MemoryValueType.unsigned32,
-        byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-      ),
-  },
-);
+      fields: {
+        'bolts': GameField(
+          id: 'bolts',
+          name: 'Bolts',
+          guestOffset: 0x1000,
+          valueType: MemoryValueType.unsigned32,
+          byteOrder: ByteOrder.big,
+          readStatus: VerificationStatus.verified,
+          writeStatus: VerificationStatus.researchConfirmed,
+          minimumValue: 0,
+          maximumValue: GameMemoryConstants.maxUnsigned32,
+        ),
+        if (twoFields)
+          'weapons': GameField(
+            id: 'weapons',
+            name: 'Weapons',
+            guestOffset: 0x2000,
+            valueType: MemoryValueType.unsigned32,
+            byteOrder: ByteOrder.big,
+            readStatus: VerificationStatus.verified,
+          ),
+      },
+    );

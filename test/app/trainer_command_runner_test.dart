@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -1060,12 +1061,20 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method runAsync() launches the Nocterm app for no arguments',
       () async {
         var launchCalls = 0;
+        final stateStreamClosed = Completer<void>();
         final runner = TrainerCommandRunner(
           hasTerminal: true,
-          runNocterm: (_) async => launchCalls++,
+          runNocterm: (controller) async {
+            launchCalls++;
+            controller.stateChanges.listen(
+              (_) {},
+              onDone: stateStreamClosed.complete,
+            );
+          },
         );
 
         final result = await runner.runAsync([]);
+        await stateStreamClosed.future;
 
         expect(result, 0);
         expect(launchCalls, 1);
@@ -1095,12 +1104,20 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
 
     test('Method runAsync() reports terminal startup failures', () async {
       final errors = StringBuffer();
+      final stateStreamClosed = Completer<void>();
       final runner = TrainerCommandRunner(
         hasTerminal: true,
-        runNocterm: (_) async => throw StateError('backend failed'),
+        runNocterm: (controller) async {
+          controller.stateChanges.listen(
+            (_) {},
+            onDone: stateStreamClosed.complete,
+          );
+          throw StateError('backend failed');
+        },
       );
 
       final result = await runner.runAsync([], errorOutput: errors);
+      await stateStreamClosed.future;
 
       expect(result, 1);
       expect(errors.toString(), contains('Nocterm could not start'));

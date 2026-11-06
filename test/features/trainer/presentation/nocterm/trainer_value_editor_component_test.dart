@@ -26,6 +26,50 @@ import 'package:test/test.dart';
 void main() {
   group('Class TrainerValueEditorComponent editing behavior', () {
     test(
+      'Class TrainerValueEditorComponent calls onApplied after verified success',
+      () async {
+        await testNocterm('successful apply callback', (tester) async {
+          var applied = 0;
+          await tester.pumpComponent(
+            _editor(
+              onApply: (value) => _success(value),
+              onApplied: () => applied++,
+            ),
+          );
+          await _replaceAll(tester, '124');
+          await tester.sendEnter();
+
+          expect(applied, 1);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerValueEditorComponent does not call onApplied after a failed write',
+      () async {
+        await testNocterm('failed apply callback', (tester) async {
+          var applied = 0;
+          await tester.pumpComponent(
+            _editor(
+              onApply:
+                  (value) => GameWriteResult(
+                    status: GameWriteStatus.readBackMismatch,
+                    fieldId: 'bolts',
+                    requestedValue: value,
+                    readBackValue: value + 1,
+                  ),
+              onApplied: () => applied++,
+            ),
+          );
+          await _replaceAll(tester, '124');
+          await tester.sendEnter();
+
+          expect(applied, 0);
+        });
+      },
+    );
+
+    test(
       'Class TrainerValueEditorComponent prefills an unselected cursor at the end',
       () async {
         await testNocterm('initial editor cursor', (tester) async {
@@ -973,11 +1017,13 @@ TrainerValueEditorComponent _editor({
   GameField? field,
   int? currentValue = 123,
   required GameWriteResult Function(int value) onApply,
+  void Function()? onApplied,
   void Function()? onCancel,
 }) => TrainerValueEditorComponent(
   field: field ?? _field(),
   currentValue: currentValue,
   onApply: onApply,
+  onApplied: onApplied,
   onCancel: onCancel ?? () {},
 );
 

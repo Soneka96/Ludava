@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
@@ -28,6 +30,7 @@ class TrainerSessionComponent extends StatefulComponent {
 
 class _TrainerSessionState extends State<TrainerSessionComponent> {
   late TrainerSessionState _session;
+  StreamSubscription<TrainerSessionState>? _stateSubscription;
   GameField? _editingField;
   int _selectedFieldIndex = 0;
   int _selectedProcessIndex = 0;
@@ -40,6 +43,13 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
       controller.connect();
     }
     _session = controller.state;
+    _stateSubscription = controller.stateChanges.listen(_handleStateChanged);
+  }
+
+  @override
+  void dispose() {
+    unawaited(_stateSubscription?.cancel() ?? Future<void>.value());
+    super.dispose();
   }
 
   @override
@@ -52,6 +62,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     return _buildMenu();
   }
 
+  /// Renders available RPCS3 processes before one is selected.
   Component _buildProcessPicker() => LayoutBuilder(
     builder: (context, constraints) {
       final processIds = _session.processIds;
@@ -104,11 +115,20 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     },
   );
 
+  /// Renders session feedback and the field menu.
   Component _buildMenu() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       if (_statusMessage case final message?)
-        Text(message, style: const TextStyle(color: Colors.yellow)),
+        Text(
+          message,
+          style: TextStyle(
+            color:
+                _session.lastWriteResult?.succeeded == true
+                    ? Colors.green
+                    : Colors.yellow,
+          ),
+        ),
       Expanded(
         child: TrainerMenuComponent(
           session: _session,
@@ -123,6 +143,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     ],
   );
 
+  /// Opens the editor with the latest verified value for [field].
   Component _buildEditor(GameField field) {
     final readResult = _session.readResults[field.id];
     return TrainerValueEditorComponent(
@@ -130,11 +151,24 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
       currentValue: readResult?.succeeded == true ? readResult?.value : null,
       onApply:
           (value) => component.sessionController.writeField(field.id, value),
+      onApplied: _returnToMenu,
       onCancel: _returnToMenu,
     );
   }
 
+  /// Returns the session warning or successful write status, if any.
   String? get _statusMessage {
+    final write = _session.lastWriteResult;
+    final fieldId = write?.fieldId;
+    final readBackValue = write?.readBackValue;
+    if (write != null &&
+        write.succeeded &&
+        fieldId != null &&
+        readBackValue != null) {
+      final fieldName = _session.profile?.findField(fieldId)?.name;
+      return '✓ ${fieldName ?? fieldId} updated to '
+          '${_formatValue(readBackValue)}';
+    }
     final error = _session.errorMessage;
     if (error != null) return '⚠ $error';
     if (_session.selectedProcessId == null && _session.processIds.isEmpty) {
@@ -154,6 +188,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     };
   }
 
+  /// Handles input owned by the process picker.
   bool _handleProcessPickerKey(KeyboardEvent event) {
     final processIds = _session.processIds;
     if (event.logicalKey == LogicalKey.arrowUp) {
@@ -185,6 +220,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     return false;
   }
 
+  /// Keeps the selected process row within the current result list.
   void _setProcessSelection(int index) {
     final processIds = _session.processIds;
     if (processIds.isEmpty) return;
@@ -193,15 +229,17 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     setState(() => _selectedProcessIndex = selection);
   }
 
+  /// Requests application selection of [processId].
   void _selectProcess(int processId) {
     component.sessionController.selectProcess(processId);
-    _replaceSession(component.sessionController.state);
   }
 
+  /// Opens [field] for editing without copying its verified value.
   void _openField(GameField field) {
     setState(() => _editingField = field);
   }
 
+  /// Reconnects or refreshes the selected process through the controller.
   void _refresh() {
     final controller = component.sessionController;
     if (_session.selectedProcessId == null) {
@@ -209,9 +247,9 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     } else {
       controller.refresh();
     }
-    _replaceSession(controller.state);
   }
 
+  /// Rechecks the selected process identity and memory base.
   void _redetect() {
     final controller = component.sessionController;
     if (_session.selectedProcessId == null) {
@@ -219,11 +257,12 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     } else {
       controller.redetect();
     }
-    _replaceSession(controller.state);
   }
 
-  void _replaceSession(TrainerSessionState session) {
-    if (_session.profile?.id != session.profile?.id) {
+  /// Replaces the rendered snapshot and drops UI state tied to an old session.
+  void _handleStateChanged(TrainerSessionState session) {
+    if (!_sameSession(_session, session)) {
+      _editingField = null;
       _selectedFieldIndex = 0;
     }
     _selectedProcessIndex =
@@ -233,6 +272,18 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     setState(() => _session = session);
   }
 
+  /// Reports whether two snapshots refer to the same process and game target.
+  bool _sameSession(TrainerSessionState first, TrainerSessionState second) =>
+      first.selectedProcessId == second.selectedProcessId &&
+      first.processMetadata?.startedAtUtc ==
+          second.processMetadata?.startedAtUtc &&
+      first.detection?.status == second.detection?.status &&
+      first.detection?.confidence == second.detection?.confidence &&
+      first.profile?.id == second.profile?.id &&
+      first.detection?.executableHash == second.detection?.executableHash &&
+      first.memoryBase == second.memoryBase;
+
+  /// Returns to the field menu using the controller's newest snapshot.
   void _returnToMenu() {
     setState(() {
       _editingField = null;
@@ -240,6 +291,13 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     });
   }
 
+  /// Formats a verified value with thousands separators for status text.
+  String _formatValue(int value) => value.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (match) => ',',
+  );
+
+  /// Maps a menu digit key to its one-based field or process index.
   int? _digitFor(LogicalKey key) => switch (key) {
     LogicalKey.digit1 => 1,
     LogicalKey.digit2 => 2,
@@ -253,6 +311,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     _ => null,
   };
 
+  /// Recognizes a letter shortcut from its key or typed character.
   bool _matchesLetter(KeyboardEvent event, String letter, LogicalKey key) =>
       event.logicalKey == key || event.character?.toLowerCase() == letter;
 }

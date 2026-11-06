@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
@@ -9,6 +11,7 @@ import 'package:ludava/features/game_catalog/domain/profiles/rc3_collection_prof
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
+import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
@@ -35,6 +38,100 @@ void main() {
       expect(state.selectedProcessId, 42);
       expect(state.profile?.id, fixture.profile.id);
       expect(() => state.readResults.clear(), throwsUnsupportedError);
+    });
+  });
+
+  group('Property stateChanges behaves correctly', () {
+    test(
+      'Property stateChanges emits the current snapshot and later transitions',
+      () async {
+        final fixture = _SessionFixture();
+        final firstSubscriber = <Object>[];
+        final secondSubscriber = <Object>[];
+        final first = fixture.controller.stateChanges.listen(
+          firstSubscriber.add,
+        );
+        final second = fixture.controller.stateChanges.listen(
+          secondSubscriber.add,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(firstSubscriber.single, same(fixture.controller.state));
+        expect(secondSubscriber.single, same(fixture.controller.state));
+
+        fixture.controller.connect();
+        await Future<void>.delayed(Duration.zero);
+        expect(firstSubscriber.last, same(fixture.controller.state));
+        expect(secondSubscriber.last, same(fixture.controller.state));
+
+        final lateSubscriber = <Object>[];
+        final late = fixture.controller.stateChanges.listen(lateSubscriber.add);
+        await Future<void>.delayed(Duration.zero);
+        expect(lateSubscriber.single, same(fixture.controller.state));
+
+        await first.cancel();
+        final firstCount = firstSubscriber.length;
+        fixture.controller.refresh();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(firstSubscriber, hasLength(firstCount));
+        expect(secondSubscriber.length, greaterThan(firstCount));
+        expect(secondSubscriber.last, same(fixture.controller.state));
+        await late.cancel();
+        await second.cancel();
+      },
+    );
+
+    test(
+      'Property stateChanges publishes successful and failed write results',
+      () async {
+        final fixture = _SessionFixture()..controller.connect();
+        final snapshots = <TrainerSessionState>[];
+        final subscription = fixture.controller.stateChanges.listen(
+          snapshots.add,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        fixture.controller.writeField('bolts', 101);
+        fixture.writeResult = GameWriteResult(
+          status: GameWriteStatus.readBackMismatch,
+          fieldId: 'bolts',
+          requestedValue: 102,
+          readBackValue: 103,
+        );
+        fixture.controller.writeField('bolts', 102);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          snapshots.any(
+            (snapshot) => snapshot.readResults['bolts']?.value == 101,
+          ),
+          isTrue,
+        );
+        expect(
+          snapshots.last.lastWriteResult?.status,
+          GameWriteStatus.readBackMismatch,
+        );
+        expect(snapshots.last.readResults, isEmpty);
+        await subscription.cancel();
+      },
+    );
+  });
+
+  group('Method dispose() behaves correctly', () {
+    test('Method dispose() closes state observation', () async {
+      final fixture = _SessionFixture();
+      var completed = false;
+      fixture.controller.stateChanges.listen(
+        (_) {},
+        onDone: () => completed = true,
+      );
+
+      await fixture.controller.dispose();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(completed, isTrue);
+      await expectLater(fixture.controller.stateChanges, emitsDone);
     });
   });
 
@@ -549,6 +646,8 @@ void main() {
       expect(result.status, GameWriteStatus.unsupportedProfile);
       expect(result.succeeded, isFalse);
       expect(fixture.writeCalls, 0);
+      expect(fixture.controller.state.profile, isNull);
+      expect(fixture.controller.state.readResults, isEmpty);
     });
 
     test('Method writeField() blocks a stale process session', () {
@@ -563,6 +662,8 @@ void main() {
         fixture.controller.state.errorMessage,
         contains('session changed'),
       );
+      expect(fixture.controller.state.profile, isNull);
+      expect(fixture.controller.state.readResults, isEmpty);
     });
 
     test('Method writeField() blocks a process that has exited', () {
@@ -573,6 +674,8 @@ void main() {
 
       expect(result.succeeded, isFalse);
       expect(fixture.writeCalls, 0);
+      expect(fixture.controller.state.profile, isNull);
+      expect(fixture.controller.state.readResults, isEmpty);
     });
 
     test('Method writeField() blocks a changed game', () {
@@ -583,6 +686,8 @@ void main() {
 
       expect(result.succeeded, isFalse);
       expect(fixture.writeCalls, 0);
+      expect(fixture.controller.state.profile, isNull);
+      expect(fixture.controller.state.readResults, isEmpty);
     });
 
     test('Method writeField() blocks a changed memory base', () {
@@ -593,6 +698,8 @@ void main() {
 
       expect(result.succeeded, isFalse);
       expect(fixture.writeCalls, 0);
+      expect(fixture.controller.state.profile, isNull);
+      expect(fixture.controller.state.readResults, isEmpty);
     });
 
     test(
