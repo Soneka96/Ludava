@@ -1,29 +1,12 @@
 # Roadmap
 
-Milestones describe verified outcomes, not completed code alone.
+Milestones describe verified outcomes, not completed code alone. The sequence below follows project dependencies from the evidence foundation through the future frontend. Historical evidence and each milestone's completion state are preserved.
 
-## Approved workspace migration
+## Current workspace status
 
-The owner has approved migrating this repository to one Dart workspace with `packages/ludava_sdk` and `apps/ludava_tui`. The SDK holds the reusable trainer engine; the Nocterm TUI is an independent frontend over that SDK. `apps/ludava_app` remains a future Flutter application for a later project; it is not created by the workspace migration. See [ARCHITECTURE.md](ARCHITECTURE.md) for package ownership and dependency boundaries.
+The owner-approved Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. The SDK exposes the lifecycle-owned `LudavaSdk` runtime; the TUI consumes its public capabilities. The legacy interactive text menu is removed, while Nocterm and explicit diagnostic commands remain. `apps/ludava_app` is a future Flutter application and is not part of the current workspace. See [ARCHITECTURE.md](ARCHITECTURE.md) for the actual directory structure and ownership.
 
-The migration preserves existing game behavior, write safety, diagnostic commands, Windows executable and DLL packaging, and test coverage. It does not add trainer features or alter compatibility claims.
-
-The local workspace migration is implemented and verified on Windows. The
-updated workflow has not yet run in GitHub Actions, and this work has not been
-validated in a live RPCS3 session. Keep the existing live-game evidence and its
-limitations unchanged.
-
-## M6 — SDK and TUI workspace extraction
-
-- [x] Record the package ownership, dependency, and test conventions before moving code.
-- [x] Extract the reusable trainer engine, state, factory, profiles, and native integrations into `packages/ludava_sdk`.
-- [x] Move Nocterm screens, diagnostic CLI, and package-native entry points into `apps/ludava_tui`.
-- [x] Configure shared workspace resolution and retain root compatibility commands.
-- [x] Verify package analysis, package tests, root compatibility tests, Windows build, and copied EXE/DLL launch from another working directory locally.
-- [ ] Confirm the Windows workflow on PR #7; it must run SDK, TUI, root compatibility, boundary, and Windows build checks.
-- [ ] Record migration-build physical keyboard and live RPCS3 acceptance, or keep those checks explicitly unverified.
-
-**Exit:** GitHub Actions passes on PR #7 and the migration's Windows acceptance status is recorded. The Flutter app remains a later project.
+The workspace cleanup and local Windows checks are complete in the current checkout. GitHub Actions has not been confirmed on PR #7. Physical keyboard acceptance remains a manual check. Existing live-game observations and their compatibility limits are documented in [COMPATIBILITY.md](COMPATIBILITY.md); the structural cleanup does not change those claims.
 
 ## M0 — Project and documentation foundation
 
@@ -57,15 +40,7 @@ limitations unchanged.
 
 **Exit:** one Ludava edit is validated end to end, with its runtime assumptions documented and unknown fields still disabled.
 
-## M3 — Minimal Flutter desktop interface
-
-- [ ] Show process/build status, selected field, value, and meaningful errors.
-- [ ] Enable edits only for a verified writable build and field.
-- [ ] Test the Windows build and the real-game scenario.
-
-**Exit:** a usable first release with accurate compatibility status.
-
-## M4 — Incremental expansion
+## M3 — Incremental game and field expansion
 
 - [x] Add RC1 and RC3 Collection bolt-only profiles from owner-confirmed RatchetHax research.
 - [x] Owner-tested RC1 and RC3 Ludava bolt reads and writes with matching in-game HUD screenshots on 2026-11-05, using session base `0x300000000`; their PPU hashes were later measured in a separate runtime session.
@@ -74,7 +49,7 @@ limitations unchanged.
 
 **Not planned now:** a large dashboard, plugin framework, cloud services, additional emulator backends, or unverified feature tables.
 
-## M5 — RPCS3 game detection
+## M4 — RPCS3 game detection
 
 - [x] Add domain detection outcomes, confidence, evidence, and profile-driven field exposure.
 - [x] Preserve RPCS3 log title/serial/path observations without treating history as active identity.
@@ -86,3 +61,24 @@ limitations unchanged.
 - [x] Owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during testing on a Windows laptop and a ROG Ally. The available notes do not map each game to each device or identify the exact RPCS3 build.
 
 **Current limit:** executable hashes were measured in one RPCS3 build and the log lifecycle was observed in one-process sessions. The final compiled CLI was live-smoke-tested with RC2; the later owner confirmation covers all three embedded games, but does not include a per-device game matrix or exact runtime build. Other RPCS3 builds, unsupported titles, and concurrent processes that share logs remain unverified. See [game-detection investigation](GAME_DETECTION.md).
+
+## M5 — SDK and TUI workspace extraction
+
+- [x] Document the approved ownership and runtime conventions before implementation.
+- [x] Establish `packages/ludava_sdk` as the reusable engine and `apps/ludava_tui` as its Nocterm/diagnostic frontend.
+- [x] Move diagnostic application workflows into the trainer feature and add the lifecycle-owned `LudavaSdk` runtime.
+- [x] Make the TUI consume public SDK capabilities and remove the legacy text-based interactive menu.
+- [x] Keep root commands as thin compatibility entry points; add workspace boundary checks and fixture tests.
+- [x] Verify local package analysis and tests, root compatibility tests, workspace boundaries, Windows build, and relocated executable help in the current checkout.
+- [ ] Confirm the Windows workflow on PR #7; it must run SDK, TUI, root compatibility, boundary, and Windows build checks.
+- [ ] Record physical keyboard acceptance; the terminal keyboard protocol fix remains a manual check.
+
+**Exit:** workspace boundaries and local Windows build are verified; GitHub Actions and physical keyboard acceptance are recorded separately.
+
+## M6 — Minimal Flutter desktop interface
+
+- [ ] Show process/build status, selected field, value, and meaningful errors.
+- [ ] Enable edits only for a verified writable build and field.
+- [ ] Test the Windows build and the real-game scenario.
+
+**Exit:** a usable first release with accurate compatibility status.

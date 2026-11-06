@@ -168,9 +168,58 @@ Construct application services and presentation dependencies explicitly at the c
 
 Compatibility is recorded per exact game/build and capability. Keep experimental, read-verified, write-verified, and unsupported states distinct. A process ID, selected profile, passing unit test, or plausible value is not proof of game identity or compatibility. See [COMPATIBILITY.md](COMPATIBILITY.md) for the evidence required to change a status.
 
+## SDK runtime API
+
+`LudavaSdk` is the public object for one engine instance. `LudavaSdk.create()` assembles the SDK's feature services and exposes typed `session` and `diagnostics` capabilities. It owns their lifetime and shuts down session notifications through `dispose()`; it does not hold trainer state itself or provide a general dependency registry.
+
+`TrainerSessionController` owns the authoritative mutable session lifecycle and publishes immutable `TrainerSessionState` snapshots. A snapshot contains application facts such as process identity, profile, memory base, field reads, and write results. The `DiagnosticGameMemoryService` is a trainer application service: it coordinates diagnostic operations and returns structured `DiagnosticGameMemoryResult` values. The TUI owns command parsing, display formatting, and exit codes. Nocterm and diagnostic commands use the same SDK runtime capabilities.
+
+```dart
+final sdk = LudavaSdk.create();
+try {
+  sdk.session.connect();
+  final state = sdk.session.state;
+  // Build request from the selected process and its current session base.
+  final result = sdk.diagnostics.execute(request);
+} finally {
+  await sdk.dispose();
+}
+```
+
+Here, `request` is a `DiagnosticGameMemoryRequest` prepared by the caller from the selected profile, process, and current session memory base. The diagnostic result reports identity, memory, operation, and cleanup status as typed data. Presentation code formats that result; it does not infer business facts from formatted output. Do not reintroduce the former `LudavaTrainerFactory` or place feature behavior in the runtime.
+
 ## Current implementation
 
-This paragraph records the checkout before the approved structural cleanup; the legacy factory and SDK `lib/app/` are migration targets under the directory ownership rules above, not approved extension points. The implementation is a Dart workspace containing `packages/ludava_sdk` and `apps/ludava_tui`. The SDK's public entry point is `packages/ludava_sdk/lib/ludava_sdk.dart`; the current `LudavaTrainerFactory` composes an injectable `TrainerSessionController` without initializing a terminal. The TUI package owns Nocterm screens, the diagnostic CLI, and package-native entry points. Root `bin/ludava.dart` and `bin/ludava_cli.dart` remain compatibility commands that delegate to the TUI package. The future Flutter application is not present.
+The checked-in Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. Its high-level source ownership is:
+
+```text
+Ludava/
+├── packages/ludava_sdk/
+│   ├── lib/ludava_sdk.dart                 # Public SDK API
+│   ├── lib/runtime/ludava_sdk.dart         # Capability assembly and lifecycle
+│   ├── lib/features/
+│   │   ├── game_catalog/                    # Profiles and fields
+│   │   ├── game_detection/                  # Identity evidence and matching
+│   │   ├── game_memory/                     # Generic reads, writes, Windows memory
+│   │   ├── rpcs3_connection/                # RPCS3 process, log, and native adapters
+│   │   └── trainer/                         # Session state and application workflows
+│   │       └── application/diagnostics/     # Typed diagnostic orchestration
+│   ├── lib/shared/                          # Scoped SDK declarations
+│   └── test/                                # Mirrored SDK tests and integrations
+├── apps/ludava_tui/
+│   ├── bin/                                 # TUI package entry points
+│   ├── lib/app/                             # CLI composition and command runner
+│   ├── lib/features/                        # Connection, trainer, editor, diagnostics UI
+│   ├── lib/shared/                          # TUI-local constants and terminal backend
+│   └── test/                                # Mirrored TUI tests
+├── bin/                                     # Root compatibility entry points
+├── lib/app/ludava_cli.dart                  # Root compatibility export
+├── test/                                    # Root compatibility tests
+├── docs/
+└── tool/                                    # Build and boundary checks
+```
+
+The SDK has no root `lib/app/`. The TUI has no interactive text menu; it owns Nocterm presentation and the explicit diagnostic CLI. Root `bin/`, `lib/`, and `test/` are compatibility surfaces, not another trainer implementation. The future Flutter package `apps/ludava_app` has not been created.
 
 The SDK's `game_memory` feature contains generic read/write use cases and Windows process-memory access. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
 

@@ -35,6 +35,7 @@ void main() {
         output.toString(),
         contains('No arguments starts the Nocterm trainer'),
       );
+      expect(output.toString(), contains('Press 1–9 to open a field directly'));
       expect(output.toString(), contains('bin/ludava.dart read'));
       expect(output.toString(), contains('current matching PPU identity'));
       expect(output.toString(), contains('Repeat a read to'));

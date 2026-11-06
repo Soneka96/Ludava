@@ -19,11 +19,12 @@ package's own entry point, change to `apps/ludava_tui` and run
 Run `.\tool\build_windows.ps1` first to create the native process-discovery
 library used by `dart run` and the compiled executable.
 
-Use **↑/↓** to move through fields, **1–9** to select one, and **Enter** to
-open its value editor. In the editor, **Enter** applies a changed, valid value
-and shows the verified read-back; **Escape** cancels without writing. Use **R**
-to refresh, **G** to re-detect the game, and **Q** to quit. The editor starts
-with the current value ungrouped and its cursor at the end.
+Press **1–9** to open the corresponding field directly. Use **↑/↓** to move
+through fields and **Enter** to open the selected field. In the editor,
+**Enter** applies a changed, valid value and shows the verified read-back;
+**Escape** cancels without writing. Use **R** to refresh, **G** to re-detect
+the game, and **Q** to quit. The editor starts with the current value ungrouped
+and its cursor at the end.
 
 Ludava selects a single running RPCS3 process automatically. If multiple processes are found, choose one with **↑/↓**, **1–9**, and **Enter**. For the measured Collection build, it identifies the current embedded game from the latest PPU load and stop events in a fresh process log. When identity is confirmed, it uses one unique guest memory base from that process session's log without asking you to confirm it. Ludava does not hardcode `0x300000000`.
 
@@ -72,13 +73,15 @@ build and transfer steps.
 
 The repository contains two workspace packages:
 
-- `packages/ludava_sdk` owns the reusable trainer engine, session state, profiles, RPCS3 integration, memory safety, and native process-discovery source.
-- `apps/ludava_tui` owns the Nocterm interface, diagnostic CLI, and Windows executable packaging.
+- `packages/ludava_sdk` owns the reusable trainer engine, profiles, RPCS3 integration, memory safety, native process-discovery source, and the `LudavaSdk` runtime.
+- `apps/ludava_tui` owns the Nocterm interface, diagnostic command syntax and output, and Windows executable packaging. It consumes typed SDK capabilities without constructing SDK memory or detection internals.
 
-Both use the SDK's public API from `packages/ludava_sdk/lib/ludava_sdk.dart`.
-The root `bin/` commands remain compatibility wrappers. The future Flutter
-application will be added as `apps/ludava_app` in a later project; it is not
-part of this workspace yet.
+Nocterm is the only interactive terminal interface. Diagnostic `read`,
+`write`, and `--help` commands remain available; the old text-based menu has
+been removed. Root `bin/` commands remain compatibility wrappers. The future
+Flutter application will be added as `apps/ludava_app` in a later project; it
+is not part of this workspace yet. See [Architecture and testing](docs/ARCHITECTURE.md)
+for the runtime API and package ownership.
 
 Pub workspaces require Dart 3.6 or newer, while `dart pub workspace list` was
 added in Dart 3.13. Ludava's declared minimum is Dart 3.7, so the workspace

@@ -56,7 +56,7 @@ automatically replace the package suites.
 3. Start RPCS3 and a supported Ratchet & Clank Collection game.
 4. Launch `Ludava.exe`. With one RPCS3 process and measured identity evidence, Ludava selects the embedded game and session base automatically. When multiple processes share a log folder, or the game/hash/base is unresolved, Ludava does not authorize a trainer write.
 5. If RPCS3 is open with no game, Ludava reports no active game and shows no field value until a game is detected and refreshed.
-6. Use **↑/↓**, **1–9**, and **Enter** to navigate and open fields. Press **R** to refresh, **G** to re-detect, and **Q** to quit. The value editor starts with the current ungrouped value and cursor at the end. **Enter** applies a changed, valid value without an extra confirmation prompt; **Escape** cancels.
+6. Press **1–9** to open a field directly, or use **↑/↓** to move and **Enter** to open the selected field. Press **R** to refresh, **G** to re-detect, and **Q** to quit. The value editor starts with the current ungrouped value and cursor at the end. **Enter** applies a changed, valid value without an extra confirmation prompt; **Escape** cancels.
 7. Before every write, Ludava rechecks the process session, PPU hash, and base. It requires a complete preliminary read, complete native write, and matching read-back before reporting success.
 
 ## Physical keyboard acceptance

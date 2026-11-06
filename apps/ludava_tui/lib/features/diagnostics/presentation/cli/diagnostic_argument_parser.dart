@@ -9,8 +9,9 @@ abstract final class DiagnosticArgumentParser {
   dart run bin/ludava.dart read --game <id> --field <id> --pid <PID> --memory-base <0xHEX>
   dart run bin/ludava.dart write --game <id> --field <id> --pid <PID> --memory-base <0xHEX> --value <integer> --confirm-write
 
-No arguments starts the Nocterm trainer. Use arrow keys or 1–9 to select a field;
-press Enter to edit it, R to refresh, G to re-detect, and Q to quit.
+No arguments starts the Nocterm trainer. Press 1–9 to open a field directly;
+use arrow keys to move and Enter to open the selected field. Press R to refresh,
+G to re-detect, and Q to quit.
 Diagnostic commands require an
 explicit process ID, profile, and session guest base. Writes also require a
 current matching PPU identity and guest base. Diagnostic reads remain manually
