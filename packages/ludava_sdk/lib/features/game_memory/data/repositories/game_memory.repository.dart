@@ -1,0 +1,39 @@
+import 'package:ludava_sdk/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/memory_read_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/memory_write_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/repositories/Igame_memory.repository.dart';
+
+/// Implements [IGameMemoryRepository] by mapping Windows transfer models to domain results.
+class GameMemoryRepository implements IGameMemoryRepository {
+  /// Creates the repository around an open process-memory data source.
+  GameMemoryRepository(this._dataSource);
+
+  final WindowsProcessMemoryDataSource _dataSource;
+
+  /// Reads through the Windows data source and returns a domain result.
+  @override
+  MemoryReadResult read(int address, int byteCount) {
+    final model = _dataSource.read(address, byteCount);
+    return MemoryReadResult(
+      status: model.status,
+      bytes: model.bytes,
+      bytesRead: model.bytesRead,
+      requestedBytes: model.requestedBytes,
+      errorCode: model.errorCode,
+    );
+  }
+
+  /// Writes through the Windows data source and returns a domain result.
+  ///
+  /// Call only from a write use case after all profile and field checks pass.
+  @override
+  MemoryWriteResult write(int address, List<int> bytes) {
+    final model = _dataSource.write(address, bytes);
+    return MemoryWriteResult(
+      status: model.status,
+      bytesWritten: model.bytesWritten,
+      requestedBytes: model.requestedBytes,
+      errorCode: model.errorCode,
+    );
+  }
+}

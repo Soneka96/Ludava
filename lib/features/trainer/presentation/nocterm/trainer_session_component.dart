@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_menu_component.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_process_picker_component.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_value_editor_component.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart';
 
 /// Connects the trainer screens to a reusable [TrainerSessionController].

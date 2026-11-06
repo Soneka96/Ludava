@@ -1,6 +1,6 @@
 import 'dart:ffi';
 
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
+import 'package:ludava_sdk/features/game_memory/data/datasources/windows_memory_api.dart';
 
 /// Configurable native-call fake for process-memory adapter tests.
 class FakeWindowsMemoryApi {

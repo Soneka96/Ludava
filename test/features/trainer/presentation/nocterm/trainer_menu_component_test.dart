@@ -1,10 +1,10 @@
-import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_menu_component.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart'
     show BuildContext, Component, Size, State, StatefulComponent;
 import 'package:nocterm/nocterm_test.dart'

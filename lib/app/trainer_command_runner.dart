@@ -1,26 +1,26 @@
 import 'dart:io';
 
-import 'package:ludava/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
-import 'package:ludava/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
+import 'package:ludava_sdk/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava/features/trainer/data/datasources/windows_console.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
-import 'package:ludava/shared/platform/windows_memory_exception.dart';
-import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
-import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
-import 'package:ludava/features/game_memory/data/repositories/game_memory.repository.dart';
-import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
-import 'package:ludava/features/game_detection/application/rpcs3_game_detection_workflow.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
-import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
-import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
-import 'package:ludava/features/game_catalog/domain/profiles/game_profile_catalog.dart';
-import 'package:ludava/features/game_memory/domain/usecases/params/read_game_field.params.dart';
-import 'package:ludava/features/game_memory/domain/usecases/params/write_game_field.params.dart';
-import 'package:ludava/features/game_memory/domain/usecases/read_game_field.usecase.dart';
-import 'package:ludava/features/game_memory/domain/usecases/write_game_field.usecase.dart';
+import 'package:ludava_sdk/features/game_memory/data/datasources/windows_memory_api.dart';
+import 'package:ludava_sdk/shared/platform/windows_memory_exception.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
+import 'package:ludava_sdk/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
+import 'package:ludava_sdk/features/game_memory/data/repositories/game_memory.repository.dart';
+import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_detection/application/rpcs3_game_detection_workflow.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
+import 'package:ludava_sdk/features/game_memory/domain/usecases/params/read_game_field.params.dart';
+import 'package:ludava_sdk/features/game_memory/domain/usecases/params/write_game_field.params.dart';
+import 'package:ludava_sdk/features/game_memory/domain/usecases/read_game_field.usecase.dart';
+import 'package:ludava_sdk/features/game_memory/domain/usecases/write_game_field.usecase.dart';
 import 'package:ludava/features/trainer/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava/features/trainer/presentation/cli/diagnostic_arguments.dart';
 import 'package:ludava/features/trainer/presentation/cli/game_memory_output.dart';
@@ -28,7 +28,7 @@ import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_session_component.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_terminal_backend.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart' show StdioBackend, runApp, shutdownApp;
 
 /// Runs interactive and diagnostic trainer commands.

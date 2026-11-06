@@ -1,15 +1,15 @@
 import 'dart:async';
 
-import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
-import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_write_validation_result.dart';
 import 'package:ludava/features/trainer/application/trainer_write_validator.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Coordinates a reusable trainer session without depending on a UI toolkit.
 class TrainerSessionController {

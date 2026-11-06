@@ -1,8 +1,8 @@
-import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 
 /// Immutable, structured state for a trainer session.
 class TrainerSessionState {

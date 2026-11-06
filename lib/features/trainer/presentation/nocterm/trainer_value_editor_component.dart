@@ -1,7 +1,7 @@
-import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/layout_constants.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart';
 
 /// Edits one field value and applies only a changed, valid value.

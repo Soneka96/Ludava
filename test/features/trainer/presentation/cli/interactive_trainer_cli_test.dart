@@ -1,14 +1,14 @@
 import 'dart:io';
 
-import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
-import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
-import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
-import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
-import 'package:ludava/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
-import 'package:ludava/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
+import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
+import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
 import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {

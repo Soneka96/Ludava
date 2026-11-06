@@ -1,7 +1,7 @@
-import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_field_row_component.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm_test.dart' show containsText, testNocterm;
 import 'package:test/test.dart';
 

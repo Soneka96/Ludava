@@ -1,5 +1,5 @@
-import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:nocterm/nocterm.dart';
 
 /// Renders a field's selection, name, and latest readable value.

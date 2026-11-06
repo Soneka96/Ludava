@@ -1,5 +1,5 @@
 import 'package:ludava/features/trainer/presentation/cli/diagnostic_arguments.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Parses and validates the generic Ludava CLI arguments.
 abstract final class DiagnosticArgumentParser {

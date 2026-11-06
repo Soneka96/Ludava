@@ -1,5 +1,5 @@
 import 'package:ludava/features/trainer/presentation/cli/diagnostic_argument_parser.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {

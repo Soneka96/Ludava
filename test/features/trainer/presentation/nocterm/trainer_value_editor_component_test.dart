@@ -1,8 +1,8 @@
-import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_value_editor_component.dart';
-import 'package:ludava/shared/constants/app_constants.dart';
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/app_constants.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart'
     show
         BuildContext,

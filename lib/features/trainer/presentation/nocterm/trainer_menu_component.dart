@@ -1,5 +1,5 @@
-import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_field_row_component.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/layout_constants.dart';

@@ -8,7 +8,7 @@ $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $outputDirectory = Join-Path $projectRoot 'build'
 $executablePath = Join-Path $outputDirectory 'Ludava.exe'
 $nativeLibraryPath = Join-Path $outputDirectory 'ludava_process_discovery.dll'
-$nativeLibrarySource = Join-Path $projectRoot 'lib\features\rpcs3_connection\data\datasources\native\windows_process_discovery.c'
+$nativeLibrarySource = Join-Path $projectRoot 'packages\ludava_sdk\lib\features\rpcs3_connection\data\datasources\native\windows_process_discovery.c'
 
 $clang = Get-Command clang.exe -ErrorAction SilentlyContinue
 if ($null -eq $clang) {

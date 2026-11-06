@@ -1,4 +1,4 @@
-import 'package:ludava/shared/constants/enums.dart';
+import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Parsed command-line arguments for one game-memory operation.
 class DiagnosticArguments {
