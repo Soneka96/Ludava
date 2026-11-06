@@ -208,6 +208,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  ludava_tui:
+    dependency: "direct main"
+    description:
+      path: "apps/ludava_tui"
+      relative: true
+    source: path
+    version: "0.1.0"
   markdown:
     dependency: transitive
     description:
