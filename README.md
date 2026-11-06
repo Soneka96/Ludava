@@ -12,6 +12,9 @@ Start the interactive trainer in a Windows terminal:
 dart run bin/ludava.dart
 ```
 
+Run `.\tool\build_windows.ps1` first to create the native process-discovery
+library used by `dart run` and the compiled executable.
+
 Ludava selects a single running RPCS3 process automatically or asks you to choose when multiple instances are found. For the measured Collection build, it identifies the current embedded game from the latest PPU load and stop events in a fresh process log. When identity is confirmed, it uses one unique guest memory base from that process session's log without asking you to confirm it. Ludava does not hardcode `0x300000000`.
 
 The shared Collection title ID `BCUS98282` cannot distinguish RC1, RC2, and RC3 by itself. Ludava also matches the executable filename and measured PPU hash. A stop, menu executable, unknown hash, conflicting log, or unclear process ownership leaves the game unresolved and does not load a trainer. Manual profile selection is clearly marked unverified and allows read-only inspection. Automatic refresh reads and writes require a fresh matching process session, PPU hash, profile, and base; a stale read clears the displayed value, and writes also require preliminary read and read-back verification.
@@ -50,7 +53,10 @@ Build a standalone Windows x64 executable with:
 .\tool\build_windows.ps1
 ```
 
-Copy `build\Ludava.exe` to the ROG Ally and launch it from a terminal. Dart and Flutter are not required on the Ally. See [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md) for the build and transfer steps.
+Copy `build\Ludava.exe` and `build\ludava_process_discovery.dll` to the ROG
+Ally, keeping them in the same directory. Dart and Flutter are not required on
+the Ally. See [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md) for the
+build and transfer steps.
 
 Run the automated checks with:
 

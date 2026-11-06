@@ -40,14 +40,14 @@ These rules are internal quality standards; they are **not** contributor instruc
 
 ## Windows last-error capture
 
-For Win32 calls that report errors through `GetLastError`, the owning adapter
-primes the last-error FFI binding before its first operation and captures the
-error in the same API method that invokes the failing function. It returns the
-operation result and error code together; data sources must not make a later,
-separate `GetLastError` call. The error is meaningful only when the native
-return value indicates failure. This follows the capture pattern documented by
-`package:win32` while keeping Tool Help calls in the `rpcs3_connection`
-boundary.
+For Tool Help calls that report errors through `GetLastError`, the
+`rpcs3_connection` adapter calls a small native wrapper. The wrapper invokes the
+Win32 operation, reads `GetLastError` immediately on failure, and returns both
+values together through its output parameter. Dart must not make a later,
+separate `GetLastError` call: the Dart FFI transition can lose the thread-local
+value. The build script compiles the wrapper as
+`build/ludava_process_discovery.dll`; keep this native code limited to the
+process-discovery boundary.
 
 ## Third-party research and licensing
 

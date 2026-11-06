@@ -1,6 +1,7 @@
 # Windows x64 build and ROG Ally setup
 
-Build Ludava on a Windows x64 development PC with the Dart SDK installed. Flutter is not required.
+Build Ludava on a Windows x64 development PC with the Dart SDK, LLVM Clang,
+and the Windows 10/11 SDK installed. Flutter is not required.
 
 From the repository root, run:
 
@@ -16,18 +17,14 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\tool\build_windows.ps1
 ```
 
-This process-scoped setting ends when that PowerShell session closes. You can
-also run the manual build commands below without running the script.
+This process-scoped setting ends when that PowerShell session closes. Use the
+script so the native discovery library and executable are built together.
 
-The script resolves Dart packages and compiles `bin/ludava.dart` into `build\Ludava.exe`. `build/` is ignored by Git; do not commit the generated executable. The compiled file includes the Dart runtime and has no external runtime files to copy.
-
-You can also run the build commands directly:
-
-```powershell
-dart pub get
-New-Item -ItemType Directory -Force build | Out-Null
-dart compile exe bin/ludava.dart -o build/Ludava.exe
-```
+The script resolves Dart packages, compiles the process-discovery native shim,
+and compiles `bin/ludava.dart` into `build\Ludava.exe`. The output includes
+`build\ludava_process_discovery.dll`, which must remain beside the executable.
+The executable includes the Dart runtime; the companion DLL captures Win32
+last-error values at the native call boundary. `build/` is ignored by Git.
 
 The source CLI checks are:
 
@@ -39,8 +36,8 @@ dart format --output=none --set-exit-if-changed lib test bin
 
 ## Copy to a ROG Ally
 
-1. Build `build\Ludava.exe` on the Windows x64 development PC.
-2. Copy `Ludava.exe` to the ROG Ally.
+1. Build `build\Ludava.exe` and `build\ludava_process_discovery.dll` on the Windows x64 development PC.
+2. Copy both files to the ROG Ally and keep them in the same directory.
 3. Start RPCS3 and a supported Ratchet & Clank Collection game.
 4. Launch `Ludava.exe`. With one RPCS3 process and measured identity evidence, Ludava selects the embedded game and session base automatically. When multiple processes share a log folder, or the game/hash/base is unresolved, Ludava does not authorize a trainer write.
 5. If RPCS3 is open with no game, Ludava reports no active game and does not request a memory base. Manual profile selection remains unverified and read-only.

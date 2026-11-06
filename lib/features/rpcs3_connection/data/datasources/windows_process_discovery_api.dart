@@ -1,5 +1,7 @@
 import 'dart:ffi';
+import 'dart:io';
 
+import 'package:ffi/ffi.dart';
 import 'package:ludava/features/rpcs3_connection/data/models/windows_process_discovery_call_result.model.dart';
 
 /// Mirrors the Windows `PROCESSENTRY32W` structure used by Tool Help.
@@ -80,91 +82,83 @@ class WindowsProcessDiscoveryApi {
     required this.closeHandle,
   });
 
-  /// Binds the API adapter to `kernel32.dll` and `kernel32` Tool Help exports.
+  /// Binds the API adapter to the native Tool Help error-capture shim.
   factory WindowsProcessDiscoveryApi.system() {
-    final kernel32 = DynamicLibrary.open('kernel32.dll');
-    final getLastError = kernel32
-        .lookupFunction<Uint32 Function(), int Function()>(
-          'GetLastError',
-          isLeaf: true,
-        );
-    var lastErrorIsResolved = false;
+    final nativeApi = DynamicLibrary.open(_nativeLibraryPath());
+    final createToolhelp32Snapshot = nativeApi.lookupFunction<
+      Pointer<Void> Function(Uint32, Uint32, Pointer<Uint32>),
+      Pointer<Void> Function(int, int, Pointer<Uint32>)
+    >('ludavaCreateToolhelp32Snapshot');
+    final process32FirstW = nativeApi.lookupFunction<
+      Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>, Pointer<Uint32>),
+      int Function(Pointer<Void>, Pointer<ProcessEntry32W>, Pointer<Uint32>)
+    >('ludavaProcess32FirstW');
+    final process32NextW = nativeApi.lookupFunction<
+      Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>, Pointer<Uint32>),
+      int Function(Pointer<Void>, Pointer<ProcessEntry32W>, Pointer<Uint32>)
+    >('ludavaProcess32NextW');
+    final closeHandle = nativeApi.lookupFunction<
+      Int32 Function(Pointer<Void>, Pointer<Uint32>),
+      int Function(Pointer<Void>, Pointer<Uint32>)
+    >('ludavaCloseHandle');
 
-    void resolveLastError() {
-      if (lastErrorIsResolved) return;
-      getLastError();
-      lastErrorIsResolved = true;
-    }
-
-    final createToolhelp32Snapshot = kernel32.lookupFunction<
-      Pointer<Void> Function(Uint32, Uint32),
-      Pointer<Void> Function(int, int)
-    >('CreateToolhelp32Snapshot');
-    final process32FirstW = kernel32.lookupFunction<
-      Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
-      int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
-    >('Process32FirstW');
-    final process32NextW = kernel32.lookupFunction<
-      Int32 Function(Pointer<Void>, Pointer<ProcessEntry32W>),
-      int Function(Pointer<Void>, Pointer<ProcessEntry32W>)
-    >('Process32NextW');
-    final closeHandle = kernel32.lookupFunction<
-      Int32 Function(Pointer<Void>),
-      int Function(Pointer<Void>)
-    >('CloseHandle');
-
-    @pragma('vm:prefer-inline')
     WindowsProcessDiscoveryCallResult<Pointer<Void>> createSnapshot(
       int flags,
       int processId,
     ) {
-      resolveLastError();
-      final snapshot = createToolhelp32Snapshot(flags, processId);
-      final failed =
-          snapshot.address == 0 ||
-          snapshot.address == Pointer<Void>.fromAddress(-1).address;
-      return WindowsProcessDiscoveryCallResult<Pointer<Void>>(
-        value: snapshot,
-        errorCode: failed ? getLastError() : 0,
-      );
+      final errorCode = calloc<Uint32>();
+      try {
+        return WindowsProcessDiscoveryCallResult<Pointer<Void>>(
+          value: createToolhelp32Snapshot(flags, processId, errorCode),
+          errorCode: errorCode.value,
+        );
+      } finally {
+        calloc.free(errorCode);
+      }
     }
 
-    @pragma('vm:prefer-inline')
     WindowsProcessDiscoveryCallResult<bool> readFirst(
       Pointer<Void> snapshot,
       Pointer<ProcessEntry32W> entry,
     ) {
-      resolveLastError();
-      final succeeded = process32FirstW(snapshot, entry) != 0;
-      return WindowsProcessDiscoveryCallResult<bool>(
-        value: succeeded,
-        errorCode: succeeded ? 0 : getLastError(),
-      );
+      final errorCode = calloc<Uint32>();
+      try {
+        return WindowsProcessDiscoveryCallResult<bool>(
+          value: process32FirstW(snapshot, entry, errorCode) != 0,
+          errorCode: errorCode.value,
+        );
+      } finally {
+        calloc.free(errorCode);
+      }
     }
 
-    @pragma('vm:prefer-inline')
     WindowsProcessDiscoveryCallResult<bool> readNext(
       Pointer<Void> snapshot,
       Pointer<ProcessEntry32W> entry,
     ) {
-      resolveLastError();
-      final succeeded = process32NextW(snapshot, entry) != 0;
-      return WindowsProcessDiscoveryCallResult<bool>(
-        value: succeeded,
-        errorCode: succeeded ? 0 : getLastError(),
-      );
+      final errorCode = calloc<Uint32>();
+      try {
+        return WindowsProcessDiscoveryCallResult<bool>(
+          value: process32NextW(snapshot, entry, errorCode) != 0,
+          errorCode: errorCode.value,
+        );
+      } finally {
+        calloc.free(errorCode);
+      }
     }
 
-    @pragma('vm:prefer-inline')
     WindowsProcessDiscoveryCallResult<bool> closeSnapshot(
       Pointer<Void> snapshot,
     ) {
-      resolveLastError();
-      final succeeded = closeHandle(snapshot) != 0;
-      return WindowsProcessDiscoveryCallResult<bool>(
-        value: succeeded,
-        errorCode: succeeded ? 0 : getLastError(),
-      );
+      final errorCode = calloc<Uint32>();
+      try {
+        return WindowsProcessDiscoveryCallResult<bool>(
+          value: closeHandle(snapshot, errorCode) != 0,
+          errorCode: errorCode.value,
+        );
+      } finally {
+        calloc.free(errorCode);
+      }
     }
 
     return WindowsProcessDiscoveryApi(
@@ -173,5 +167,22 @@ class WindowsProcessDiscoveryApi {
       process32NextW: readNext,
       closeHandle: closeSnapshot,
     );
+  }
+
+  static String _nativeLibraryPath() {
+    const libraryName = 'ludava_process_discovery.dll';
+    final executable = File(Platform.resolvedExecutable);
+    final executableName = executable.uri.pathSegments.last.toLowerCase();
+    final path =
+        executableName.endsWith('.exe') && executableName != 'dart.exe'
+            ? '${executable.parent.path}${Platform.pathSeparator}$libraryName'
+            : '${Directory.current.path}${Platform.pathSeparator}build${Platform.pathSeparator}$libraryName';
+    if (!File(path).existsSync()) {
+      throw StateError(
+        'The Ludava Windows discovery library is missing. Run '
+        r'.\tool\build_windows.ps1 before starting Ludava.',
+      );
+    }
+    return path;
   }
 }
