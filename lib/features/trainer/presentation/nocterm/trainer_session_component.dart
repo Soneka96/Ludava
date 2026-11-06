@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
-import 'package:ludava/features/trainer/presentation/nocterm/layout_constants.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_menu_component.dart';
+import 'package:ludava/features/trainer/presentation/nocterm/trainer_process_picker_component.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/trainer_value_editor_component.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart';
@@ -33,7 +33,6 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
   StreamSubscription<TrainerSessionState>? _stateSubscription;
   GameField? _editingField;
   int _selectedFieldIndex = 0;
-  int _selectedProcessIndex = 0;
 
   @override
   void initState() {
@@ -55,65 +54,18 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
   @override
   Component build(BuildContext context) {
     if (_session.selectedProcessId == null && _session.processIds.length > 1) {
-      return _buildProcessPicker();
+      return TrainerProcessPickerComponent(
+        processIds: _session.processIds,
+        onSelectProcess: _selectProcess,
+        onRefresh: _refresh,
+        onRedetect: _redetect,
+        onQuit: component.onQuit,
+      );
     }
     final field = _editingField;
     if (field != null) return _buildEditor(field);
     return _buildMenu();
   }
-
-  /// Renders available RPCS3 processes before one is selected.
-  Component _buildProcessPicker() => LayoutBuilder(
-    builder: (context, constraints) {
-      final processIds = _session.processIds;
-      final requiredHeight =
-          NoctermLayoutConstants.fixedMenuRows + processIds.length;
-      if (constraints.maxWidth < NoctermLayoutConstants.minimumMenuWidth ||
-          constraints.maxHeight < requiredHeight) {
-        return const Center(
-          child: Text(
-            'Terminal too small. Enlarge the window to use Ludava.',
-            style: TextStyle(color: Colors.yellow),
-          ),
-        );
-      }
-      return Focusable(
-        focused: true,
-        onKeyEvent: _handleProcessPickerKey,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'LUDAVA',
-                style: TextStyle(
-                  color: Colors.cyan,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 1),
-              const Text('Select an RPCS3 process'),
-              const SizedBox(height: 1),
-              ...processIds.indexed.map(
-                (entry) => Text(
-                  '${entry.$1 == _selectedProcessIndex ? '❯' : ' '} '
-                  '${entry.$1 + 1}. PID ${entry.$2}',
-                  style: TextStyle(
-                    color:
-                        entry.$1 == _selectedProcessIndex ? Colors.green : null,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 1),
-              const Text('↑↓ Navigate   1–9 Select   Enter Select'),
-              const Text('R Refresh     G Re-detect  Q Quit'),
-            ],
-          ),
-        ),
-      );
-    },
-  );
 
   /// Renders session feedback and the field menu.
   Component _buildMenu() => Column(
@@ -188,47 +140,6 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     };
   }
 
-  /// Handles input owned by the process picker.
-  bool _handleProcessPickerKey(KeyboardEvent event) {
-    final processIds = _session.processIds;
-    if (event.logicalKey == LogicalKey.arrowUp) {
-      _setProcessSelection(_selectedProcessIndex - 1);
-      return true;
-    }
-    if (event.logicalKey == LogicalKey.arrowDown) {
-      _setProcessSelection(_selectedProcessIndex + 1);
-      return true;
-    }
-    final digit = _digitFor(event.logicalKey);
-    if (digit != null && digit <= processIds.length) {
-      _selectProcess(processIds[digit - 1]);
-      return true;
-    }
-    if (event.logicalKey == LogicalKey.enter && processIds.isNotEmpty) {
-      _selectProcess(processIds[_selectedProcessIndex]);
-      return true;
-    }
-    if (_matchesLetter(event, 'r', LogicalKey.keyR) ||
-        _matchesLetter(event, 'g', LogicalKey.keyG)) {
-      _refresh();
-      return true;
-    }
-    if (_matchesLetter(event, 'q', LogicalKey.keyQ)) {
-      component.onQuit();
-      return true;
-    }
-    return false;
-  }
-
-  /// Keeps the selected process row within the current result list.
-  void _setProcessSelection(int index) {
-    final processIds = _session.processIds;
-    if (processIds.isEmpty) return;
-    final selection = index.clamp(0, processIds.length - 1);
-    if (selection == _selectedProcessIndex) return;
-    setState(() => _selectedProcessIndex = selection);
-  }
-
   /// Requests application selection of [processId].
   void _selectProcess(int processId) {
     component.sessionController.selectProcess(processId);
@@ -265,10 +176,6 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
       _editingField = null;
       _selectedFieldIndex = 0;
     }
-    _selectedProcessIndex =
-        session.processIds.isEmpty
-            ? 0
-            : _selectedProcessIndex.clamp(0, session.processIds.length - 1);
     setState(() => _session = session);
   }
 
@@ -296,22 +203,4 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     RegExp(r'\B(?=(\d{3})+(?!\d))'),
     (match) => ',',
   );
-
-  /// Maps a menu digit key to its one-based field or process index.
-  int? _digitFor(LogicalKey key) => switch (key) {
-    LogicalKey.digit1 => 1,
-    LogicalKey.digit2 => 2,
-    LogicalKey.digit3 => 3,
-    LogicalKey.digit4 => 4,
-    LogicalKey.digit5 => 5,
-    LogicalKey.digit6 => 6,
-    LogicalKey.digit7 => 7,
-    LogicalKey.digit8 => 8,
-    LogicalKey.digit9 => 9,
-    _ => null,
-  };
-
-  /// Recognizes a letter shortcut from its key or typed character.
-  bool _matchesLetter(KeyboardEvent event, String letter, LogicalKey key) =>
-      event.logicalKey == key || event.character?.toLowerCase() == letter;
 }

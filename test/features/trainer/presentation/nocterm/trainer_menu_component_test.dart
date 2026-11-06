@@ -24,8 +24,10 @@ void main() {
           expect(screen, containsText('CONNECTED'));
           expect(screen, containsText('Ratchet & Clank 2 · PS3 Collection'));
           expect(screen, containsText('Bolts'));
+          expect(screen, containsText('1. Bolts'));
           expect(screen, containsText('244,866'));
           expect(screen, containsText('Weapons'));
+          expect(screen, containsText('2. Weapons'));
           expect(screen, containsText('7'));
           expect(screen, isNot(containsText('Secret')));
         });

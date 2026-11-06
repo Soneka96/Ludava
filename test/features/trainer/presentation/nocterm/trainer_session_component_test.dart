@@ -59,6 +59,7 @@ void main() {
           expect(tester.terminalState, containsText('PID 42'));
           expect(tester.terminalState, containsText('PID 43'));
           await tester.sendArrowDown();
+          expect(tester.terminalState, containsText('❯ 2. PID 43'));
           await tester.sendEnter();
 
           expect(fixture.controller.state.selectedProcessId, 43);

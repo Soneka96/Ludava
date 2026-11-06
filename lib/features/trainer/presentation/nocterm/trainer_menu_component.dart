@@ -1,7 +1,7 @@
 import 'package:ludava/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/trainer/application/trainer_session_state.entity.dart';
+import 'package:ludava/features/trainer/presentation/nocterm/trainer_field_row_component.dart';
 import 'package:ludava/features/trainer/presentation/nocterm/layout_constants.dart';
 import 'package:nocterm/nocterm.dart';
 
@@ -127,9 +127,9 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
                 const SizedBox(height: 1),
                 _separator(),
                 ...fields.indexed.map(
-                  (entry) => _fieldRow(
-                    entry.$1,
-                    entry.$2,
+                  (entry) => TrainerFieldRowComponent(
+                    index: entry.$1,
+                    field: entry.$2,
                     selected: entry.$1 == selectedIndex,
                     readResult: component.session.readResults[entry.$2.id],
                   ),
@@ -202,33 +202,6 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     return profile.fields.values.where((field) => field.canRead).toList();
   }
 
-  /// Renders [field] with its value and current selection state.
-  Component _fieldRow(
-    int index,
-    GameField field, {
-    required bool selected,
-    required GameReadResult? readResult,
-  }) {
-    final value =
-        readResult?.succeeded == true
-            ? _formatNumber(readResult!.value!)
-            : 'Unavailable';
-    return Row(
-      children: [
-        Text(selected ? '❯ ' : '  '),
-        Text('${index + 1}. ${field.name}'),
-        const Spacer(),
-        Text(
-          value,
-          style: TextStyle(
-            color: selected ? Colors.green : null,
-            fontWeight: selected ? FontWeight.bold : null,
-          ),
-        ),
-      ],
-    );
-  }
-
   /// Renders the menu divider at the available width.
   Component _separator() => Text(
     '─' * NoctermLayoutConstants.separatorWidth,
@@ -240,19 +213,6 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     final profile = session.profile;
     if (profile != null) return '${profile.gameName} · PS3 Collection';
     return session.detection?.gameTitle ?? 'No active game detected';
-  }
-
-  /// Groups [value] for display without changing its numeric meaning.
-  String _formatNumber(int value) {
-    final digits = value.toString();
-    final formatted = StringBuffer();
-    for (var index = 0; index < digits.length; index++) {
-      if (index > 0 && (digits.length - index) % 3 == 0) {
-        formatted.write(',');
-      }
-      formatted.write(digits[index]);
-    }
-    return formatted.toString();
   }
 
   /// Maps a number row key to its one-based menu index.
