@@ -8,7 +8,8 @@ import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_m
 import 'package:ludava/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava/features/game_detection/domain/usecases/params/resolve_game_profile.params.dart';
 import 'package:ludava/features/game_detection/domain/usecases/resolve_game_profile.usecase.dart';
-import 'package:ludava/features/game_memory/presentation/cli/diagnostic_argument_parser.dart';
+import 'package:ludava/features/trainer/application/trainer_write_validator.dart';
+import 'package:ludava/features/trainer/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava/shared/constants/app_constants.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
@@ -45,7 +46,13 @@ class InteractiveTrainerCli {
        _readLine = readLine ?? stdin.readLineSync,
        _hasTerminal = hasTerminal,
        _clearScreen = clearScreen,
-       _clearScreenForInjectedOutput = clearScreenForInjectedOutput;
+       _clearScreenForInjectedOutput = clearScreenForInjectedOutput,
+       _writeValidator = TrainerWriteValidator(
+         discoverProcessIds: discoverProcessIds,
+         readProcessMetadata: readProcessMetadata,
+         resolveMemoryBaseCandidate: resolveMemoryBaseCandidate,
+         detectGame: detectGame ?? (_, _) => null,
+       );
 
   static const int _exitGame = 0;
   static const int _changeGame = 1;
@@ -74,6 +81,7 @@ class InteractiveTrainerCli {
   final bool? _hasTerminal;
   final bool Function()? _clearScreen;
   final bool _clearScreenForInjectedOutput;
+  final TrainerWriteValidator _writeValidator;
 
   bool _inputEnded = false;
   bool _ownsTerminalOutput = false;
@@ -761,49 +769,18 @@ class InteractiveTrainerCli {
       _retryDetectionRequested = true;
     }
 
-    try {
-      final processIds = _discoverProcessIds();
-      if (!processIds.contains(processId)) {
-        _processUnavailable = true;
-        reject('RPCS3 stopped. No write was made.');
-        return false;
-      }
-
-      final currentMetadata = _readProcessMetadata(processId);
-      final selectedStartedAt = _selectedProcessMetadata?.startedAtUtc;
-      if (selectedStartedAt == null ||
-          currentMetadata.startedAtUtc != selectedStartedAt) {
-        _processSessionChanged = true;
-        reject('The RPCS3 session changed. No write was made.');
-        return false;
-      }
-
-      final currentDetection = _detectGame?.call(processId, currentMetadata);
-      final currentBase = _resolveMemoryBaseCandidate(currentMetadata);
-      final identityStillMatches =
-          currentDetection?.processId == processId &&
-          currentDetection?.status == GameDetectionStatus.supportedGame &&
-          currentDetection?.confidence == GameIdentityConfidence.confirmed &&
-          currentDetection?.profile?.id == profile.id &&
-          currentDetection?.executableHash == selectedDetection.executableHash;
-      if (!identityStillMatches || currentBase?.memoryBase != memoryBase) {
-        reject(
-          'The active game or memory base changed. No write was made; re-detect before continuing.',
-        );
-        return false;
-      }
-      return true;
-    } on Exception catch (error) {
-      reject(
-        'Could not revalidate the game before writing. No write was made: $error',
-      );
-      return false;
-    } on UnsupportedError catch (error) {
-      reject(
-        'Could not revalidate the game before writing. No write was made: $error',
-      );
-      return false;
-    }
+    final result = _writeValidator.validate(
+      processId: processId,
+      memoryBase: memoryBase,
+      profile: profile,
+      selectedDetection: selectedDetection,
+      selectedProcessStartedAtUtc: _selectedProcessMetadata?.startedAtUtc,
+    );
+    if (result.isAuthorized) return true;
+    _processUnavailable = result.processUnavailable;
+    _processSessionChanged = result.processSessionChanged;
+    reject(result.rejectionMessage ?? 'The current write target is not valid.');
+    return false;
   }
 
   bool _runRead(

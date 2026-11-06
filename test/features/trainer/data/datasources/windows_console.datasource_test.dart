@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/data/datasources/windows_console.datasource.dart';
+import 'package:ludava/features/trainer/data/datasources/windows_console.datasource.dart';
 import 'package:test/test.dart';
 
 void main() {

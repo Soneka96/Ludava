@@ -1,7 +1,7 @@
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
-import 'package:ludava/features/game_memory/presentation/cli/game_memory_output.dart';
+import 'package:ludava/features/trainer/presentation/cli/game_memory_output.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 

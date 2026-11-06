@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/presentation/cli/diagnostic_arguments.dart';
+import 'package:ludava/features/trainer/presentation/cli/diagnostic_arguments.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 

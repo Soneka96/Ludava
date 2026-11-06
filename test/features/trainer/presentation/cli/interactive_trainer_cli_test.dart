@@ -7,7 +7,7 @@ import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_m
 import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
-import 'package:ludava/features/game_memory/presentation/cli/interactive_trainer_cli.dart';
+import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
@@ -1052,6 +1052,27 @@ void main() {
     );
 
     test(
+      'Method run() requests re-detection and blocks a write when base revalidation fails',
+      () {
+        final harness =
+            _confirmedRc2Harness()
+              ..resolverErrors = [null, Exception('base unavailable')]
+              ..inputs = ['2', '1234', 'y', '0'];
+        final output = StringBuffer();
+
+        harness.run(output, StringBuffer());
+
+        expect(harness.writeCommands, isEmpty);
+        expect(harness.detectionCalls, greaterThanOrEqualTo(3));
+        expect(output.toString(), contains('base unavailable'));
+        expect(
+          output.toString(),
+          contains('Could not revalidate the game before writing'),
+        );
+      },
+    );
+
+    test(
       'Method run() reports write failures and still refreshes the field',
       () {
         final harness =
@@ -1298,6 +1319,7 @@ class _InteractiveHarness {
   Rpcs3MemoryBaseCandidate? Function(int processId)? candidateForProcess;
   Exception? metadataError;
   Exception? resolverError;
+  List<Exception?> resolverErrors = [];
 
   List<List<String>> get readCommands =>
       commands.where((arguments) => arguments.first == 'read').toList();
@@ -1341,6 +1363,10 @@ class _InteractiveHarness {
       },
       resolveMemoryBaseCandidate: (_) {
         final index = resolveCalls++;
+        if (resolverErrors.isNotEmpty && index < resolverErrors.length) {
+          final indexedError = resolverErrors[index];
+          if (indexedError != null) throw indexedError;
+        }
         final error = resolverError;
         if (error != null) throw error;
         if (candidateByAttempt.isNotEmpty) {
