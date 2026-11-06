@@ -31,6 +31,7 @@ class TrainerValueEditorComponent extends StatefulComponent {
     super.key,
   });
 
+  /// Creates state that owns the unsaved text, cursor, and validation feedback.
   @override
   State<TrainerValueEditorComponent> createState() =>
       _TrainerValueEditorState();
@@ -42,11 +43,13 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
   bool _feedbackIsSuccess = false;
   String? _feedback;
 
+  /// Initializes the editor text from the latest verified field value.
   @override
   void initState() {
     _textController = TextEditingController(text: _initialText);
   }
 
+  /// Resets temporary edit state when the field or verified value changes.
   @override
   void didUpdateComponent(covariant TrainerValueEditorComponent oldComponent) {
     if (!identical(oldComponent.field, component.field) ||
@@ -58,12 +61,14 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     }
   }
 
+  /// Disposes the text controller owned by this editor.
   @override
   void dispose() {
     _textController.dispose();
     super.dispose();
   }
 
+  /// Renders the current value, editable text, and apply/cancel feedback.
   @override
   Component build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {

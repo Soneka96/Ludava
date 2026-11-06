@@ -24,6 +24,7 @@ class TrainerSessionComponent extends StatefulComponent {
     super.key,
   });
 
+  /// Creates state that observes the trainer session and owns screen navigation.
   @override
   State<TrainerSessionComponent> createState() => _TrainerSessionState();
 }
@@ -34,6 +35,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
   GameField? _editingField;
   int _selectedFieldIndex = 0;
 
+  /// Connects when needed and subscribes to the controller's latest snapshot.
   @override
   void initState() {
     final controller = component.sessionController;
@@ -45,12 +47,14 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     _stateSubscription = controller.stateChanges.listen(_handleStateChanged);
   }
 
+  /// Cancels session observation before releasing the component state.
   @override
   void dispose() {
     unawaited(_stateSubscription?.cancel() ?? Future<void>.value());
     super.dispose();
   }
 
+  /// Chooses the process picker, active editor, or trainer menu to display.
   @override
   Component build(BuildContext context) {
     if (_session.selectedProcessId == null && _session.processIds.length > 1) {
@@ -134,10 +138,17 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
       GameDetectionStatus.unsupportedGame => 'This game is not supported.',
       GameDetectionStatus.ambiguous =>
         'Could not verify the active game. Press G to re-detect.',
-      GameDetectionStatus.failed =>
-        _session.detection?.evidenceDescription ?? 'Game detection failed.',
+      GameDetectionStatus.failed => _detectionFailureMessage,
       _ => null,
     };
+  }
+
+  /// Returns useful failed-detection evidence or a safe generic message.
+  String get _detectionFailureMessage {
+    final evidence = _session.detection?.evidenceDescription;
+    return evidence == null || evidence.isEmpty
+        ? 'Game detection failed.'
+        : evidence;
   }
 
   /// Requests application selection of [processId].

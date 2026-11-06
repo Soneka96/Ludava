@@ -309,6 +309,35 @@ void main() {
     );
 
     test(
+      'Class TrainerSessionComponent explains ambiguous and failed detection',
+      () async {
+        await testNocterm('ambiguous and failed detection', (tester) async {
+          final fixture =
+              _SessionFixture()
+                ..detectionStatus = GameDetectionStatus.ambiguous;
+          await tester.pumpComponent(_app(fixture));
+
+          expect(
+            tester.terminalState,
+            containsText('Could not verify the active game'),
+          );
+          final initialDetectionCount = fixture.detectCalls;
+          fixture.detectionStatus = GameDetectionStatus.failed;
+          await tester.sendKey(LogicalKey.keyG);
+
+          expect(fixture.detectCalls, greaterThan(initialDetectionCount));
+          expect(
+            tester.terminalState,
+            containsText('Synthetic session evidence'),
+          );
+          fixture.evidenceDescription = '';
+          await tester.sendKey(LogicalKey.keyG);
+          expect(tester.terminalState, containsText('Game detection failed'));
+        });
+      },
+    );
+
+    test(
       'Class TrainerSessionComponent preserves selection when cancelling an editor',
       () async {
         await testNocterm('cancel and return to selected field', (
@@ -683,6 +712,7 @@ class _SessionFixture {
   bool? lastConfirmed;
   GameReadStatus readStatus = GameReadStatus.success;
   GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame;
+  String evidenceDescription = 'Synthetic session evidence.';
 
   late final TrainerSessionController controller = TrainerSessionController(
     discoverProcessIds: () => processIds,
@@ -713,7 +743,7 @@ class _SessionFixture {
             detectionStatus == GameDetectionStatus.supportedGame
                 ? profile
                 : null,
-        evidenceDescription: 'Synthetic session evidence.',
+        evidenceDescription: evidenceDescription,
       );
     },
     readField: (processId, selectedProfile, memoryBase, fieldId) {

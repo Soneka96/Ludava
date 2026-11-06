@@ -54,7 +54,7 @@ void main() {
     );
 
     test(
-      'Class TrainerProcessPickerComponent clamps selection when process results shrink',
+      'Class TrainerProcessPickerComponent resets selection to the first process when the selected process exits',
       () async {
         await testNocterm('process list shrinks', (tester) async {
           int? selectedProcess;
@@ -70,6 +70,58 @@ void main() {
           await tester.pump();
           await tester.sendEnter();
 
+          expect(selectedProcess, 41);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerProcessPickerComponent resets selection when the selected process disappears from same-length results',
+      () async {
+        await testNocterm('selected process exits from same-length list', (
+          tester,
+        ) async {
+          int? selectedProcess;
+          await tester.pumpComponent(
+            _ProcessPickerHost(onSelectProcess: (id) => selectedProcess = id),
+          );
+          await tester.sendArrowDown();
+          expect(tester.terminalState, containsText('❯ 2. PID 42'));
+
+          tester.findState<_ProcessPickerHostState>().updateProcessIds([
+            41,
+            43,
+            44,
+          ]);
+          await tester.pump();
+
+          expect(tester.terminalState, containsText('❯ 1. PID 41'));
+          await tester.sendEnter();
+          expect(selectedProcess, 41);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerProcessPickerComponent keeps the selected process highlighted when results reorder',
+      () async {
+        await testNocterm('process list reorders', (tester) async {
+          int? selectedProcess;
+          await tester.pumpComponent(
+            _ProcessPickerHost(onSelectProcess: (id) => selectedProcess = id),
+          );
+          await tester.sendArrowDown();
+          expect(tester.terminalState, containsText('❯ 2. PID 42'));
+
+          tester.findState<_ProcessPickerHostState>().updateProcessIds([
+            42,
+            41,
+            43,
+          ]);
+          await tester.pump();
+
+          expect(tester.terminalState, containsText('❯ 1. PID 42'));
+          await tester.sendEnter();
           expect(selectedProcess, 42);
         });
       },

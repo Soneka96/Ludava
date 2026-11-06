@@ -40,6 +40,7 @@ class TrainerMenuComponent extends StatefulComponent {
     super.key,
   });
 
+  /// Creates state that owns the current field-row selection.
   @override
   State<TrainerMenuComponent> createState() => _TrainerMenuState();
 }
@@ -47,6 +48,7 @@ class TrainerMenuComponent extends StatefulComponent {
 class _TrainerMenuState extends State<TrainerMenuComponent> {
   int _selectedIndex = 0;
 
+  /// Initializes selection from the value restored by the root component.
   @override
   void initState() {
     final fields = _readableFields(component.session.profile);
@@ -59,6 +61,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     }
   }
 
+  /// Reconciles the selected row with new profile fields and restored selection.
   @override
   void didUpdateComponent(covariant TrainerMenuComponent oldComponent) {
     if (oldComponent.session.profile?.id != component.session.profile?.id) {
@@ -73,6 +76,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     }
   }
 
+  /// Renders the current game, field values, selection, and keyboard hints.
   @override
   Component build(BuildContext context) {
     final fields = _readableFields(component.session.profile);

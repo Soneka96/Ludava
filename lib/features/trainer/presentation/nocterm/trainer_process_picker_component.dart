@@ -37,11 +37,24 @@ class TrainerProcessPickerComponent extends StatefulComponent {
 class _TrainerProcessPickerState extends State<TrainerProcessPickerComponent> {
   int _selectedIndex = 0;
 
-  /// Keeps the selected row valid when the process list changes.
+  /// Preserves the selected process across reordering and resets if it exits.
   @override
   void didUpdateComponent(
     covariant TrainerProcessPickerComponent oldComponent,
   ) {
+    final previousSelection =
+        _selectedIndex < oldComponent.processIds.length
+            ? oldComponent.processIds[_selectedIndex]
+            : null;
+    if (previousSelection != null) {
+      final updatedIndex = component.processIds.indexOf(previousSelection);
+      if (updatedIndex >= 0) {
+        _selectedIndex = updatedIndex;
+        return;
+      }
+      _selectedIndex = 0;
+      return;
+    }
     if (_selectedIndex >= component.processIds.length) {
       _selectedIndex =
           component.processIds.isEmpty ? 0 : component.processIds.length - 1;

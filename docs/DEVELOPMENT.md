@@ -48,6 +48,8 @@ Handle keyboard input in the focused screen or editor. Number shortcuts act only
 
 Test Nocterm behavior through public component and input APIs where possible. Cover raw terminal sequences at the input boundary, including fragmented and coalesced chunks, when protocol decoding affects user-visible behavior; do not import unsupported package internals into production code. Component tests should assert visible output and dispatched actions, including negative cases such as cancellation not writing, unavailable values not becoming zero, and invalid input not reaching a writer. Keep each behavior test at the component or adapter that owns it and follow the test naming and path rules above.
 
+For a stateful or rendering Nocterm component whose behavior is exercised by pumping the public component tree and sending input, with no single public method as the test entry point, use one top-level group named `Class ComponentName <observable area> behavior` and scenarios named `Class ComponentName <observable outcome>`. Keep these tests at the component's mirrored test path, assert displayed state or dispatched actions, and do not nest groups. This exception applies only to component-tree behavior tests; adapter, controller, and property tests continue to use the method/property naming above.
+
 ## Keeping conventions authoritative
 
 Treat `docs/ARCHITECTURE.md` and this document as the repository source of truth for engineering conventions. When a task establishes a durable rule, update the appropriate document before applying it in implementation, and cross-link shared guidance rather than copying competing versions. Keep the README as an entry point to these conventions, not a second policy source.
