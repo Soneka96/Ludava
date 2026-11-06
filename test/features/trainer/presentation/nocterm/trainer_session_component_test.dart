@@ -498,13 +498,10 @@ void main() {
 
   group('Property inputStream behaves correctly', () {
     test(
-      'Property inputStream cancels once for fragmented Escape without leaking text or writing',
+      'Property inputStream cancels native Escape without leaking text or writing',
       () async {
         final source = _RawInputBackend();
-        final backend = TrainerTerminalBackend(
-          source,
-          escapeTimeout: Duration.zero,
-        );
+        final backend = TrainerTerminalBackend(source);
         final textController = TextEditingController();
         final events = <KeyboardEvent>[];
         final binding = TerminalBinding(Terminal(backend));
@@ -527,8 +524,8 @@ void main() {
           await pumpFrame();
           source.sendBytes([0x61]);
           source.sendBytes([0x1b]);
-          source.sendBytes([0x5b, 0x32, 0x37, 0x75]);
-          source.sendBytes([0x62, 0x1b, 0x5b, 0x32, 0x37, 0x75]);
+          source.sendBytes([0x62]);
+          source.sendBytes([0x1b]);
           await pumpFrame();
 
           expect(
@@ -560,7 +557,6 @@ void main() {
           await pumpFrame();
           source.sendBytes([0x32]);
           source.sendBytes([0x1b]);
-          source.sendBytes([0x5b, 0x32, 0x37, 0x75]);
           await pumpFrame();
           expect(cancelCount, 1);
           expect(writeCount, 0);

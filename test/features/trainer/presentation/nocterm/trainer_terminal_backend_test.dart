@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method forPlatform() behaves correctly', () {
-    test('Method forPlatform() adapts Windows terminal input', () {
+    test('Method forPlatform() adapts Windows terminal output', () {
       final source = _FakeTerminalBackend();
       var backendCreations = 0;
 
@@ -41,225 +41,88 @@ void main() {
     });
 
     test(
-      'Property inputStream combines every split of a Kitty Escape sequence',
-      () async {
-        const sequence = [0x1b, 0x5b, 0x32, 0x37, 0x75];
-
-        for (var split = 1; split < sequence.length; split++) {
-          final source = _FakeTerminalBackend();
-          final backend = TrainerTerminalBackend(
-            source,
-            escapeTimeout: Duration.zero,
-          );
-          final chunks = <List<int>>[];
-          final subscription = backend.inputStream!.listen(chunks.add);
-
-          source.send(sequence.sublist(0, split));
-          source.send(sequence.sublist(split));
-
-          expect(chunks, [sequence], reason: 'split after byte $split');
-
-          await subscription.cancel();
-          await source.close();
-        }
-      },
-    );
-
-    test(
-      'Property inputStream combines bytewise Escape input without leaking protocol text',
-      () async {
-        final source = _FakeTerminalBackend();
-        final backend = TrainerTerminalBackend(
-          source,
-          escapeTimeout: Duration.zero,
-        );
-        final chunks = <List<int>>[];
-        final subscription = backend.inputStream!.listen(chunks.add);
-
-        for (final byte in const [0x1b, 0x5b, 0x32, 0x37, 0x75]) {
-          source.send([byte]);
-        }
-
-        expect(chunks, [
-          const [0x1b, 0x5b, 0x32, 0x37, 0x75],
-        ]);
-
-        await subscription.cancel();
-        await source.close();
-      },
-    );
-
-    test('Property inputStream flushes a plain Escape exactly once', () async {
-      final source = _FakeTerminalBackend();
-      final backend = TrainerTerminalBackend(
-        source,
-        escapeTimeout: Duration.zero,
-      );
-      final chunks = <List<int>>[];
-      final subscription = backend.inputStream!.listen(chunks.add);
-
-      source.send([0x1b]);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(chunks, [
-        const [0x1b],
-      ]);
-
-      await subscription.cancel();
-      await source.close();
-    });
-
-    test(
-      'Property inputStream preserves printable text around a coalesced Escape event',
+      'Property inputStream forwards native Escape, Ctrl+C and following keys once',
       () async {
         final source = _FakeTerminalBackend();
         final backend = TrainerTerminalBackend(source);
         final chunks = <List<int>>[];
         final subscription = backend.inputStream!.listen(chunks.add);
 
-        source.send(const [0x61, 0x1b, 0x5b, 0x32, 0x37, 0x75, 0x62]);
+        source
+          ..send(const [0x1b])
+          ..send(const [0x03])
+          ..send(const [0x61]);
 
         expect(chunks, [
-          const [0x61],
-          const [0x1b, 0x5b, 0x32, 0x37, 0x75],
-          const [0x62],
-        ]);
-
-        await subscription.cancel();
-        await source.close();
-      },
-    );
-
-    test('Property inputStream preserves SS3 and Alt key sequences', () async {
-      final source = _FakeTerminalBackend();
-      final backend = TrainerTerminalBackend(source);
-      final chunks = <List<int>>[];
-      final subscription = backend.inputStream!.listen(chunks.add);
-
-      source.send(const [0x1b, 0x4f, 0x50, 0x1b, 0x61]);
-
-      expect(chunks, [
-        const [0x1b, 0x4f, 0x50],
-        const [0x1b, 0x61],
-      ]);
-
-      await subscription.cancel();
-      await source.close();
-    });
-
-    test(
-      'Property inputStream drops overlong CSI data without leaking it',
-      () async {
-        final source = _FakeTerminalBackend();
-        final backend = TrainerTerminalBackend(
-          source,
-          escapeTimeout: Duration.zero,
-        );
-        final chunks = <List<int>>[];
-        final subscription = backend.inputStream!.listen(chunks.add);
-
-        source.send([0x1b, 0x5b, ...List<int>.filled(64, 0x30), 0x75, 0x78]);
-
-        expect(chunks, [
-          const [0x78],
-        ]);
-
-        await subscription.cancel();
-        await source.close();
-      },
-    );
-
-    test('Property inputStream forwards source errors', () async {
-      final source = _FakeTerminalBackend();
-      final backend = TrainerTerminalBackend(source);
-      final errors = <Object>[];
-      final subscription = backend.inputStream!.listen(
-        (_) {},
-        onError: errors.add,
-      );
-      final failure = StateError('input failed');
-
-      source.fail(failure);
-
-      expect(errors, [same(failure)]);
-
-      await subscription.cancel();
-      await source.close();
-    });
-
-    test(
-      'Property inputStream flushes plain Escape and discards incomplete input when the source closes',
-      () async {
-        final plainSource = _FakeTerminalBackend();
-        final plainBackend = TrainerTerminalBackend(plainSource);
-        final plainChunks = <List<int>>[];
-        final plainSubscription = plainBackend.inputStream!.listen(
-          plainChunks.add,
-        );
-        plainSource.send([0x1b]);
-        await plainSource.close();
-
-        final partialSource = _FakeTerminalBackend();
-        final partialBackend = TrainerTerminalBackend(partialSource);
-        final partialChunks = <List<int>>[];
-        final partialSubscription = partialBackend.inputStream!.listen(
-          partialChunks.add,
-        );
-        partialSource.send(const [0x1b, 0x5b, 0x32, 0x37]);
-        await partialSource.close();
-
-        expect(plainChunks, [
           const [0x1b],
-        ]);
-        expect(partialChunks, isEmpty);
-
-        await plainSubscription.cancel();
-        await partialSubscription.cancel();
-      },
-    );
-
-    test(
-      'Property inputStream cancels a pending Escape timeout with its listener',
-      () async {
-        final source = _FakeTerminalBackend();
-        final backend = TrainerTerminalBackend(
-          source,
-          escapeTimeout: const Duration(milliseconds: 100),
-        );
-        final chunks = <List<int>>[];
-        final subscription = backend.inputStream!.listen(chunks.add);
-
-        source.send([0x1b]);
-        await subscription.cancel();
-        await Future<void>.delayed(Duration.zero);
-
-        expect(chunks, isEmpty);
-        await source.close();
-      },
-    );
-
-    test(
-      'Property inputStream buffers input while its listener is paused',
-      () async {
-        final source = _FakeTerminalBackend();
-        final backend = TrainerTerminalBackend(source);
-        final chunks = <List<int>>[];
-        final subscription = backend.inputStream!.listen(chunks.add);
-
-        subscription.pause();
-        source.send(const [0x61]);
-        expect(chunks, isEmpty);
-
-        subscription.resume();
-        await Future<void>.delayed(Duration.zero);
-        expect(chunks, [
+          const [0x03],
           const [0x61],
         ]);
+        expect(
+          String.fromCharCodes(chunks.expand((chunk) => chunk)),
+          isNot(contains('[27u')),
+        );
+        expect(
+          String.fromCharCodes(chunks.expand((chunk) => chunk)),
+          isNot(contains('[99;5u')),
+        );
 
         await subscription.cancel();
         await source.close();
       },
     );
+
+    test('Property inputStream forwards complete special-key events', () async {
+      final source = _FakeTerminalBackend();
+      final backend = TrainerTerminalBackend(source);
+      final chunks = <List<int>>[];
+      final subscription = backend.inputStream!.listen(chunks.add);
+
+      source
+        ..send(const [0x1b, 0x5b, 0x41])
+        ..send(const [0x1b, 0x5b, 0x48])
+        ..send(const [0x1b, 0x5b, 0x33, 0x7e])
+        ..send(const [0x7f])
+        ..send(const [0x01]);
+
+      expect(chunks, [
+        const [0x1b, 0x5b, 0x41],
+        const [0x1b, 0x5b, 0x48],
+        const [0x1b, 0x5b, 0x33, 0x7e],
+        const [0x7f],
+        const [0x01],
+      ]);
+
+      await subscription.cancel();
+      await source.close();
+    });
+  });
+
+  group('Method writeRaw() behaves correctly', () {
+    test(
+      'Method writeRaw() suppresses enhanced keyboard protocol negotiation and reset',
+      () {
+        final source = _FakeTerminalBackend();
+        final backend = TrainerTerminalBackend(source);
+
+        const controls = ['\x1b[>1u', '\x1b[>4;1m', '\x1b[<u', '\x1b[>4;0m'];
+        backend.writeRaw('${controls.join()}screen output');
+
+        expect(source.writes, ['screen output']);
+        source.dispose();
+      },
+    );
+
+    test('Method writeRaw() preserves unrelated terminal controls', () {
+      final source = _FakeTerminalBackend();
+      final backend = TrainerTerminalBackend(source);
+
+      backend.writeRaw('\x1b[?1049h');
+      backend.writeRaw('screen output');
+
+      expect(source.writes, ['\x1b[?1049h', 'screen output']);
+      source.dispose();
+    });
   });
 }
 
@@ -272,22 +135,22 @@ class _FakeTerminalBackend implements TerminalBackend {
   final StreamController<List<int>> _input =
       StreamController<List<int>>.broadcast(sync: true);
 
-  /// Sends one controlled input chunk to the backend listener.
+  /// Terminal output recorded for assertions.
+  final List<String> writes = [];
+
+  /// Sends one translated Windows console key event to the input listener.
   void send(List<int> bytes) => _input.add(bytes);
 
   /// Closes the controlled input source.
   Future<void> close() => _input.close();
 
-  /// Sends an error through the controlled input source.
-  void fail(Object error) => _input.addError(error);
-
-  /// Returns the controlled source of raw input chunks.
+  /// Returns the controlled source of translated input events.
   @override
   Stream<List<int>>? get inputStream => provideInput ? _input.stream : null;
 
-  /// Ignores terminal output in the test backend.
+  /// Records terminal output written by the backend.
   @override
-  void writeRaw(String data) {}
+  void writeRaw(String data) => writes.add(data);
 
   /// Returns the test terminal dimensions.
   @override
