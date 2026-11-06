@@ -1,20 +1,20 @@
 import 'dart:io';
 
 import 'package:ludava/features/game_memory/data/datasources/rpcs3_game_identity_log.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_console.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_process_discovery.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_process_metadata.datasource.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
 import 'package:ludava/features/game_memory/data/repositories/game_memory.repository.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
+import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava/features/game_memory/domain/usecases/params/read_game_field.params.dart';
 import 'package:ludava/features/game_memory/domain/usecases/params/write_game_field.params.dart';

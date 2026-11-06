@@ -2,8 +2,8 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_rpcs3_log.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_rpcs3_log_api.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_rpcs3_log.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_rpcs3_log_api.dart';
 import 'package:test/test.dart';
 
 void main() {

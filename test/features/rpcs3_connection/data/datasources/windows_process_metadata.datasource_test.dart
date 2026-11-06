@@ -1,8 +1,8 @@
 import 'dart:ffi';
 
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_process_metadata.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_process_metadata_api.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_metadata_api.dart';
 import 'package:test/test.dart';
 
 void main() {

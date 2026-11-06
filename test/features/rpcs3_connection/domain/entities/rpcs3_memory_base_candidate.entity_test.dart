@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
+import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -2,9 +2,9 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_process_metadata_api.dart';
-import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_metadata_api.dart';
+import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 
 /// Reads the executable path and start time of a selected Windows process.
 class WindowsProcessMetadataDataSource {

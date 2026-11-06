@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,7 +1,7 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/data/datasources/windows_process_discovery.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_discovery.datasource.dart';
 import 'package:test/test.dart';
 
 void main() {

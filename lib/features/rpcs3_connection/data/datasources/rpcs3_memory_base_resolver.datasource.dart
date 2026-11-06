@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_rpcs3_log.datasource.dart';
-import 'package:ludava/features/game_memory/domain/entities/rpcs3_memory_base_candidate.entity.dart';
-import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_rpcs3_log.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
+import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 
 /// Finds a recent guest memory base in log files beside the selected RPCS3 app.
 class Rpcs3MemoryBaseResolverDataSource {

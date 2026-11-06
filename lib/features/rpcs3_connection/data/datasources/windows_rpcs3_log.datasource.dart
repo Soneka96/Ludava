@@ -4,8 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_rpcs3_log_api.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_rpcs3_log_api.dart';
 
 /// Reads an RPCS3 log with sharing that permits the running emulator to keep writing.
 class WindowsRpcs3LogDataSource {

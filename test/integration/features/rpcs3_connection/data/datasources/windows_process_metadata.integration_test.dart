@@ -2,7 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_process_metadata.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -3,9 +3,9 @@ library;
 
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
-import 'package:ludava/features/game_memory/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
-import 'package:ludava/features/game_memory/domain/entities/rpcs3_process_metadata.entity.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -4,9 +4,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:ffi/ffi.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_memory_exception.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_rpcs3_log.datasource.dart';
-import 'package:ludava/features/game_memory/data/datasources/windows_rpcs3_log_api.dart';
+import 'package:ludava/shared/platform/windows_memory_exception.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_rpcs3_log.datasource.dart';
+import 'package:ludava/features/rpcs3_connection/data/datasources/windows_rpcs3_log_api.dart';
 import 'package:test/test.dart';
 
 void main() {
