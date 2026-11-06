@@ -1,25 +1,11 @@
-import 'package:ludava_tui/app/trainer_command_runner.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
-import 'package:ludava_tui/features/diagnostics/presentation/cli/interactive_trainer_cli.dart';
+import 'package:ludava_tui/app/trainer_command_runner.dart';
 
-/// Composes the trainer command runner for the executable entry point.
+/// Composes the SDK runtime and TUI command runner for an executable entry point.
 class LudavaCli {
-  /// Creates the application composition root with optional test seams.
+  /// Creates the CLI with an optional runtime and terminal test seam.
   LudavaCli({
-    WindowsMemoryApi? api,
-    bool? isWindows,
-    int? pointerSize,
-    InteractiveTrainerCli? interactiveCli,
-    List<int> Function()? discoverProcessIds,
-    Rpcs3ProcessMetadata Function(int processId)? readProcessMetadata,
-    Rpcs3MemoryBaseCandidate? Function(Rpcs3ProcessMetadata processMetadata)?
-    resolveMemoryBaseCandidate,
-    GameDetectionResult Function(
-      int processId,
-      Rpcs3ProcessMetadata processMetadata,
-    )?
-    detectGame,
-    Rpcs3GameIdentityLogDataSource? gameIdentityLogDataSource,
+    LudavaSdk? sdk,
     bool? hasTerminal,
     Future<void> Function(TrainerSessionController sessionController)?
     runNocterm,
@@ -27,15 +13,7 @@ class LudavaCli {
   }) : _commandRunner =
            commandRunner ??
            TrainerCommandRunner(
-             api: api,
-             isWindows: isWindows,
-             pointerSize: pointerSize,
-             interactiveCli: interactiveCli,
-             discoverProcessIds: discoverProcessIds,
-             readProcessMetadata: readProcessMetadata,
-             resolveMemoryBaseCandidate: resolveMemoryBaseCandidate,
-             detectGame: detectGame,
-             gameIdentityLogDataSource: gameIdentityLogDataSource,
+             sdk: sdk,
              hasTerminal: hasTerminal,
              runNocterm: runNocterm,
            );
@@ -49,7 +27,7 @@ class LudavaCli {
     StringSink? errorOutput,
   }) => _commandRunner.run(arguments, output: output, errorOutput: errorOutput);
 
-  /// Runs diagnostic commands or launches Nocterm for the default invocation.
+  /// Runs diagnostics or launches Nocterm and awaits runtime cleanup.
   Future<int> runAsync(
     List<String> arguments, {
     StringSink? output,

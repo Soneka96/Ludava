@@ -1,7 +1,4 @@
-import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
-import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava_sdk/shared/constants/enums.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Formats game-memory outcomes for terminal display.
 abstract final class GameMemoryOutput {

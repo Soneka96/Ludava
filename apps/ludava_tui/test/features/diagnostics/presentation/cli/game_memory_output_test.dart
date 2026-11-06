@@ -1,8 +1,5 @@
-import 'package:ludava_sdk/features/game_memory/domain/entities/game_read_result.entity.dart';
-import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava_tui/features/diagnostics/presentation/cli/game_memory_output.dart';
-import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -11,7 +8,7 @@ void main() {
       'Method readResult() displays the selected field and decoded value',
       () {
         final output = GameMemoryOutput.readResult(
-          Rc2CollectionProfile.profile,
+          _rc2Profile,
           const GameReadResult(
             status: GameReadStatus.success,
             fieldId: 'bolts',
@@ -30,7 +27,7 @@ void main() {
 
     test('Method readResult() displays a failed read and native error', () {
       final output = GameMemoryOutput.readResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameReadResult(
           status: GameReadStatus.readFailed,
           fieldId: 'bolts',
@@ -45,7 +42,7 @@ void main() {
 
     test('Method readResult() labels a success without a value invalid', () {
       final output = GameMemoryOutput.readResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameReadResult(status: GameReadStatus.success, fieldId: 'bolts'),
       );
 
@@ -65,7 +62,7 @@ void main() {
 
       for (final entry in expectedStatuses.entries) {
         final output = GameMemoryOutput.readResult(
-          Rc2CollectionProfile.profile,
+          _rc2Profile,
           GameReadResult(status: entry.key, fieldId: 'bolts'),
         );
 
@@ -75,14 +72,14 @@ void main() {
 
     test('Method readResult() displays mapping and partial-read failures', () {
       final invalidMapping = GameMemoryOutput.readResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameReadResult(
           status: GameReadStatus.invalidMapping,
           fieldId: 'bolts',
         ),
       );
       final incompleteRead = GameMemoryOutput.readResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameReadResult(
           status: GameReadStatus.incompleteRead,
           fieldId: 'bolts',
@@ -99,7 +96,7 @@ void main() {
   group('Method writeResult() behaves correctly', () {
     test('Method writeResult() displays matching read-back evidence', () {
       final output = GameMemoryOutput.writeResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameWriteResult(
           status: GameWriteStatus.success,
           fieldId: 'bolts',
@@ -117,7 +114,7 @@ void main() {
 
     test('Method writeResult() reports confirmed runtime identity', () {
       final output = GameMemoryOutput.writeResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameWriteResult(
           status: GameWriteStatus.success,
           fieldId: 'bolts',
@@ -133,7 +130,7 @@ void main() {
 
     test('Method writeResult() explains rejected and failed writes', () {
       final confirmationRequired = GameMemoryOutput.writeResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameWriteResult(
           status: GameWriteStatus.confirmationRequired,
           fieldId: 'bolts',
@@ -141,7 +138,7 @@ void main() {
         ),
       );
       final invalidValue = GameMemoryOutput.writeResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameWriteResult(
           status: GameWriteStatus.invalidValue,
           fieldId: 'bolts',
@@ -149,7 +146,7 @@ void main() {
         ),
       );
       final readBackFailed = GameMemoryOutput.writeResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameWriteResult(
           status: GameWriteStatus.readBackFailed,
           fieldId: 'bolts',
@@ -158,7 +155,7 @@ void main() {
         ),
       );
       final preliminaryReadFailed = GameMemoryOutput.writeResult(
-        Rc2CollectionProfile.profile,
+        _rc2Profile,
         const GameWriteResult(
           status: GameWriteStatus.preliminaryReadFailed,
           fieldId: 'bolts',
@@ -202,7 +199,7 @@ void main() {
 
       for (final entry in expectedStatuses.entries) {
         final output = GameMemoryOutput.writeResult(
-          Rc2CollectionProfile.profile,
+          _rc2Profile,
           GameWriteResult(status: entry.key, fieldId: 'bolts'),
         );
 
@@ -211,3 +208,6 @@ void main() {
     });
   });
 }
+
+/// Resolves the selected RC2 profile through the public SDK catalog.
+GameProfile get _rc2Profile => GameProfileCatalog.find('rc2-collection')!;

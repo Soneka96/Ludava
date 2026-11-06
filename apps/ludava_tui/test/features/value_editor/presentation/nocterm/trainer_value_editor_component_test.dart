@@ -1,8 +1,5 @@
-import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_result.entity.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava_tui/features/value_editor/presentation/nocterm/trainer_value_editor_component.dart';
-import 'package:ludava_sdk/shared/constants/app_constants.dart';
-import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:nocterm/nocterm.dart'
     show
         BuildContext,
@@ -729,7 +726,7 @@ void main() {
       'Class TrainerValueEditorComponent edits the maximum unsigned value',
       () async {
         await testNocterm('large unsigned value', (tester) async {
-          final value = GameMemoryConstants.maxUnsigned32;
+          const value = 0xffffffff;
           await tester.pumpComponent(
             _editor(
               field: _field(maximumValue: value),

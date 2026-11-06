@@ -1,11 +1,9 @@
 import 'dart:async';
 
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava_tui/features/trainer/presentation/nocterm/trainer_session_component.dart';
 import 'package:ludava_tui/shared/terminal/trainer_terminal_backend.dart';
 import 'package:ludava_tui/features/value_editor/presentation/nocterm/trainer_value_editor_component.dart';
-import 'package:ludava_sdk/shared/constants/app_constants.dart';
 import 'package:nocterm/nocterm_test.dart'
     show KeyboardEvent, LogicalKey, containsText, testNocterm;
 import 'package:nocterm/nocterm.dart'
@@ -210,7 +208,7 @@ void main() {
           await tester.sendEnter();
           expect(tester.terminalState, containsText('EDIT WEAPONS'));
 
-          fixture.profile = Rc1CollectionProfile.profile;
+          fixture.profile = GameProfileCatalog.find('rc1-collection')!;
           fixture.controller.refresh();
           await tester.pump();
 
@@ -789,7 +787,7 @@ GameProfile _profile({
       readStatus: VerificationStatus.verified,
       writeStatus: VerificationStatus.researchConfirmed,
       minimumValue: 0,
-      maximumValue: GameMemoryConstants.maxUnsigned32,
+      maximumValue: 0xffffffff,
     ),
     if (twoFields)
       'weapons': GameField(

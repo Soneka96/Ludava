@@ -3,8 +3,6 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
-import 'package:ludava_tui/features/diagnostics/presentation/cli/interactive_trainer_cli.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 import 'package:ludava_tui/app/trainer_command_runner.dart';
@@ -12,70 +10,24 @@ import '../support/fake_windows_memory_api.dart';
 
 void main() {
   group('Method run() behaves correctly', () {
-    test('Method run() starts the interactive menu without arguments', () {
-      var discoveryCalls = 0;
-      final interactiveCli = InteractiveTrainerCli(
-        discoverProcessIds: () {
-          discoveryCalls++;
-          return const [];
-        },
-        readProcessMetadata: (_) => throw StateError('no process selected'),
-        resolveMemoryBaseCandidate: (_) => null,
-        runCommand: (_, __, ___) => 0,
-        readLine: () => '0',
-        hasTerminal: true,
-      );
-      final output = StringBuffer();
+    test('Method run() requires runAsync for interactive startup', () {
       final errorOutput = StringBuffer();
 
       final exitCode = TrainerCommandRunner(
-        interactiveCli: interactiveCli,
-      ).run([], output: output, errorOutput: errorOutput);
+        sdk: LudavaSdk.create(),
+      ).run([], errorOutput: errorOutput);
 
-      expect(exitCode, 0);
-      expect(output.toString(), contains('LUDAVA'));
-      expect(output.toString(), contains('RPCS3 was not found'));
-      expect(discoveryCalls, 1);
-      expect(errorOutput.toString(), isEmpty);
+      expect(exitCode, 2);
+      expect(errorOutput.toString(), contains('started with runAsync'));
     });
-
-    test(
-      'Method run() rejects interactive mode when input is not a terminal',
-      () {
-        var discoveryCalls = 0;
-        final interactiveCli = InteractiveTrainerCli(
-          discoverProcessIds: () {
-            discoveryCalls++;
-            return const [];
-          },
-          readProcessMetadata: (_) => throw StateError('not reached'),
-          resolveMemoryBaseCandidate: (_) => null,
-          runCommand: (_, __, ___) => 0,
-          readLine: () => throw StateError('must not read input'),
-          hasTerminal: false,
-        );
-        final output = StringBuffer();
-        final errorOutput = StringBuffer();
-
-        final exitCode = TrainerCommandRunner(
-          interactiveCli: interactiveCli,
-        ).run([], output: output, errorOutput: errorOutput);
-
-        expect(exitCode, 2);
-        expect(errorOutput.toString(), contains('requires a terminal'));
-        expect(discoveryCalls, 0);
-      },
-    );
 
     test('Method run() prints help without opening a process', () {
       final output = StringBuffer();
       final errorOutput = StringBuffer();
       final api = FakeWindowsMemoryApi();
 
-      final exitCode = TrainerCommandRunner(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
+      final exitCode = _runnerForApi(
+        api,
       ).run(['--help'], output: output, errorOutput: errorOutput);
 
       expect(exitCode, 0);
@@ -126,19 +78,11 @@ void main() {
     );
 
     test(
-      'Method run() delegates diagnostic operations to an injected SDK service',
+      'Method run() delegates diagnostics to the SDK runtime capability',
       () {
         final output = StringBuffer();
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
-        final runner = TrainerCommandRunner(
-          diagnosticGameMemoryService: DiagnosticGameMemoryService(
-            api: api.adapter,
-            isWindows: true,
-            pointerSize: 8,
-            discoverProcessIds: () => const [],
-          ),
-          discoverProcessIds: () => throw StateError('runner must delegate'),
-        );
+        final runner = _runnerForApi(api, processIds: const []);
 
         final exitCode = runner.run([
           'read',
@@ -162,18 +106,23 @@ void main() {
     );
 
     test(
-      'Method run() does not call the SDK service when arguments are invalid',
+      'Method run() does not discover processes when arguments are invalid',
       () {
-        final service = _CountingDiagnosticGameMemoryService();
+        var discoveryCalls = 0;
         final errorOutput = StringBuffer();
 
         final exitCode = TrainerCommandRunner(
-          diagnosticGameMemoryService: service,
+          sdk: LudavaSdk.create(
+            discoverProcessIds: () {
+              discoveryCalls++;
+              return const [];
+            },
+          ),
         ).run(['read', '--pid', '42'], errorOutput: errorOutput);
 
         expect(exitCode, 2);
         expect(errorOutput.toString(), contains('--game, --field, --pid'));
-        expect(service.executeCalls, 0);
+        expect(discoveryCalls, 0);
       },
     );
 
@@ -184,11 +133,7 @@ void main() {
             ..readReturnValue = 0
             ..errorCode = 299;
 
-      final exitCode = TrainerCommandRunner(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run([
+      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 8).run([
         'read',
         '--game',
         'rc2-collection',
@@ -212,8 +157,8 @@ void main() {
         final output = StringBuffer();
         final api = FakeWindowsMemoryApi()..reportedReadBytes = 2;
 
-        final exitCode = TrainerCommandRunner(
-          api: api.adapter,
+        final exitCode = _runnerForApi(
+          api,
           isWindows: true,
           pointerSize: 8,
         ).run([
@@ -240,8 +185,8 @@ void main() {
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
 
-        final exitCode = TrainerCommandRunner(
-          api: api.adapter,
+        final exitCode = _runnerForApi(
+          api,
           isWindows: true,
           pointerSize: 8,
         ).run([
@@ -268,8 +213,8 @@ void main() {
         final output = StringBuffer();
         final api = FakeWindowsMemoryApi();
 
-        final exitCode = TrainerCommandRunner(
-          api: api.adapter,
+        final exitCode = _runnerForApi(
+          api,
           isWindows: true,
           pointerSize: 8,
         ).run([
@@ -621,12 +566,14 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
         final cli = TrainerCommandRunner(
-          api: api.adapter,
-          isWindows: true,
-          pointerSize: 8,
-          discoverProcessIds: () => [42],
-          readProcessMetadata: (_) => throw Exception('metadata unavailable'),
-          resolveMemoryBaseCandidate: (_) => null,
+          sdk: LudavaSdk.create(
+            api: api.adapter,
+            isWindows: true,
+            pointerSize: 8,
+            discoverProcessIds: () => [42],
+            readProcessMetadata: (_) => throw Exception('metadata unavailable'),
+            resolveMemoryBaseCandidate: (_) => null,
+          ),
         );
 
         final exitCode = cli.run(
@@ -649,17 +596,19 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
         final cli = TrainerCommandRunner(
-          api: api.adapter,
-          isWindows: true,
-          pointerSize: 8,
-          discoverProcessIds: () => [42],
-          readProcessMetadata:
-              (_) => Rpcs3ProcessMetadata(
-                executablePath: r'C:\RPCS3\rpcs3.exe',
-                startedAtUtc: DateTime.utc(2026, 11, 5, 10),
-              ),
-          resolveMemoryBaseCandidate: (_) => null,
-          detectGame: (_, _) => throw Exception('log read failed'),
+          sdk: LudavaSdk.create(
+            api: api.adapter,
+            isWindows: true,
+            pointerSize: 8,
+            discoverProcessIds: () => [42],
+            readProcessMetadata:
+                (_) => Rpcs3ProcessMetadata(
+                  executablePath: r'C:\RPCS3\rpcs3.exe',
+                  startedAtUtc: DateTime.utc(2026, 11, 5, 10),
+                ),
+            resolveMemoryBaseCandidate: (_) => null,
+            detectGame: (_, _) => throw Exception('log read failed'),
+          ),
         );
 
         final exitCode = cli.run(
@@ -946,8 +895,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       final errorOutput = StringBuffer();
       final api = FakeWindowsMemoryApi();
 
-      final exitCode = TrainerCommandRunner(
-        api: api.adapter,
+      final exitCode = _runnerForApi(
+        api,
         isWindows: false,
         pointerSize: 8,
       ).run([
@@ -972,11 +921,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       final errorOutput = StringBuffer();
       final api = FakeWindowsMemoryApi();
 
-      final exitCode = TrainerCommandRunner(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 4,
-      ).run([
+      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 4).run([
         'read',
         '--game',
         'rc2-collection',
@@ -1002,11 +947,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
             ..closeReturnValue = 0
             ..errorCode = 6;
 
-      final exitCode = TrainerCommandRunner(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run(
+      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 8).run(
         [
           'read',
           '--game',
@@ -1033,11 +974,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       final output = StringBuffer();
       final api = FakeWindowsMemoryApi();
 
-      final exitCode = TrainerCommandRunner(
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-      ).run([
+      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 8).run([
         'write',
         '--game',
         'rc2-collection',
@@ -1064,8 +1001,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
 
-        final exitCode = TrainerCommandRunner(
-          api: api.adapter,
+        final exitCode = _runnerForApi(
+          api,
           isWindows: true,
           pointerSize: 8,
         ).run([
@@ -1090,8 +1027,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       final errorOutput = StringBuffer();
       final api = FakeWindowsMemoryApi();
 
-      final exitCode = TrainerCommandRunner(
-        api: api.adapter,
+      final exitCode = _runnerForApi(
+        api,
         isWindows: true,
         pointerSize: 8,
       ).run(['read', '--pid', '42'], errorOutput: errorOutput);
@@ -1103,6 +1040,34 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
   });
 
   group('Method runAsync() behaves correctly', () {
+    test(
+      'Method runAsync() executes diagnostics and awaits runtime cleanup',
+      () async {
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
+        final sdk = LudavaSdk.create(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () => const [],
+        );
+        final streamClosed = Completer<void>();
+        sdk.session.stateChanges.listen((_) {}, onDone: streamClosed.complete);
+        final output = StringBuffer();
+
+        final exitCode = await TrainerCommandRunner(
+          sdk: sdk,
+        ).runAsync(_rc2ReadArguments(), output: output);
+
+        await streamClosed.future.timeout(const Duration(seconds: 1));
+        expect(exitCode, 0);
+        expect(output.toString(), contains('Value: 42'));
+        expect(output.toString(), contains('manual or unverified'));
+        expect(api.openCalls, 1);
+        expect(api.readCalls, 1);
+        expect(api.closeCalls, 1);
+      },
+    );
+
     test(
       'Method runAsync() launches the Nocterm app for no arguments',
       () async {
@@ -1223,22 +1188,19 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
   });
 }
 
-class _CountingDiagnosticGameMemoryService extends DiagnosticGameMemoryService {
-  /// Number of diagnostic requests accepted by this test service.
-  int executeCalls = 0;
-
-  /// Creates a service fake that records diagnostic operation calls.
-  _CountingDiagnosticGameMemoryService();
-
-  /// Records execution so parse failures can prove they stop before the SDK.
-  @override
-  DiagnosticGameMemoryResult execute(DiagnosticGameMemoryRequest request) {
-    executeCalls++;
-    return const DiagnosticGameMemoryResult(
-      status: DiagnosticGameMemoryStatus.invalidRequest,
-    );
-  }
-}
+TrainerCommandRunner _runnerForApi(
+  FakeWindowsMemoryApi api, {
+  bool? isWindows = true,
+  int? pointerSize = 8,
+  List<int> processIds = const [],
+}) => TrainerCommandRunner(
+  sdk: LudavaSdk.create(
+    api: api.adapter,
+    isWindows: isWindows,
+    pointerSize: pointerSize,
+    discoverProcessIds: () => processIds,
+  ),
+);
 
 TrainerCommandRunner _writeCapableCli(
   FakeWindowsMemoryApi api, {
@@ -1248,40 +1210,42 @@ TrainerCommandRunner _writeCapableCli(
   bool? hasTerminal,
   Future<void> Function(TrainerSessionController sessionController)? runNocterm,
 }) => TrainerCommandRunner(
-  api: api.adapter,
-  isWindows: true,
-  pointerSize: 8,
+  sdk: LudavaSdk.create(
+    api: api.adapter,
+    isWindows: true,
+    pointerSize: 8,
+    discoverProcessIds: () => processIds,
+    readProcessMetadata:
+        (_) => Rpcs3ProcessMetadata(
+          executablePath: r'C:\RPCS3\rpcs3.exe',
+          startedAtUtc: DateTime.utc(2026, 11, 5, 10),
+        ),
+    resolveMemoryBaseCandidate:
+        (_) =>
+            currentMemoryBase == null
+                ? null
+                : Rpcs3MemoryBaseCandidate(
+                  memoryBase: currentMemoryBase,
+                  logPath: r'C:\RPCS3\log\RPCS3.log',
+                ),
+    detectGame:
+        (processId, _) =>
+            identity ??
+            GameDetectionResult(
+              status: GameDetectionStatus.supportedGame,
+              processId: processId,
+              titleId: _rc2Profile.buildId,
+              gameTitle: _rc2Profile.gameName,
+              executable: _rc2Profile.executable,
+              executableHash: _rc2Profile.executableHash,
+              confidence: GameIdentityConfidence.confirmed,
+              profile: _rc2Profile,
+              evidenceDescription:
+                  'Measured PPU identity for the selected process.',
+            ),
+  ),
   hasTerminal: hasTerminal,
   runNocterm: runNocterm,
-  discoverProcessIds: () => processIds,
-  readProcessMetadata:
-      (_) => Rpcs3ProcessMetadata(
-        executablePath: r'C:\RPCS3\rpcs3.exe',
-        startedAtUtc: DateTime.utc(2026, 11, 5, 10),
-      ),
-  resolveMemoryBaseCandidate:
-      (_) =>
-          currentMemoryBase == null
-              ? null
-              : Rpcs3MemoryBaseCandidate(
-                memoryBase: currentMemoryBase,
-                logPath: r'C:\RPCS3\log\RPCS3.log',
-              ),
-  detectGame:
-      (processId, _) =>
-          identity ??
-          GameDetectionResult(
-            status: GameDetectionStatus.supportedGame,
-            processId: processId,
-            titleId: Rc2CollectionProfile.profile.buildId,
-            gameTitle: Rc2CollectionProfile.profile.gameName,
-            executable: Rc2CollectionProfile.profile.executable,
-            executableHash: Rc2CollectionProfile.profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-            profile: Rc2CollectionProfile.profile,
-            evidenceDescription:
-                'Measured PPU identity for the selected process.',
-          ),
 );
 
 TrainerCommandRunner _logBackedCli(
@@ -1291,29 +1255,33 @@ TrainerCommandRunner _logBackedCli(
   bool includeSecondCandidateLog = false,
   String Function(String path)? readLog,
 }) => TrainerCommandRunner(
-  api: api.adapter,
-  isWindows: true,
-  pointerSize: 8,
-  discoverProcessIds: () => processIds,
-  readProcessMetadata:
-      (_) => Rpcs3ProcessMetadata(
-        executablePath: r'C:\RPCS3\rpcs3.exe',
-        startedAtUtc: DateTime.utc(2026, 11, 5, 10),
-      ),
-  resolveMemoryBaseCandidate:
-      (_) => const Rpcs3MemoryBaseCandidate(
-        memoryBase: 0x300000000,
-        logPath: r'C:\RPCS3\log\RPCS3.log',
-      ),
-  gameIdentityLogDataSource: Rpcs3GameIdentityLogDataSource(
-    fileExists:
-        (path) =>
-            path == r'C:\RPCS3\log\RPCS3.log' ||
-            (includeSecondCandidateLog && path == r'C:\RPCS3\RPCS3.log'),
-    lastModifiedUtc: (_) => DateTime.utc(2026, 11, 5, 10, 1),
-    readAsString: readLog ?? (_) => logContents,
+  sdk: LudavaSdk.create(
+    api: api.adapter,
+    isWindows: true,
+    pointerSize: 8,
+    discoverProcessIds: () => processIds,
+    readProcessMetadata:
+        (_) => Rpcs3ProcessMetadata(
+          executablePath: r'C:\RPCS3\rpcs3.exe',
+          startedAtUtc: DateTime.utc(2026, 11, 5, 10),
+        ),
+    resolveMemoryBaseCandidate:
+        (_) => const Rpcs3MemoryBaseCandidate(
+          memoryBase: 0x300000000,
+          logPath: r'C:\RPCS3\log\RPCS3.log',
+        ),
+    gameIdentityLogDataSource: Rpcs3GameIdentityLogDataSource(
+      fileExists:
+          (path) =>
+              path == r'C:\RPCS3\log\RPCS3.log' ||
+              (includeSecondCandidateLog && path == r'C:\RPCS3\RPCS3.log'),
+      lastModifiedUtc: (_) => DateTime.utc(2026, 11, 5, 10, 1),
+      readAsString: readLog ?? (_) => logContents,
+    ),
   ),
 );
+
+GameProfile get _rc2Profile => GameProfileCatalog.find('rc2-collection')!;
 
 List<String> _rc2WriteArguments() => const [
   'write',
