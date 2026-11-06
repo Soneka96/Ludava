@@ -56,6 +56,18 @@ For a stateful or rendering Nocterm component whose behavior is exercised by pum
 
 Treat `docs/ARCHITECTURE.md` and this document as the repository source of truth for engineering conventions. When a task establishes a durable rule, update the appropriate document before applying it in implementation, and cross-link shared guidance rather than copying competing versions. Keep the README as an entry point to these conventions, not a second policy source.
 
+The permanent structural rules are defined in [`ARCHITECTURE.md`](ARCHITECTURE.md#directory-ownership-and-composition-rules). Apply this checklist when adding or moving code:
+
+1. Give every significant directory a clear owner, purpose, and admission criteria.
+2. Do not use `app`, `shared`, `runtime`, or similar names as miscellaneous containers.
+3. Keep trainer workflows, diagnostics, validation, and request/result models in the trainer application feature.
+4. Limit SDK composition to assembly and resource lifetime; keep business behavior in its feature.
+5. Make frontends use typed public SDK capabilities instead of constructing engine internals or duplicating policy.
+6. Keep Nocterm as the only interactive terminal and retain explicit diagnostic commands; remove the old text menu.
+7. Add abstractions only for a concrete responsibility or replaceable/testable boundary.
+8. Document accepted durable conventions before implementation, and commit the convention change first.
+9. Keep SDK runtime capabilities/lifetimes, feature behavior, controller-owned session state, and immutable state snapshots as separate responsibilities.
+
 Behaviorless type declarations do not need artificial tests. Every class with behavior does; see the test strategy in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Workspace development

@@ -18,10 +18,28 @@ Keep game-specific offsets, value types, endianness, write bounds, and evidence 
 
 The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU loads and process-finished events into identity evidence, then deciding whether that evidence selects a supported profile, belongs to `game_detection`.
 
+## Directory ownership and composition rules
+
+These rules are permanent admission criteria for new and materially changed code. Existing legacy paths that conflict with them are migration work, not precedent. Each significant directory must have a named feature, architectural layer, narrowly scoped shared concern, or narrowly scoped runtime/composition responsibility. Document its purpose and what belongs there; do not add a directory only to give a class a home or create unnecessary one-file directories.
+
+Names such as `app`, `common`, `shared`, `services`, `helpers`, `utils`, `runtime`, and `composition` are not blanket-forbidden, but none may be an unrestricted container. `shared` means reused within a defined scope. `runtime` owns assembly and lifetime, not business logic. Remove or reorganize directories without a coherent responsibility.
+
+Trainer session coordination, diagnostic workflows, validation policies, and their structured request/result models belong to the trainer feature's application layer. Do not put unrelated application workflows under the SDK root. Feature-first Clean Architecture ownership remains in force.
+
+SDK composition may construct dependencies, connect adapters to use cases, create feature application services, own resources, and coordinate startup/disposal. It must not implement game detection, memory-write policy, value decoding, session transitions, or duplicate application workflows.
+
+Nocterm and future Flutter frontends consume public typed SDK contracts. They do not assemble native memory adapters, construct internal repositories/use cases, duplicate detection or write authorization, or parse formatted SDK output to recover business data. Presentation owns input, rendering, navigation, and user-facing messages. Nocterm is the sole supported interactive terminal; explicit diagnostic commands remain. Remove the obsolete text menu and its menu-only logic and tests. Keep a compatibility exception only for a documented, supported use case.
+
+Prefer small typed capabilities over redundant abstractions. Do not add a service locator, dependency-injection framework, command bus, generic action registry, unnecessary factory, behaviorless base class, or interface without a meaningful replacement/testing purpose.
+
+When a durable architectural rule is accepted, update the authoritative documentation, review it for consistency, commit that documentation, then implement and verify the change. See [`DEVELOPMENT.md`](DEVELOPMENT.md#keeping-conventions-authoritative) for the workflow.
+
+The SDK runtime is the primary public object for one engine instance. It owns SDK capabilities and their lifetimes; feature application services own behavior; the trainer session controller owns authoritative game/session state. Immutable snapshots contain application facts, never service instances, native handles, or dependency containers. The runtime is neither the state object nor a generic dependency registry. Frontends observe session state and invoke operations through typed runtime capabilities.
+
 ## Layers and dependency direction
 
 ```text
-packages/ludava_sdk/lib/app/                         # shared service composition
+packages/ludava_sdk/lib/runtime/                     # SDK capability assembly and resource lifetime
 packages/ludava_sdk/lib/features/game_catalog/       # profiles and fields
 packages/ludava_sdk/lib/features/rpcs3_connection/   # process, log, native, and base adapters
 packages/ludava_sdk/lib/features/game_detection/     # identity events and profile matching
@@ -40,14 +58,14 @@ Feature dependencies remain acyclic:
 game_detection → game_catalog + rpcs3_connection
 game_memory    → game_catalog
 trainer        → game_detection + game_catalog + rpcs3_connection + game_memory
-SDK app        → trainer + concrete SDK feature data sources
+SDK runtime    → trainer application services + concrete SDK feature data sources
 TUI            → SDK public API
 future Flutter → SDK public API
 ```
 
-`game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No SDK feature imports the SDK composition root, and no feature outside `trainer` imports trainer code. Frontends use declared SDK package dependencies rather than relative paths across package boundaries.
+`game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No SDK feature imports the SDK runtime, and no feature outside `trainer` imports trainer code. Frontends use declared SDK package dependencies rather than relative paths across package boundaries.
 
-Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The SDK composition root constructs concrete sources and shared application workflows. Frontend entry points remain thin adapters that delegate to their package's command or application runner.
+Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources. Data adapters perform I/O; cross-feature dependencies follow the acyclic graph above. The SDK runtime constructs concrete sources and feature application services, and owns their resource lifetime. It contains no business policy. Frontend entry points remain thin adapters that delegate to their package's command or application runner.
 
 ## Dart workspace and package ownership
 
@@ -152,7 +170,7 @@ Compatibility is recorded per exact game/build and capability. Keep experimental
 
 ## Current implementation
 
-The implementation is a Dart workspace containing `packages/ludava_sdk` and `apps/ludava_tui`. The SDK's public entry point is `packages/ludava_sdk/lib/ludava_sdk.dart`; `LudavaTrainerFactory` composes an injectable `TrainerSessionController` without initializing a terminal. The TUI package owns Nocterm screens, the diagnostic CLI, and package-native entry points. Root `bin/ludava.dart` and `bin/ludava_cli.dart` remain compatibility commands that delegate to the TUI package. The future Flutter application is not present.
+This paragraph records the checkout before the approved structural cleanup; the legacy factory and SDK `lib/app/` are migration targets under the directory ownership rules above, not approved extension points. The implementation is a Dart workspace containing `packages/ludava_sdk` and `apps/ludava_tui`. The SDK's public entry point is `packages/ludava_sdk/lib/ludava_sdk.dart`; the current `LudavaTrainerFactory` composes an injectable `TrainerSessionController` without initializing a terminal. The TUI package owns Nocterm screens, the diagnostic CLI, and package-native entry points. Root `bin/ludava.dart` and `bin/ludava_cli.dart` remain compatibility commands that delegate to the TUI package. The future Flutter application is not present.
 
 The SDK's `game_memory` feature contains generic read/write use cases and Windows process-memory access. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the shared title ID, measured PPU hash, and executable name; `BCUS98282` alone remains ambiguous.
 
