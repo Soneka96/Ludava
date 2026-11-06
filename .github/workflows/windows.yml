@@ -35,6 +35,9 @@ jobs:
       - name: Verify workspace membership
         run: dart pub workspace list
 
+      - name: Test workspace dependency boundary checker
+        run: .\tool\test_workspace_boundaries.ps1
+
       - name: Check package dependency boundaries
         run: .\tool\check_workspace_boundaries.ps1
 
