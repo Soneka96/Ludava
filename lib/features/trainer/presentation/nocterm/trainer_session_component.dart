@@ -106,7 +106,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
                 ),
               ),
               const SizedBox(height: 1),
-              const Text('↑↓ Navigate   1–9 Select   Enter Open'),
+              const Text('↑↓ Navigate   1–9 Select   Enter Select'),
               const Text('R Refresh     G Re-detect  Q Quit'),
             ],
           ),
@@ -201,7 +201,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     }
     final digit = _digitFor(event.logicalKey);
     if (digit != null && digit <= processIds.length) {
-      _setProcessSelection(digit - 1);
+      _selectProcess(processIds[digit - 1]);
       return true;
     }
     if (event.logicalKey == LogicalKey.enter && processIds.isNotEmpty) {

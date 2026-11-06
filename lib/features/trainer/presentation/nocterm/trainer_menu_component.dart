@@ -136,7 +136,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
                 ),
                 const SizedBox(height: 1),
                 _separator(),
-                const Text('↑↓ Navigate   1–9 Select   Enter Open'),
+                const Text('↑↓ Navigate   1–9 Edit     Enter Edit'),
                 const Text('R Refresh     G Re-detect  Q Quit'),
               ],
             ),
@@ -146,6 +146,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     );
   }
 
+  /// Handles field navigation, direct field shortcuts, and menu actions.
   bool _handleKeyEvent(KeyboardEvent event) {
     final fields = _readableFields(component.session.profile);
     final key = event.logicalKey;
@@ -160,6 +161,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     final digit = _digitFor(key);
     if (digit != null && digit > 0 && digit <= fields.length && digit <= 9) {
       _setSelection(digit - 1);
+      component.onOpenField(fields[digit - 1]);
       return true;
     }
     if (key == LogicalKey.enter && fields.isNotEmpty) {
@@ -181,22 +183,26 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     return false;
   }
 
+  /// Moves the selected row by [delta] within [fieldCount].
   void _moveSelection(int delta, int fieldCount) {
     if (fieldCount == 0) return;
     _setSelection((_selectedIndex + delta).clamp(0, fieldCount - 1));
   }
 
+  /// Selects [index] and publishes the changed row when needed.
   void _setSelection(int index) {
     if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
     component.onSelectionChanged?.call(index);
   }
 
+  /// Returns only fields that the selected profile allows the trainer to read.
   List<GameField> _readableFields(GameProfile? profile) {
     if (profile == null || !profile.canRead) return const [];
     return profile.fields.values.where((field) => field.canRead).toList();
   }
 
+  /// Renders [field] with its value and current selection state.
   Component _fieldRow(
     int index,
     GameField field, {
@@ -223,17 +229,20 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     );
   }
 
+  /// Renders the menu divider at the available width.
   Component _separator() => Text(
     '─' * NoctermLayoutConstants.separatorWidth,
     style: const TextStyle(color: Colors.blue),
   );
 
+  /// Returns a display title for the currently detected profile.
   String _gameTitle(TrainerSessionState session) {
     final profile = session.profile;
     if (profile != null) return '${profile.gameName} · PS3 Collection';
     return session.detection?.gameTitle ?? 'No active game detected';
   }
 
+  /// Groups [value] for display without changing its numeric meaning.
   String _formatNumber(int value) {
     final digits = value.toString();
     final formatted = StringBuffer();
@@ -246,6 +255,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     return formatted.toString();
   }
 
+  /// Maps a number row key to its one-based menu index.
   int? _digitFor(LogicalKey key) => switch (key) {
     LogicalKey.digit1 => 1,
     LogicalKey.digit2 => 2,
@@ -259,6 +269,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     _ => null,
   };
 
+  /// Recognizes a letter shortcut from its key or typed character.
   bool _matchesLetter(KeyboardEvent event, String letter, LogicalKey key) =>
       event.logicalKey == key || event.character?.toLowerCase() == letter;
 }

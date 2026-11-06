@@ -98,18 +98,45 @@ void main() {
     );
 
     test(
-      'Class TrainerMenuComponent selects by number and opens on Enter',
+      'Class TrainerMenuComponent opens the requested field directly by number',
       () async {
-        await testNocterm('number selection and Enter', (tester) async {
+        await testNocterm('direct number shortcut', (tester) async {
           GameField? openedField;
+          final selections = <int>[];
           await tester.pumpComponent(
-            _menu(_session(), onOpenField: (field) => openedField = field),
+            _menu(
+              _session(),
+              onOpenField: (field) => openedField = field,
+              onSelectionChanged: selections.add,
+            ),
           );
 
           await tester.sendKey(LogicalKey.digit2);
-          await tester.sendEnter();
 
           expect(openedField?.id, 'weapons');
+          expect(selections, [1]);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerMenuComponent ignores number shortcuts outside the readable field range',
+      () async {
+        await testNocterm('number shortcut bounds', (tester) async {
+          GameField? openedField;
+          final selections = <int>[];
+          await tester.pumpComponent(
+            _menu(
+              _session(),
+              onOpenField: (field) => openedField = field,
+              onSelectionChanged: selections.add,
+            ),
+          );
+
+          await tester.sendKey(LogicalKey.digit3);
+
+          expect(openedField, isNull);
+          expect(selections, isEmpty);
         });
       },
     );
