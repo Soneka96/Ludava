@@ -64,6 +64,10 @@ The repository root owns Dart Pub Workspace membership, the shared lockfile, top
 
 From the repository root, run `dart pub get`, `dart pub workspace list`, and `dart analyze`. Then run `dart analyze` and `dart test` from each of `packages/ludava_sdk` and `apps/ludava_tui`. Run `dart test` at the repository root for compatibility entry points. The Windows release build is `tool/build_windows.ps1`; it can be invoked from outside the repository root.
 
+## Dart formatting in CI
+
+The Windows CI formatting check must inspect only Dart files added or changed relative to the pull request's target base. The comparison base must be available; a failed Git comparison is an error, not an empty change list. Renames are checked at their new path, deleted files are ignored, and paths containing spaces must be handled safely. The formatter check is read-only: it reports unformatted changed files without rewriting them. A historical Dart file must be formatted when the task materially changes it, while unrelated historical formatting findings are not pulled into the change.
+
 The SDK owns the native process-discovery source and its reusable integration boundary. The TUI build tooling owns packaging the SDK integration into `Ludava.exe` and the companion DLL. Keep the executable and DLL names, same-directory loading, Windows x64 target, and current safety behavior stable when changing build paths. The future Flutter app and its build tooling are introduced in a later project.
 
 These rules are internal quality standards; they are **not** contributor instructions or an invitation to submit changes.
