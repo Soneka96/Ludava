@@ -2,13 +2,13 @@ name: ludava_tui
 description: Nocterm terminal frontend and diagnostic CLI for Ludava.
 publish_to: none
 version: 0.1.0
+resolution: workspace
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
 
 dependencies:
-  ludava_sdk:
-    path: ../../packages/ludava_sdk
+  ludava_sdk: ^0.1.0
   nocterm: ^0.9.0
 
 dev_dependencies:

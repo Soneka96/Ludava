@@ -122,7 +122,7 @@ packages:
     source: hosted
     version: "2.1.0"
   ffi:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: ffi
       sha256: "6d7fd89431262d8f3125e81b50d3847a091d846eafcd4fdb88dd06f36d705a45"
@@ -201,20 +201,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
-  ludava_sdk:
-    dependency: "direct main"
-    description:
-      path: "packages/ludava_sdk"
-      relative: true
-    source: path
-    version: "0.1.0"
-  ludava_tui:
-    dependency: "direct main"
-    description:
-      path: "apps/ludava_tui"
-      relative: true
-    source: path
-    version: "0.1.0"
   markdown:
     dependency: transitive
     description:
@@ -248,7 +234,7 @@ packages:
     source: hosted
     version: "2.1.0"
   nocterm:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: nocterm
       sha256: b2e3160cadb4bab94d246e20e393820f09a2e1e8e6ed7a2d6a46f7358d65d083

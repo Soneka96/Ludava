@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - refactor/feature-boundaries
+      - refactor/dart-workspace-sdk
   pull_request:
     branches:
       - main
@@ -15,6 +15,8 @@ permissions:
 jobs:
   windows-x64:
     runs-on: windows-latest
+    env:
+      LUDAVA_EXPECT_NO_RPCS3: '1'
     steps:
       - uses: actions/checkout@v4
 
@@ -22,16 +24,61 @@ jobs:
         with:
           sdk: stable
 
-      - name: Resolve dependencies
+      - name: Resolve workspace dependencies
         run: dart pub get
 
-      - name: Analyze
+      - name: Verify workspace membership
+        run: dart pub workspace list
+
+      - name: Check package dependency boundaries
+        run: .\tool\check_workspace_boundaries.ps1
+
+      - name: Analyze root compatibility package
         run: dart analyze
 
-      - name: Build Windows executable and discovery library
-        run: .\tool\build_windows.ps1
+      - name: Analyze SDK
+        run: dart analyze
+        working-directory: packages/ludava_sdk
 
-      - name: Test
+      - name: Analyze TUI
+        run: dart analyze
+        working-directory: apps/ludava_tui
+
+      - name: Build Windows executable and discovery library
+        shell: pwsh
+        working-directory: ${{ runner.temp }}
+        run: '& "$env:GITHUB_WORKSPACE\tool\build_windows.ps1"'
+
+      - name: Test SDK
         run: dart test
-        env:
-          LUDAVA_EXPECT_NO_RPCS3: '1'
+        working-directory: packages/ludava_sdk
+
+      - name: Test TUI
+        run: dart test
+        working-directory: apps/ludava_tui
+
+      - name: Test root compatibility entry points
+        run: dart test
+
+      - name: Check root diagnostic help
+        run: dart run bin/ludava.dart --help
+
+      - name: Check TUI package diagnostic help
+        run: dart run bin/ludava.dart --help
+        working-directory: apps/ludava_tui
+
+      - name: Check packaged executable from another directory
+        shell: pwsh
+        run: |
+          $packageDirectory = Join-Path $env:TEMP ("ludava-ci-standalone-" + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $packageDirectory | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\build\Ludava.exe" $packageDirectory
+          Copy-Item "$env:GITHUB_WORKSPACE\build\ludava_process_discovery.dll" $packageDirectory
+          Push-Location $env:TEMP
+          try {
+            & (Join-Path $packageDirectory 'Ludava.exe') --help | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Packaged help failed with exit code $LASTEXITCODE." }
+          } finally {
+            Pop-Location
+            Remove-Item -LiteralPath $packageDirectory -Recurse -Force
+          }

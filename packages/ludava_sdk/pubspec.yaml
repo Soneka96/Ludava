@@ -2,6 +2,7 @@ name: ludava_sdk
 description: Shared Ludava trainer engine and Windows integrations.
 publish_to: none
 version: 0.1.0
+resolution: workspace
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
