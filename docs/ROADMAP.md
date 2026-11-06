@@ -2,6 +2,12 @@
 
 Milestones describe verified outcomes, not completed code alone.
 
+## Long-term workspace decision
+
+The owner has chosen one Dart workspace in this Git repository with three separately organized projects: `packages/ludava_sdk`, `apps/ludava_tui`, and `apps/ludava_app`. The SDK will hold the reusable trainer engine; the Nocterm TUI and Flutter desktop app will be independent frontends over that SDK. See [ARCHITECTURE.md](ARCHITECTURE.md) for ownership and dependency boundaries.
+
+This decision does not authorize migrating the current repository as part of PR #6. Keep the present layout until a dedicated migration is planned and verified.
+
 ## M0 — Project and documentation foundation
 
 - [x] Choose project name: Ludava.

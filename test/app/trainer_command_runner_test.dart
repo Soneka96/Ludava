@@ -1,13 +1,16 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
 
 import 'package:ludava/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
 import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava/features/trainer/presentation/cli/interactive_trainer_cli.dart';
+import 'package:ludava/features/trainer/application/trainer_session_controller.dart';
 import 'package:ludava/shared/constants/enums.dart';
 
 import 'package:ludava/app/trainer_command_runner.dart';
@@ -84,7 +87,7 @@ void main() {
       expect(exitCode, 0);
       expect(
         output.toString(),
-        contains('No arguments starts the interactive trainer'),
+        contains('No arguments starts the Nocterm trainer'),
       );
       expect(output.toString(), contains('bin/ludava.dart read'));
       expect(output.toString(), contains('current matching PPU identity'));
@@ -1052,6 +1055,126 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       expect(api.openCalls, 0);
     });
   });
+
+  group('Method runAsync() behaves correctly', () {
+    test(
+      'Method runAsync() launches the Nocterm app for no arguments',
+      () async {
+        var launchCalls = 0;
+        final stateStreamClosed = Completer<void>();
+        final runner = TrainerCommandRunner(
+          hasTerminal: true,
+          runNocterm: (controller) async {
+            launchCalls++;
+            controller.stateChanges.listen(
+              (_) {},
+              onDone: stateStreamClosed.complete,
+            );
+          },
+        );
+
+        final result = await runner.runAsync([]);
+        await stateStreamClosed.future;
+
+        expect(result, 0);
+        expect(launchCalls, 1);
+      },
+    );
+
+    test(
+      'Method runAsync() rejects no-argument launch without a terminal',
+      () async {
+        var launchCalls = 0;
+        final errors = StringBuffer();
+        final runner = TrainerCommandRunner(
+          hasTerminal: false,
+          runNocterm: (_) async => launchCalls++,
+        );
+
+        final result = await runner.runAsync([], errorOutput: errors);
+
+        expect(result, 2);
+        expect(launchCalls, 0);
+        expect(
+          errors.toString(),
+          contains('Interactive mode requires a terminal'),
+        );
+      },
+    );
+
+    test('Method runAsync() reports terminal startup failures', () async {
+      final errors = StringBuffer();
+      final stateStreamClosed = Completer<void>();
+      final runner = TrainerCommandRunner(
+        hasTerminal: true,
+        runNocterm: (controller) async {
+          controller.stateChanges.listen(
+            (_) {},
+            onDone: stateStreamClosed.complete,
+          );
+          throw StateError('backend failed');
+        },
+      );
+
+      final result = await runner.runAsync([], errorOutput: errors);
+      await stateStreamClosed.future;
+
+      expect(result, 1);
+      expect(errors.toString(), contains('Nocterm could not start'));
+      expect(errors.toString(), contains('backend failed'));
+    });
+
+    test('Method runAsync() preserves diagnostic command behavior', () async {
+      var launchCalls = 0;
+      final output = StringBuffer();
+      final errors = StringBuffer();
+      final runner = TrainerCommandRunner(
+        hasTerminal: true,
+        runNocterm: (_) async => launchCalls++,
+      );
+
+      final result = await runner.runAsync(
+        ['--help'],
+        output: output,
+        errorOutput: errors,
+      );
+
+      expect(result, 0);
+      expect(output.toString(), contains('Usage:'));
+      expect(errors.toString(), isEmpty);
+      expect(launchCalls, 0);
+    });
+
+    test(
+      'Method runAsync() wires the reusable session to checked memory operations',
+      () async {
+        final api = FakeWindowsMemoryApi();
+        GameWriteResult? writeResult;
+        final exitCode = await _writeCapableCli(
+          api,
+          hasTerminal: true,
+          runNocterm: (sessionController) async {
+            sessionController.connect();
+            expect(
+              sessionController.state.readResults['bolts']?.value,
+              0x01020304,
+            );
+            writeResult = sessionController.writeField('bolts', 42);
+          },
+        ).runAsync([]);
+
+        expect(exitCode, 0);
+        expect(writeResult?.status, GameWriteStatus.readBackMismatch);
+        expect(writeResult?.succeeded, isFalse);
+        expect(api.openCalls, 2);
+        expect(api.readCalls, 3);
+        expect(api.writeCalls, 1);
+        expect(api.closeCalls, 2);
+        expect(api.requestedAccess, 0x0038);
+        expect(api.writeAddress, 0x301329e80);
+      },
+    );
+  });
 }
 
 TrainerCommandRunner _writeCapableCli(
@@ -1059,10 +1182,14 @@ TrainerCommandRunner _writeCapableCli(
   GameDetectionResult? identity,
   int? currentMemoryBase = 0x300000000,
   List<int> processIds = const [42],
+  bool? hasTerminal,
+  Future<void> Function(TrainerSessionController sessionController)? runNocterm,
 }) => TrainerCommandRunner(
   api: api.adapter,
   isWindows: true,
   pointerSize: 8,
+  hasTerminal: hasTerminal,
+  runNocterm: runNocterm,
   discoverProcessIds: () => processIds,
   readProcessMetadata:
       (_) => Rpcs3ProcessMetadata(

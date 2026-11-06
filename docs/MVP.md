@@ -1,6 +1,6 @@
 # MVP — RC2 bolt trainer
 
-**Current status:** the interactive Windows CLI discovers RPCS3, matches RC1/RC2/RC3 from measured PPU hashes and ordered lifecycle events, and resolves a unique guest base from the selected process session log. Unknown, incomplete, stale, stopped, or ambiguous identity is not allowed to authorize a write. Manual profile selection is labeled unverified and read-only. The owner measured the four Collection PPU hashes in RPCS3 `0.0.43-20565-eee3f0f7`; the final compiled CLI automatically matched the RC2 session and base, then displayed a bolt read of `0` (not proof gameplay was active). The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing. The available notes do not map each game to each device or identify the exact RPCS3 build for that confirmation; compatibility with other builds remains unverified.
+**Current status:** the default Nocterm TUI discovers RPCS3, matches RC1/RC2/RC3 from measured PPU hashes and ordered lifecycle events, and resolves a unique guest base from the selected process session log. Unknown, incomplete, stale, stopped, or ambiguous identity is not allowed to authorize a write. The owner measured the four Collection PPU hashes in RPCS3 `0.0.43-20565-eee3f0f7`; the final compiled CLI automatically matched the RC2 session and base, then displayed a bolt read of `0` (not proof gameplay was active). The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing. The available notes do not map each game to each device or identify the exact RPCS3 build for that confirmation; compatibility with other builds remains unverified.
 
 ## Objective
 
@@ -8,16 +8,16 @@ Read and deliberately modify the bolt value for Ratchet & Clank 2 inside the PS3
 
 ## First user-visible capability
 
-- Discover one RPCS3 process automatically; when multiple instances share a log directory, leave identity unresolved.
+- Discover one RPCS3 process automatically; allow choosing when multiple instances run, while leaving identity unresolved if their logs cannot be distinguished.
 - Match a supported embedded game from the shared title ID, measured PPU hash, and executable name. The Collection menu, stopped game, and unknown hashes do not select an RC profile.
 - Resolve the unique current guest base from the selected process session without a normal-user confirmation prompt; do not use `0x300000000` as a constant.
 - Read exactly four bytes and decode them as an unsigned big-endian 32-bit value.
 - Keep the guest offset `0x01329E80` in the RC2 profile; the observed research-session base was `0x300000000`.
-- Allow a write only for the research-confirmed bolt field, a value from 0 through 4294967295, and an explicit `--confirm-write` request.
+- Allow a TUI write only for the research-confirmed bolt field and a value from 0 through 4294967295 after a deliberate Enter action. Diagnostic writes require `--confirm-write`.
 - Require native success and exactly four bytes written, then read back the value. Report write success only when the read-back matches.
-- Display the current process, detected profile, base, and evidence. Keep manual selection visibly unverified and read-only.
-- Revalidate process session, PPU identity, and base immediately before a write; preserve complete preliminary reads, explicit confirmation, complete transfer checks, and matching read-back.
-- Close process handles after operations. The interactive refresh action runs a new read; the diagnostic CLI can be repeated to refresh too.
+- Display the current process, detected profile, base, field values, and meaningful errors. Do not load fields when identity is unresolved.
+- Revalidate process session, PPU identity, and base immediately before a write; preserve complete preliminary reads, complete transfer checks, and matching read-back.
+- Close process handles after operations. Press **R** to refresh and **G** to re-detect; diagnostic reads can be repeated to refresh too.
 
 Automated tests cover the codec, address mapping, preliminary read-before-write policy, CLI wiring, native errors, partial transfers, read-back, and handle lifecycle through controlled fakes and local test memory. They do not test against RPCS3.
 

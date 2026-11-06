@@ -4,9 +4,9 @@
 
 Ludava resolves the current Collection executable from the latest ordered PPU load and process-finished events in one fresh RPCS3 log. Automatic profile matching requires the shared title ID `BCUS98282`, the executable filename, and one measured PPU hash. Historical titles and hashes are not treated as current identity after a later stop, menu boot, pending executable load, or process restart.
 
-The interactive CLI checks game identity before the guest memory base. A fresh, unique base is used without asking the user to confirm it. If the game or base cannot be established, Ludava does not load a trainer. Manual profile selection remains available for read-only inspection and is labeled unverified.
+The interactive TUI checks game identity before the guest memory base. A fresh, unique base is used without asking the user to confirm it. If the game or base cannot be established, Ludava does not load a trainer. Diagnostic reads may still specify a profile, and their output remains labeled unverified unless current identity evidence matches.
 
-Automatic refresh reads and writes check that the selected RPCS3 process and start time remain the same, the current PPU hash still matches the selected profile, and the guest base still matches the current session log. A failed read check clears the displayed value. Writes also use the existing preliminary read, explicit confirmation, complete native write, and matching read-back checks. The CLI does not poll in the background; **Re-detect game**, refresh, and a requested write trigger fresh checks.
+Automatic refresh reads and writes check that the selected RPCS3 process and start time remain the same, the current PPU hash still matches the selected profile, and the guest base still matches the current session log. A failed read check clears the displayed value. Interactive writes apply on Enter and still require a complete preliminary read, complete native write, and matching read-back. Diagnostic writes require `--confirm-write`. Ludava does not poll in the background; **G** re-detects the game, **R** refreshes, and a requested write triggers fresh checks.
 
 ## Measured PPU identities
 
