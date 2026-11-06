@@ -5,10 +5,10 @@ import 'package:test/test.dart';
 
 void main() {
   group('Flow Ludava CLI entry behaves correctly', () {
-    test('Flow Ludava CLI entry exposes the app composition root', () {
+    test('Flow Ludava CLI entry exposes the app composition root', () async {
       final output = StringBuffer();
 
-      final exitCode = LudavaCli().run(['--help'], output: output);
+      final exitCode = await LudavaCli().runAsync(['--help'], output: output);
 
       expect(exitCode, 0);
       expect(output.toString(), contains('Usage:'));

@@ -9,26 +9,15 @@ import 'package:ludava_tui/app/trainer_command_runner.dart';
 import '../support/fake_windows_memory_api.dart';
 
 void main() {
-  group('Method run() behaves correctly', () {
-    test('Method run() requires runAsync for interactive startup', () {
-      final errorOutput = StringBuffer();
-
-      final exitCode = TrainerCommandRunner(
-        sdk: LudavaSdk.create(),
-      ).run([], errorOutput: errorOutput);
-
-      expect(exitCode, 2);
-      expect(errorOutput.toString(), contains('started with runAsync'));
-    });
-
-    test('Method run() prints help without opening a process', () {
+  group('Method runAsync() behaves correctly', () {
+    test('Method runAsync() prints help without opening a process', () async {
       final output = StringBuffer();
       final errorOutput = StringBuffer();
       final api = FakeWindowsMemoryApi();
 
-      final exitCode = _runnerForApi(
+      final exitCode = await _runnerForApi(
         api,
-      ).run(['--help'], output: output, errorOutput: errorOutput);
+      ).runAsync(['--help'], output: output, errorOutput: errorOutput);
 
       expect(exitCode, 0);
       expect(
@@ -45,13 +34,13 @@ void main() {
     });
 
     test(
-      'Method run() reads the selected field through the generic profile',
-      () {
+      'Method runAsync() reads the selected field through the generic profile',
+      () async {
         final output = StringBuffer();
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
 
-        final exitCode = _writeCapableCli(api).run(
+        final exitCode = await _writeCapableCli(api).runAsync(
           [
             'read',
             '--game',
@@ -79,13 +68,13 @@ void main() {
     );
 
     test(
-      'Method run() delegates diagnostics to the SDK runtime capability',
-      () {
+      'Method runAsync() delegates diagnostics to the SDK runtime capability',
+      () async {
         final output = StringBuffer();
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
         final runner = _runnerForApi(api, processIds: const []);
 
-        final exitCode = runner.run([
+        final exitCode = await runner.runAsync([
           'read',
           '--game',
           'rc2-collection',
@@ -107,19 +96,19 @@ void main() {
     );
 
     test(
-      'Method run() does not discover processes when arguments are invalid',
-      () {
+      'Method runAsync() does not discover processes when arguments are invalid',
+      () async {
         var discoveryCalls = 0;
         final errorOutput = StringBuffer();
 
-        final exitCode = TrainerCommandRunner(
+        final exitCode = await TrainerCommandRunner(
           sdk: LudavaSdk.create(
             discoverProcessIds: () {
               discoveryCalls++;
               return const [];
             },
           ),
-        ).run(['read', '--pid', '42'], errorOutput: errorOutput);
+        ).runAsync(['read', '--pid', '42'], errorOutput: errorOutput);
 
         expect(exitCode, 2);
         expect(errorOutput.toString(), contains('--game, --field, --pid'));
@@ -127,42 +116,52 @@ void main() {
       },
     );
 
-    test('Method run() reports direct read failures and closes the handle', () {
-      final output = StringBuffer();
-      final api =
-          FakeWindowsMemoryApi()
-            ..readReturnValue = 0
-            ..errorCode = 299;
-
-      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 8).run([
-        'read',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-      ], output: output);
-
-      expect(exitCode, 1);
-      expect(output.toString(), contains('Status: native memory read failed'));
-      expect(output.toString(), contains('Windows error: 299'));
-      expect(api.closeCalls, 1);
-    });
-
     test(
-      'Method run() reports incomplete direct reads and closes the handle',
-      () {
+      'Method runAsync() reports direct read failures and closes the handle',
+      () async {
         final output = StringBuffer();
-        final api = FakeWindowsMemoryApi()..reportedReadBytes = 2;
+        final api =
+            FakeWindowsMemoryApi()
+              ..readReturnValue = 0
+              ..errorCode = 299;
 
-        final exitCode = _runnerForApi(
+        final exitCode = await _runnerForApi(
           api,
           isWindows: true,
           pointerSize: 8,
-        ).run([
+        ).runAsync([
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+        ], output: output);
+
+        expect(exitCode, 1);
+        expect(
+          output.toString(),
+          contains('Status: native memory read failed'),
+        );
+        expect(output.toString(), contains('Windows error: 299'));
+        expect(api.closeCalls, 1);
+      },
+    );
+
+    test(
+      'Method runAsync() reports incomplete direct reads and closes the handle',
+      () async {
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi()..reportedReadBytes = 2;
+
+        final exitCode = await _runnerForApi(
+          api,
+          isWindows: true,
+          pointerSize: 8,
+        ).runAsync([
           'read',
           '--game',
           'rc2-collection',
@@ -181,16 +180,16 @@ void main() {
     );
 
     test(
-      'Method run() reports an unknown profile before opening a process',
-      () {
+      'Method runAsync() reports an unknown profile before opening a process',
+      () async {
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
 
-        final exitCode = _runnerForApi(
+        final exitCode = await _runnerForApi(
           api,
           isWindows: true,
           pointerSize: 8,
-        ).run([
+        ).runAsync([
           'read',
           '--game',
           'unknown',
@@ -209,16 +208,16 @@ void main() {
     );
 
     test(
-      'Method run() reports an unavailable field before opening a process',
-      () {
+      'Method runAsync() reports an unavailable field before opening a process',
+      () async {
         final output = StringBuffer();
         final api = FakeWindowsMemoryApi();
 
-        final exitCode = _runnerForApi(
+        final exitCode = await _runnerForApi(
           api,
           isWindows: true,
           pointerSize: 8,
-        ).run([
+        ).runAsync([
           'read',
           '--game',
           'rc2-collection',
@@ -240,13 +239,13 @@ void main() {
     );
 
     test(
-      'Method run() writes bolts and reports a matching native read-back',
-      () {
+      'Method runAsync() writes bolts and reports a matching native read-back',
+      () async {
         final output = StringBuffer();
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 50];
 
-        final exitCode = _writeCapableCli(api).run(
+        final exitCode = await _writeCapableCli(api).runAsync(
           [
             'write',
             '--game',
@@ -291,8 +290,8 @@ void main() {
     );
 
     test(
-      'Method run() authorizes a direct write from the current PPU hash',
-      () {
+      'Method runAsync() authorizes a direct write from the current PPU hash',
+      () async {
         final output = StringBuffer();
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 50];
@@ -307,7 +306,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
 ''',
         );
 
-        final exitCode = cli.run(
+        final exitCode = await cli.runAsync(
           _rc2WriteArguments(),
           output: output,
           errorOutput: errorOutput,
@@ -324,8 +323,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
     );
 
     test(
-      'Method run() blocks a direct write when the latest event is a stop',
-      () {
+      'Method runAsync() blocks a direct write when the latest event is a stop',
+      () async {
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
         final cli = _logBackedCli(
@@ -339,7 +338,7 @@ sys_process: Process finished
 ''',
         );
 
-        final exitCode = cli.run(
+        final exitCode = await cli.runAsync(
           _rc2WriteArguments(),
           errorOutput: errorOutput,
         );
@@ -351,36 +350,23 @@ sys_process: Process finished
       },
     );
 
-    test('Method run() blocks a direct write at the Collection menu', () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
-      final cli = _logBackedCli(
-        api,
-        logContents: '''
+    test(
+      'Method runAsync() blocks a direct write at the Collection menu',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+        final cli = _logBackedCli(
+          api,
+          logContents: '''
 SYS: Path: D:/Games/Ratchet & Clank Collection.iso
 SYS: Title: Ratchet & Clank Collection
 SYS: Serial: BCUS98282
 SYS: Elf path: D:/Games/USRDIR/EBOOT.BIN
 ppu_loader: PPU executable hash: PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5
 ''',
-      );
+        );
 
-      final exitCode = cli.run(_rc2WriteArguments(), errorOutput: errorOutput);
-
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('Write blocked'));
-      expect(api.openCalls, 0);
-      expect(api.writeCalls, 0);
-    });
-
-    test(
-      'Method run() blocks a direct write when the current log has no game',
-      () {
-        final errorOutput = StringBuffer();
-        final api = FakeWindowsMemoryApi();
-        final cli = _logBackedCli(api, logContents: 'RPCS3 started');
-
-        final exitCode = cli.run(
+        final exitCode = await cli.runAsync(
           _rc2WriteArguments(),
           errorOutput: errorOutput,
         );
@@ -392,30 +378,55 @@ ppu_loader: PPU executable hash: PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5
       },
     );
 
-    test('Method run() blocks a direct write for an unknown PPU hash', () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
-      final cli = _logBackedCli(
-        api,
-        logContents: '''
+    test(
+      'Method runAsync() blocks a direct write when the current log has no game',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+        final cli = _logBackedCli(api, logContents: 'RPCS3 started');
+
+        final exitCode = await cli.runAsync(
+          _rc2WriteArguments(),
+          errorOutput: errorOutput,
+        );
+
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Write blocked'));
+        expect(api.openCalls, 0);
+        expect(api.writeCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() blocks a direct write for an unknown PPU hash',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+        final cli = _logBackedCli(
+          api,
+          logContents: '''
 SYS: Path: /dev_bdvd/PS3_GAME/USRDIR/Unknown.ppu.self
 SYS: Title: Ratchet & Clank Collection
 SYS: Serial: BCUS98282
 ppu_loader: PPU executable hash: PPU-0000000000000000000000000000000000000000
 ''',
-      );
+        );
 
-      final exitCode = cli.run(_rc2WriteArguments(), errorOutput: errorOutput);
+        final exitCode = await cli.runAsync(
+          _rc2WriteArguments(),
+          errorOutput: errorOutput,
+        );
 
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('Write blocked'));
-      expect(api.openCalls, 0);
-      expect(api.writeCalls, 0);
-    });
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Write blocked'));
+        expect(api.openCalls, 0);
+        expect(api.writeCalls, 0);
+      },
+    );
 
     test(
-      'Method run() blocks a direct write when RPCS3 instances share a log',
-      () {
+      'Method runAsync() blocks a direct write when RPCS3 instances share a log',
+      () async {
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
         final cli = _logBackedCli(
@@ -429,7 +440,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           processIds: const [42, 43],
         );
 
-        final exitCode = cli.run(
+        final exitCode = await cli.runAsync(
           _rc2WriteArguments(),
           errorOutput: errorOutput,
         );
@@ -442,8 +453,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
     );
 
     test(
-      'Method run() blocks a direct write when fresh log candidates are ambiguous',
-      () {
+      'Method runAsync() blocks a direct write when fresh log candidates are ambiguous',
+      () async {
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
         final cli = _logBackedCli(
@@ -457,7 +468,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           includeSecondCandidateLog: true,
         );
 
-        final exitCode = cli.run(
+        final exitCode = await cli.runAsync(
           _rc2WriteArguments(),
           errorOutput: errorOutput,
         );
@@ -470,8 +481,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
     );
 
     test(
-      'Method run() blocks a direct write when the fresh log is unreadable',
-      () {
+      'Method runAsync() blocks a direct write when the fresh log is unreadable',
+      () async {
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
         final cli = _logBackedCli(
@@ -480,7 +491,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           readLog: (_) => throw FileSystemException('sharing violation'),
         );
 
-        final exitCode = cli.run(
+        final exitCode = await cli.runAsync(
           _rc2WriteArguments(),
           errorOutput: errorOutput,
         );
@@ -495,171 +506,22 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       },
     );
 
-    test('Method run() blocks a write when identity is unresolved', () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
-      final identity = GameDetectionResult(
-        status: GameDetectionStatus.ambiguous,
-        processId: 42,
-        confidence: GameIdentityConfidence.uncertain,
-        evidenceDescription: 'Unknown PPU hash.',
-      );
-
-      final exitCode = _writeCapableCli(api, identity: identity).run([
-        'write',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-        '--value',
-        '50',
-        '--confirm-write',
-      ], errorOutput: errorOutput);
-
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('Write blocked'));
-      expect(api.openCalls, 0);
-      expect(api.writeCalls, 0);
-    });
-
-    test('Method run() blocks an automatic read when identity is stale', () {
-      final output = StringBuffer();
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
-      final identity = GameDetectionResult(
-        status: GameDetectionStatus.noActiveGame,
-        processId: 42,
-        confidence: GameIdentityConfidence.none,
-        evidenceDescription: 'The game has stopped.',
-      );
-
-      final exitCode = _writeCapableCli(api, identity: identity).run(
-        [
-          'read',
-          '--game',
-          'rc2-collection',
-          '--field',
-          'bolts',
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-          '--require-current-identity',
-        ],
-        output: output,
-        errorOutput: errorOutput,
-      );
-
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('Read blocked'));
-      expect(api.openCalls, 0);
-      expect(api.readCalls, 0);
-    });
-
     test(
-      'Method run() blocks an identity-guarded read when metadata fails',
-      () {
-        final output = StringBuffer();
+      'Method runAsync() blocks a write when identity is unresolved',
+      () async {
         final errorOutput = StringBuffer();
         final api = FakeWindowsMemoryApi();
-        final cli = TrainerCommandRunner(
-          sdk: LudavaSdk.create(
-            api: api.adapter,
-            isWindows: true,
-            pointerSize: 8,
-            discoverProcessIds: () => [42],
-            readProcessMetadata: (_) => throw Exception('metadata unavailable'),
-            resolveMemoryBaseCandidate: (_) => null,
-          ),
+        final identity = GameDetectionResult(
+          status: GameDetectionStatus.ambiguous,
+          processId: 42,
+          confidence: GameIdentityConfidence.uncertain,
+          evidenceDescription: 'Unknown PPU hash.',
         );
 
-        final exitCode = cli.run(
-          _rc2ReadArguments(requireCurrentIdentity: true),
-          output: output,
-          errorOutput: errorOutput,
-        );
-
-        expect(exitCode, 1);
-        expect(errorOutput.toString(), contains('Read blocked'));
-        expect(api.openCalls, 0);
-        expect(api.readCalls, 0);
-      },
-    );
-
-    test(
-      'Method run() blocks an identity-guarded read when detection fails',
-      () {
-        final output = StringBuffer();
-        final errorOutput = StringBuffer();
-        final api = FakeWindowsMemoryApi();
-        final cli = TrainerCommandRunner(
-          sdk: LudavaSdk.create(
-            api: api.adapter,
-            isWindows: true,
-            pointerSize: 8,
-            discoverProcessIds: () => [42],
-            readProcessMetadata:
-                (_) => Rpcs3ProcessMetadata(
-                  executablePath: r'C:\RPCS3\rpcs3.exe',
-                  startedAtUtc: DateTime.utc(2026, 11, 5, 10),
-                ),
-            resolveMemoryBaseCandidate: (_) => null,
-            detectGame: (_, _) => throw Exception('log read failed'),
-          ),
-        );
-
-        final exitCode = cli.run(
-          _rc2ReadArguments(requireCurrentIdentity: true),
-          output: output,
-          errorOutput: errorOutput,
-        );
-
-        expect(exitCode, 1);
-        expect(errorOutput.toString(), contains('Read blocked'));
-        expect(api.openCalls, 0);
-        expect(api.readCalls, 0);
-      },
-    );
-
-    test('Method run() blocks a write when the session base has changed', () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
-
-      final exitCode = _writeCapableCli(
-        api,
-        currentMemoryBase: 0x400000000,
-      ).run([
-        'write',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-        '--value',
-        '50',
-        '--confirm-write',
-      ], errorOutput: errorOutput);
-
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('memory base'));
-      expect(api.openCalls, 0);
-      expect(api.writeCalls, 0);
-    });
-
-    test(
-      'Method run() blocks a write when the selected process has exited',
-      () {
-        final errorOutput = StringBuffer();
-        final api = FakeWindowsMemoryApi();
-
-        final exitCode = _writeCapableCli(api, processIds: const []).run([
+        final exitCode = await _writeCapableCli(
+          api,
+          identity: identity,
+        ).runAsync([
           'write',
           '--game',
           'rc2-collection',
@@ -681,46 +543,216 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       },
     );
 
-    test('Method run() prevents a write when the preliminary read fails', () {
-      final output = StringBuffer();
-      final api =
-          FakeWindowsMemoryApi()
-            ..readReturnValue = 0
-            ..errorCode = 299;
+    test(
+      'Method runAsync() blocks an automatic read when identity is stale',
+      () async {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+        final identity = GameDetectionResult(
+          status: GameDetectionStatus.noActiveGame,
+          processId: 42,
+          confidence: GameIdentityConfidence.none,
+          evidenceDescription: 'The game has stopped.',
+        );
 
-      final exitCode = _writeCapableCli(api).run([
-        'write',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-        '--value',
-        '50',
-        '--confirm-write',
-      ], output: output);
+        final exitCode = await _writeCapableCli(
+          api,
+          identity: identity,
+        ).runAsync(
+          [
+            'read',
+            '--game',
+            'rc2-collection',
+            '--field',
+            'bolts',
+            '--pid',
+            '42',
+            '--memory-base',
+            '0x300000000',
+            '--require-current-identity',
+          ],
+          output: output,
+          errorOutput: errorOutput,
+        );
 
-      expect(exitCode, 1);
-      expect(
-        output.toString(),
-        contains('Status: preliminary memory read failed'),
-      );
-      expect(output.toString(), contains('Windows error: 299'));
-      expect(api.readCalls, 1);
-      expect(api.writeCalls, 0);
-      expect(api.closeCalls, 1);
-    });
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Read blocked'));
+        expect(api.openCalls, 0);
+        expect(api.readCalls, 0);
+      },
+    );
 
     test(
-      'Method run() prevents a write after an incomplete preliminary read',
-      () {
+      'Method runAsync() blocks an identity-guarded read when metadata fails',
+      () async {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+        final cli = TrainerCommandRunner(
+          sdk: LudavaSdk.create(
+            api: api.adapter,
+            isWindows: true,
+            pointerSize: 8,
+            discoverProcessIds: () => [42],
+            readProcessMetadata: (_) => throw Exception('metadata unavailable'),
+            resolveMemoryBaseCandidate: (_) => null,
+          ),
+        );
+
+        final exitCode = await cli.runAsync(
+          _rc2ReadArguments(requireCurrentIdentity: true),
+          output: output,
+          errorOutput: errorOutput,
+        );
+
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Read blocked'));
+        expect(api.openCalls, 0);
+        expect(api.readCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() blocks an identity-guarded read when detection fails',
+      () async {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+        final cli = TrainerCommandRunner(
+          sdk: LudavaSdk.create(
+            api: api.adapter,
+            isWindows: true,
+            pointerSize: 8,
+            discoverProcessIds: () => [42],
+            readProcessMetadata:
+                (_) => Rpcs3ProcessMetadata(
+                  executablePath: r'C:\RPCS3\rpcs3.exe',
+                  startedAtUtc: DateTime.utc(2026, 11, 5, 10),
+                ),
+            resolveMemoryBaseCandidate: (_) => null,
+            detectGame: (_, _) => throw Exception('log read failed'),
+          ),
+        );
+
+        final exitCode = await cli.runAsync(
+          _rc2ReadArguments(requireCurrentIdentity: true),
+          output: output,
+          errorOutput: errorOutput,
+        );
+
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Read blocked'));
+        expect(api.openCalls, 0);
+        expect(api.readCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() blocks a write when the session base has changed',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+
+        final exitCode = await _writeCapableCli(
+          api,
+          currentMemoryBase: 0x400000000,
+        ).runAsync([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '50',
+          '--confirm-write',
+        ], errorOutput: errorOutput);
+
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('memory base'));
+        expect(api.openCalls, 0);
+        expect(api.writeCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() blocks a write when the selected process has exited',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+
+        final exitCode = await _writeCapableCli(
+          api,
+          processIds: const [],
+        ).runAsync([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '50',
+          '--confirm-write',
+        ], errorOutput: errorOutput);
+
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Write blocked'));
+        expect(api.openCalls, 0);
+        expect(api.writeCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() prevents a write when the preliminary read fails',
+      () async {
+        final output = StringBuffer();
+        final api =
+            FakeWindowsMemoryApi()
+              ..readReturnValue = 0
+              ..errorCode = 299;
+
+        final exitCode = await _writeCapableCli(api).runAsync([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '50',
+          '--confirm-write',
+        ], output: output);
+
+        expect(exitCode, 1);
+        expect(
+          output.toString(),
+          contains('Status: preliminary memory read failed'),
+        );
+        expect(output.toString(), contains('Windows error: 299'));
+        expect(api.readCalls, 1);
+        expect(api.writeCalls, 0);
+        expect(api.closeCalls, 1);
+      },
+    );
+
+    test(
+      'Method runAsync() prevents a write after an incomplete preliminary read',
+      () async {
         final output = StringBuffer();
         final api = FakeWindowsMemoryApi()..reportedReadBytes = 2;
 
-        final exitCode = _writeCapableCli(api).run([
+        final exitCode = await _writeCapableCli(api).runAsync([
           'write',
           '--game',
           'rc2-collection',
@@ -746,8 +778,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
     );
 
     test(
-      'Method run() reports native write failures and closes the handle',
-      () {
+      'Method runAsync() reports native write failures and closes the handle',
+      () async {
         final output = StringBuffer();
         final api =
             FakeWindowsMemoryApi()
@@ -755,7 +787,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
               ..reportedWriteBytes = 0
               ..errorCode = 5;
 
-        final exitCode = _writeCapableCli(api).run([
+        final exitCode = await _writeCapableCli(api).runAsync([
           'write',
           '--game',
           'rc2-collection',
@@ -781,65 +813,71 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       },
     );
 
-    test('Method run() reports partial writes without reading back', () {
-      final output = StringBuffer();
-      final api = FakeWindowsMemoryApi()..reportedWriteBytes = 2;
+    test(
+      'Method runAsync() reports partial writes without reading back',
+      () async {
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi()..reportedWriteBytes = 2;
 
-      final exitCode = _writeCapableCli(api).run([
-        'write',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-        '--value',
-        '50',
-        '--confirm-write',
-      ], output: output);
+        final exitCode = await _writeCapableCli(api).runAsync([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '50',
+          '--confirm-write',
+        ], output: output);
 
-      expect(exitCode, 1);
-      expect(output.toString(), contains('Status: incomplete memory write'));
-      expect(api.readCalls, 1);
-      expect(api.closeCalls, 1);
-    });
+        expect(exitCode, 1);
+        expect(output.toString(), contains('Status: incomplete memory write'));
+        expect(api.readCalls, 1);
+        expect(api.closeCalls, 1);
+      },
+    );
 
-    test('Method run() rejects values above uint32 without writing', () {
-      final output = StringBuffer();
-      final api = FakeWindowsMemoryApi();
+    test(
+      'Method runAsync() rejects values above uint32 without writing',
+      () async {
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi();
 
-      final exitCode = _writeCapableCli(api).run([
-        'write',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-        '--value',
-        '4294967296',
-        '--confirm-write',
-      ], output: output);
+        final exitCode = await _writeCapableCli(api).runAsync([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '4294967296',
+          '--confirm-write',
+        ], output: output);
 
-      expect(exitCode, 1);
-      expect(
-        output.toString(),
-        contains('Status: value is outside the field range'),
-      );
-      expect(api.writeCalls, 0);
-      expect(api.readCalls, 0);
-      expect(api.closeCalls, 1);
-    });
+        expect(exitCode, 1);
+        expect(
+          output.toString(),
+          contains('Status: value is outside the field range'),
+        );
+        expect(api.writeCalls, 0);
+        expect(api.readCalls, 0);
+        expect(api.closeCalls, 1);
+      },
+    );
 
-    test('Method run() reports a read-back mismatch accurately', () {
+    test('Method runAsync() reports a read-back mismatch accurately', () async {
       final output = StringBuffer();
       final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 49];
 
-      final exitCode = _writeCapableCli(api).run([
+      final exitCode = await _writeCapableCli(api).runAsync([
         'write',
         '--game',
         'rc2-collection',
@@ -862,94 +900,50 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       expect(api.closeCalls, 1);
     });
 
-    test('Method run() reports read-back failures after a complete write', () {
-      final output = StringBuffer();
-      final api =
-          FakeWindowsMemoryApi()
-            ..readReturnValues = [1, 0]
-            ..errorCode = 299;
+    test(
+      'Method runAsync() reports read-back failures after a complete write',
+      () async {
+        final output = StringBuffer();
+        final api =
+            FakeWindowsMemoryApi()
+              ..readReturnValues = [1, 0]
+              ..errorCode = 299;
 
-      final exitCode = _writeCapableCli(api).run([
-        'write',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-        '--value',
-        '50',
-        '--confirm-write',
-      ], output: output);
+        final exitCode = await _writeCapableCli(api).runAsync([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '50',
+          '--confirm-write',
+        ], output: output);
 
-      expect(exitCode, 1);
-      expect(output.toString(), contains('Status: write read-back failed'));
-      expect(output.toString(), contains('Windows error: 299'));
-      expect(api.writeCalls, 1);
-      expect(api.readCalls, 2);
-      expect(api.closeCalls, 1);
-    });
+        expect(exitCode, 1);
+        expect(output.toString(), contains('Status: write read-back failed'));
+        expect(output.toString(), contains('Windows error: 299'));
+        expect(api.writeCalls, 1);
+        expect(api.readCalls, 2);
+        expect(api.closeCalls, 1);
+      },
+    );
 
-    test('Method run() reports unsupported platforms before opening', () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
+    test(
+      'Method runAsync() reports unsupported platforms before opening',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
 
-      final exitCode = _runnerForApi(
-        api,
-        isWindows: false,
-        pointerSize: 8,
-      ).run([
-        'read',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-      ], errorOutput: errorOutput);
-
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('Windows only'));
-      expect(api.openCalls, 0);
-      expect(api.closeCalls, 0);
-    });
-
-    test('Method run() reports unsupported pointer sizes before opening', () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
-
-      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 4).run([
-        'read',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'bolts',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-      ], errorOutput: errorOutput);
-
-      expect(exitCode, 1);
-      expect(errorOutput.toString(), contains('requires 64-bit Windows'));
-      expect(api.openCalls, 0);
-    });
-
-    test('Method run() reports handle-close failures after a read', () {
-      final output = StringBuffer();
-      final errorOutput = StringBuffer();
-      final api =
-          FakeWindowsMemoryApi()
-            ..readBytes = [0, 0, 0, 42]
-            ..closeReturnValue = 0
-            ..errorCode = 6;
-
-      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 8).run(
-        [
+        final exitCode = await _runnerForApi(
+          api,
+          isWindows: false,
+          pointerSize: 8,
+        ).runAsync([
           'read',
           '--game',
           'rc2-collection',
@@ -959,54 +953,128 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           '42',
           '--memory-base',
           '0x300000000',
-        ],
-        output: output,
-        errorOutput: errorOutput,
-      );
+        ], errorOutput: errorOutput);
 
-      expect(exitCode, 1);
-      expect(output.toString(), contains('Value: 42'));
-      expect(errorOutput.toString(), contains('CloseHandle'));
-      expect(errorOutput.toString(), contains('Windows error 6'));
-      expect(api.closeCalls, 1);
-    });
-
-    test('Method run() rejects unsupported write fields before opening', () {
-      final output = StringBuffer();
-      final api = FakeWindowsMemoryApi();
-
-      final exitCode = _runnerForApi(api, isWindows: true, pointerSize: 8).run([
-        'write',
-        '--game',
-        'rc2-collection',
-        '--field',
-        'health',
-        '--pid',
-        '42',
-        '--memory-base',
-        '0x300000000',
-        '--value',
-        '50',
-        '--confirm-write',
-      ], output: output);
-
-      expect(exitCode, 1);
-      expect(output.toString(), contains('field is not approved for writing'));
-      expect(api.openCalls, 0);
-      expect(api.writeCalls, 0);
-    });
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Windows only'));
+        expect(api.openCalls, 0);
+        expect(api.closeCalls, 0);
+      },
+    );
 
     test(
-      'Method run() reports inaccessible processes with the Windows error',
-      () {
+      'Method runAsync() reports unsupported pointer sizes before opening',
+      () async {
         final errorOutput = StringBuffer();
-        final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
+        final api = FakeWindowsMemoryApi();
 
-        final exitCode = _runnerForApi(
+        final exitCode = await _runnerForApi(
+          api,
+          isWindows: true,
+          pointerSize: 4,
+        ).runAsync([
+          'read',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'bolts',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+        ], errorOutput: errorOutput);
+
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('requires 64-bit Windows'));
+        expect(api.openCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() reports handle-close failures after a read',
+      () async {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api =
+            FakeWindowsMemoryApi()
+              ..readBytes = [0, 0, 0, 42]
+              ..closeReturnValue = 0
+              ..errorCode = 6;
+
+        final exitCode = await _runnerForApi(
           api,
           isWindows: true,
           pointerSize: 8,
-        ).run([
+        ).runAsync(
+          [
+            'read',
+            '--game',
+            'rc2-collection',
+            '--field',
+            'bolts',
+            '--pid',
+            '42',
+            '--memory-base',
+            '0x300000000',
+          ],
+          output: output,
+          errorOutput: errorOutput,
+        );
+
+        expect(exitCode, 1);
+        expect(output.toString(), contains('Value: 42'));
+        expect(errorOutput.toString(), contains('CloseHandle'));
+        expect(errorOutput.toString(), contains('Windows error 6'));
+        expect(api.closeCalls, 1);
+      },
+    );
+
+    test(
+      'Method runAsync() rejects unsupported write fields before opening',
+      () async {
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+
+        final exitCode = await _runnerForApi(
+          api,
+          isWindows: true,
+          pointerSize: 8,
+        ).runAsync([
+          'write',
+          '--game',
+          'rc2-collection',
+          '--field',
+          'health',
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+          '--value',
+          '50',
+          '--confirm-write',
+        ], output: output);
+
+        expect(exitCode, 1);
+        expect(
+          output.toString(),
+          contains('field is not approved for writing'),
+        );
+        expect(api.openCalls, 0);
+        expect(api.writeCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() reports inaccessible processes with the Windows error',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
+
+        final exitCode = await _runnerForApi(
+          api,
+          isWindows: true,
+          pointerSize: 8,
+        ).runAsync([
           'read',
           '--game',
           'rc2-collection',
@@ -1024,23 +1092,57 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       },
     );
 
-    test('Method run() returns an argument error before opening a process', () {
-      final errorOutput = StringBuffer();
-      final api = FakeWindowsMemoryApi();
+    test(
+      'Method runAsync() returns an argument error before opening a process',
+      () async {
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi();
+        final sdk = LudavaSdk.create(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () => const [],
+        );
+        final streamClosed = Completer<void>();
+        sdk.session.stateChanges.listen((_) {}, onDone: streamClosed.complete);
 
-      final exitCode = _runnerForApi(
-        api,
-        isWindows: true,
-        pointerSize: 8,
-      ).run(['read', '--pid', '42'], errorOutput: errorOutput);
+        final exitCode = await TrainerCommandRunner(
+          sdk: sdk,
+        ).runAsync(['read', '--pid', '42'], errorOutput: errorOutput);
+        await streamClosed.future.timeout(const Duration(seconds: 1));
 
-      expect(exitCode, 2);
-      expect(errorOutput.toString(), contains('--game, --field, --pid'));
-      expect(api.openCalls, 0);
-    });
-  });
+        expect(exitCode, 2);
+        expect(errorOutput.toString(), contains('--game, --field, --pid'));
+        expect(api.openCalls, 0);
+      },
+    );
 
-  group('Method runAsync() behaves correctly', () {
+    test(
+      'Method runAsync() disposes the SDK after a diagnostic memory failure',
+      () async {
+        final api = FakeWindowsMemoryApi(handleAddress: 0);
+        final sdk = LudavaSdk.create(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () => const [],
+        );
+        final streamClosed = Completer<void>();
+        sdk.session.stateChanges.listen((_) {}, onDone: streamClosed.complete);
+        final errorOutput = StringBuffer();
+
+        final exitCode = await TrainerCommandRunner(
+          sdk: sdk,
+        ).runAsync(_rc2ReadArguments(), errorOutput: errorOutput);
+        await streamClosed.future.timeout(const Duration(seconds: 1));
+
+        expect(exitCode, 1);
+        expect(errorOutput.toString(), contains('Windows error 5'));
+        expect(api.openCalls, 1);
+        expect(api.readCalls, 0);
+      },
+    );
+
     test(
       'Method runAsync() executes diagnostics and awaits runtime cleanup',
       () async {
@@ -1098,12 +1200,17 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       () async {
         var launchCalls = 0;
         final errors = StringBuffer();
+        final sdk = LudavaSdk.create();
+        final streamClosed = Completer<void>();
+        sdk.session.stateChanges.listen((_) {}, onDone: streamClosed.complete);
         final runner = TrainerCommandRunner(
+          sdk: sdk,
           hasTerminal: false,
           runNocterm: (_) async => launchCalls++,
         );
 
         final result = await runner.runAsync([], errorOutput: errors);
+        await streamClosed.future.timeout(const Duration(seconds: 1));
 
         expect(result, 2);
         expect(launchCalls, 0);

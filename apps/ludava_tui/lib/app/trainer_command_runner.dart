@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -25,23 +24,6 @@ class TrainerCommandRunner {
   final bool? _hasTerminal;
   final Future<void> Function(TrainerSessionController sessionController)?
   _runNocterm;
-
-  /// Runs one diagnostic command; use [runAsync] to await runtime cleanup.
-  int run(
-    List<String> arguments, {
-    StringSink? output,
-    StringSink? errorOutput,
-  }) {
-    try {
-      return _runDiagnostic(
-        arguments,
-        output: output,
-        errorOutput: errorOutput,
-      );
-    } finally {
-      unawaited(_sdk.dispose());
-    }
-  }
 
   /// Runs diagnostics or starts Nocterm, then awaits SDK resource cleanup.
   Future<int> runAsync(

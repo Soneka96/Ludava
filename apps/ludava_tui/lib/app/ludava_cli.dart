@@ -20,13 +20,6 @@ class LudavaCli {
 
   final TrainerCommandRunner _commandRunner;
 
-  /// Runs one CLI command and returns its process exit code.
-  int run(
-    List<String> arguments, {
-    StringSink? output,
-    StringSink? errorOutput,
-  }) => _commandRunner.run(arguments, output: output, errorOutput: errorOutput);
-
   /// Runs diagnostics or launches Nocterm and awaits runtime cleanup.
   Future<int> runAsync(
     List<String> arguments, {
