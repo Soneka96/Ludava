@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/data/models/rpcs3_game_identity_log_event.model.dart';
-import 'package:ludava/features/game_memory/data/models/rpcs3_game_identity_log_snapshot.model.dart';
+import 'package:ludava/features/game_detection/domain/entities/rpcs3_game_identity_log_event.entity.dart';
+import 'package:ludava/features/game_detection/domain/entities/rpcs3_game_identity_log_snapshot.entity.dart';
 import 'package:ludava/features/rpcs3_connection/data/datasources/windows_rpcs3_log.datasource.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 

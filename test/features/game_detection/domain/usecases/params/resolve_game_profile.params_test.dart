@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/domain/usecases/params/resolve_game_profile.params.dart';
+import 'package:ludava/features/game_detection/domain/usecases/params/resolve_game_profile.params.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 

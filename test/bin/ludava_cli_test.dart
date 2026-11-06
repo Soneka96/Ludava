@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-import 'package:ludava/features/game_memory/data/datasources/rpcs3_game_identity_log.datasource.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
+import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';

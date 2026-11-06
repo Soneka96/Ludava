@@ -1,8 +1,8 @@
 import 'package:ludava/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
-import 'package:ludava/features/game_memory/domain/usecases/params/resolve_game_profile.params.dart';
-import 'package:ludava/features/game_memory/domain/usecases/resolve_game_profile.usecase.dart';
+import 'package:ludava/features/game_detection/domain/usecases/params/resolve_game_profile.params.dart';
+import 'package:ludava/features/game_detection/domain/usecases/resolve_game_profile.usecase.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';
 

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';

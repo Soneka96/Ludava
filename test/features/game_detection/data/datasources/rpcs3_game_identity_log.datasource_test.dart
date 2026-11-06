@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/data/datasources/rpcs3_game_identity_log.datasource.dart';
+import 'package:ludava/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
 import 'package:ludava/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:test/test.dart';
 

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:ludava/features/game_memory/data/datasources/rpcs3_game_identity_log.datasource.dart';
+import 'package:ludava/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
 import 'package:ludava/features/rpcs3_connection/data/datasources/rpcs3_memory_base_resolver.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_console.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_memory_api.dart';
@@ -9,7 +9,8 @@ import 'package:ludava/features/rpcs3_connection/data/datasources/windows_proces
 import 'package:ludava/features/rpcs3_connection/data/datasources/windows_process_metadata.datasource.dart';
 import 'package:ludava/features/game_memory/data/datasources/windows_process_memory.datasource.dart';
 import 'package:ludava/features/game_memory/data/repositories/game_memory.repository.dart';
-import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava/features/game_detection/application/rpcs3_game_detection_workflow.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_read_result.entity.dart';
 import 'package:ludava/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava/features/game_memory/domain/entities/game_write_result.entity.dart';
@@ -19,8 +20,6 @@ import 'package:ludava/features/game_catalog/domain/profiles/game_profile_catalo
 import 'package:ludava/features/game_memory/domain/usecases/params/read_game_field.params.dart';
 import 'package:ludava/features/game_memory/domain/usecases/params/write_game_field.params.dart';
 import 'package:ludava/features/game_memory/domain/usecases/read_game_field.usecase.dart';
-import 'package:ludava/features/game_memory/domain/usecases/params/resolve_game_profile.params.dart';
-import 'package:ludava/features/game_memory/domain/usecases/resolve_game_profile.usecase.dart';
 import 'package:ludava/features/game_memory/domain/usecases/write_game_field.usecase.dart';
 import 'package:ludava/features/game_memory/presentation/cli/diagnostic_argument_parser.dart';
 import 'package:ludava/features/game_memory/presentation/cli/diagnostic_arguments.dart';
@@ -55,9 +54,6 @@ class LudavaCli {
        _resolveMemoryBaseCandidate = resolveMemoryBaseCandidate,
        _detectGame = detectGame,
        _gameIdentityLogDataSource = gameIdentityLogDataSource;
-
-  static const String _collectionMenuPpuHash =
-      'PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5';
 
   final WindowsMemoryApi? _api;
   final bool? _isWindows;
@@ -330,119 +326,14 @@ class LudavaCli {
   GameDetectionResult _detectGameFromLog(
     int processId,
     Rpcs3ProcessMetadata processMetadata,
-  ) {
-    final processIds = _findRpcs3ProcessIds();
-    if (!processIds.contains(processId)) {
-      return GameDetectionResult(
-        status: GameDetectionStatus.rpcs3NotRunning,
-        processId: processId,
-        confidence: GameIdentityConfidence.none,
-        evidenceDescription: 'The selected RPCS3 process is no longer running.',
-      );
-    }
-
-    final selectedDirectory =
-        File(processMetadata.executablePath).parent.absolute.path.toLowerCase();
-    for (final otherProcessId in processIds) {
-      if (otherProcessId == processId) continue;
-      try {
-        final otherMetadata = _readMetadata(otherProcessId);
-        final otherDirectory =
-            File(
-              otherMetadata.executablePath,
-            ).parent.absolute.path.toLowerCase();
-        if (otherDirectory == selectedDirectory) {
-          return _ambiguousDetection(
-            processId,
-            'Multiple RPCS3 processes share the selected log directory.',
-          );
-        }
-      } on Exception catch (error) {
-        return _ambiguousDetection(
-          processId,
-          'Another RPCS3 process could not be distinguished: $error',
-        );
-      } on UnsupportedError catch (error) {
-        return _ambiguousDetection(
-          processId,
-          'Another RPCS3 process could not be distinguished: $error',
-        );
-      }
-    }
-
-    final snapshots = (_gameIdentityLogDataSource ??
-            Rpcs3GameIdentityLogDataSource())
-        .readCandidates(processMetadata);
-    if (snapshots.length > 1) {
-      return _ambiguousDetection(
-        processId,
-        'Multiple fresh RPCS3 logs were found for the selected process.',
-      );
-    }
-    if (snapshots.isEmpty) {
-      return _ambiguousDetection(
-        processId,
-        'No fresh RPCS3 log could be tied to the selected process session.',
-      );
-    }
-
-    final snapshot = snapshots.single;
-    final event = snapshot.latestEvent;
-    if (event == null &&
-        snapshot.titles.isEmpty &&
-        snapshot.serials.isEmpty &&
-        snapshot.bootPaths.isEmpty) {
-      return GameDetectionResult(
-        status: GameDetectionStatus.noActiveGame,
-        processId: processId,
-        confidence: GameIdentityConfidence.none,
-        evidenceDescription: 'The current process log has no game-load event.',
-      );
-    }
-    if (event?.processFinished == true ||
-        event?.executableHash == _collectionMenuPpuHash) {
-      return GameDetectionResult(
-        status: GameDetectionStatus.noActiveGame,
-        processId: processId,
-        titleId: event?.titleId,
-        gameTitle: event?.title,
-        executable: event?.executable,
-        executableHash: event?.executableHash,
-        confidence: GameIdentityConfidence.none,
-        evidenceDescription:
-            'The latest RPCS3 lifecycle event shows the game stopped or the Collection menu loaded.',
-      );
-    }
-    if (event?.executableHash == null) {
-      return _ambiguousDetection(
-        processId,
-        'The latest RPCS3 boot has not produced a complete PPU hash yet.',
-      );
-    }
-
-    return ResolveGameProfileUseCase().execute(
-      ResolveGameProfileParams(
-        processId: processId,
-        titleId: event?.titleId,
-        gameTitle: event?.title,
-        executable: event?.executable,
-        executableHash: event?.executableHash,
-        confidence: GameIdentityConfidence.confirmed,
-        evidenceDescription:
-            'The latest complete PPU load and lifecycle state were read from the selected process session log.',
-      ),
-    );
-  }
-
-  GameDetectionResult _ambiguousDetection(
-    int processId,
-    String evidenceDescription,
-  ) => GameDetectionResult(
-    status: GameDetectionStatus.ambiguous,
-    processId: processId,
-    confidence: GameIdentityConfidence.uncertain,
-    evidenceDescription: evidenceDescription,
-  );
+  ) => Rpcs3GameDetectionWorkflow(
+    discoverProcessIds: _findRpcs3ProcessIds,
+    readProcessMetadata: _readMetadata,
+    readIdentityLogCandidates:
+        (metadata) =>
+            (_gameIdentityLogDataSource ?? Rpcs3GameIdentityLogDataSource())
+                .readCandidates(metadata),
+  ).detect(processId, processMetadata);
 
   bool _identityMatchesProfile(
     GameDetectionResult? identity,

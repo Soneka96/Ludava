@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava/shared/constants/enums.dart';
 import 'package:test/test.dart';

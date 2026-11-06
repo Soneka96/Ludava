@@ -1,4 +1,4 @@
-import 'package:ludava/features/game_memory/data/models/rpcs3_game_identity_log_event.model.dart';
+import 'package:ludava/features/game_detection/domain/entities/rpcs3_game_identity_log_event.entity.dart';
 import 'package:test/test.dart';
 
 void main() {
