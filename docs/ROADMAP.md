@@ -60,6 +60,6 @@ Milestones describe verified outcomes, not completed code alone.
 - [x] Add measured RC1/RC2/RC3 PPU hashes to profile matching and parse ordered current-session lifecycle events.
 - [x] Resolve a unique fresh guest base after identity and revalidate process, profile, hash, and base before writes.
 - [ ] Capture a live unsupported-game case and simultaneous RPCS3 instances; these remain unresolved by default.
-- [ ] Run the updated Ludava detector end-to-end on RPCS3 before claiming live Ludava detection compatibility.
+- [x] Owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during testing on a Windows laptop and a ROG Ally. The available notes do not map each game to each device or identify the exact RPCS3 build.
 
-**Current limit:** executable hashes were measured in one RPCS3 build and the log lifecycle was observed in one-process sessions. The final compiled CLI was live-smoke-tested with RC2; RC1/RC3 detector runs after the change are pending. Other RPCS3 builds, unsupported titles, and concurrent processes that share logs remain unverified. See [game-detection investigation](GAME_DETECTION.md).
+**Current limit:** executable hashes were measured in one RPCS3 build and the log lifecycle was observed in one-process sessions. The final compiled CLI was live-smoke-tested with RC2; the later owner confirmation covers all three embedded games, but does not include a per-device game matrix or exact runtime build. Other RPCS3 builds, unsupported titles, and concurrent processes that share logs remain unverified. See [game-detection investigation](GAME_DETECTION.md).
