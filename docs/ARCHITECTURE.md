@@ -55,6 +55,16 @@ Domain code must not import CLI, Flutter, Windows FFI, or concrete data sources.
 - **Emulator integration:** add process/log/session adapters under a dedicated connection feature. Keep emulator-specific process and log details out of `game_memory`.
 - **Future Flutter UI:** add a Flutter presentation under `trainer/presentation` and call trainer workflows and feature use cases. Do not call Windows adapters directly from widgets.
 
+## Trainer state and presentation boundaries
+
+The trainer application layer owns the one authoritative `TrainerSessionState`. Publish immutable snapshots through a Dart-native observation contract so Nocterm, diagnostic flows, and a future Flutter presentation can consume the same application behavior without importing a UI toolkit. Define how a new subscriber obtains the current snapshot, notify subscribers after every state transition, and provide deterministic cleanup for subscriptions and the publisher. Published collections must not be mutable through a snapshot.
+
+Keep only transient interaction state in presentation: for example, the selected row, an unsaved editor buffer, cursor position, and focus. Do not copy process identity, detected profile, memory base, or verified field values into a second presentation model. When the authoritative session changes, clear or re-evaluate presentation state tied to the previous process, game, profile, or memory base. Revalidate identity and memory evidence before every write; a presentation snapshot never grants write authority.
+
+The root Nocterm component observes application state, chooses the active screen, coordinates navigation, and cleans up its subscription. Connection, trainer, and editor screens render their own flows and dispatch explicit actions; they do not open native process handles or duplicate application workflows. Extract reusable components when they own a meaningful rendering or interaction responsibility, not just to wrap a single text element. Keep Nocterm-specific types in `trainer/presentation/nocterm`; the application controller and state contract remain reusable by another UI.
+
+Construct application services and presentation dependencies explicitly at the composition root. Prefer constructor injection and small behavior-owning interfaces for replaceable boundaries. Do not add a global service locator or a state-management framework unless a concrete requirement justifies it. See [`DEVELOPMENT.md`](DEVELOPMENT.md) for source, keyboard, and component testing conventions.
+
 ## Files, classes, and methods
 
 - Put each public class, entity, model, use case, repository, and data source in its own file. Name the file after its primary type and add a role suffix where it clarifies the type, such as `.entity.dart`, `.model.dart`, `.usecase.dart`, `.repository.dart`, or `.datasource.dart`.
