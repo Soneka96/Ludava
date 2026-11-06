@@ -1,5 +1,5 @@
-import 'package:ludava_sdk/app/diagnostic_game_memory_request.entity.dart';
-import 'package:ludava_sdk/app/diagnostic_game_memory_service.dart';
+import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_request.entity.dart';
+import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_service.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
@@ -8,7 +8,7 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:ludava_sdk/shared/platform/windows_memory_exception.dart';
 import 'package:test/test.dart';
 
-import '../support/fake_windows_memory_api.dart';
+import '../../../../support/fake_windows_memory_api.dart';
 
 void main() {
   group('Method execute() behaves correctly', () {

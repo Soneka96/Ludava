@@ -1,5 +1,5 @@
-import 'package:ludava_sdk/app/diagnostic_game_memory_request.entity.dart';
-import 'package:ludava_sdk/app/diagnostic_game_memory_result.entity.dart';
+import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_request.entity.dart';
+import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_result.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava_sdk/features/game_detection/application/rpcs3_game_detection_workflow.dart';

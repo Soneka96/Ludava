@@ -1,4 +1,4 @@
-import 'package:ludava_sdk/app/diagnostic_game_memory_request.entity.dart';
+import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_request.entity.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 

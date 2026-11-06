@@ -2,11 +2,11 @@
 library;
 
 export 'app/ludava_trainer_factory.dart' show LudavaTrainerFactory;
-export 'app/diagnostic_game_memory_request.entity.dart'
+export 'features/trainer/application/diagnostics/diagnostic_game_memory_request.entity.dart'
     show DiagnosticGameMemoryRequest;
-export 'app/diagnostic_game_memory_result.entity.dart'
+export 'features/trainer/application/diagnostics/diagnostic_game_memory_result.entity.dart'
     show DiagnosticGameMemoryResult;
-export 'app/diagnostic_game_memory_service.dart'
+export 'features/trainer/application/diagnostics/diagnostic_game_memory_service.dart'
     show DiagnosticGameMemoryService;
 export 'features/game_catalog/domain/entities/game_field.entity.dart'
     show GameField;
