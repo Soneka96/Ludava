@@ -80,13 +80,23 @@ The root `bin/` commands remain compatibility wrappers. The future Flutter
 application will be added as `apps/ludava_app` in a later project; it is not
 part of this workspace yet.
 
-Resolve and inspect the shared workspace from the repository root:
+Pub workspaces require Dart 3.6 or newer, while `dart pub workspace list` was
+added in Dart 3.13. Ludava's declared minimum is Dart 3.7, so the workspace
+works throughout the supported range but the listing command does not run on
+every supported SDK. See the official [Pub workspace guide](https://dart.dev/tools/pub/workspaces)
+and [Dart changelog](https://dart.dev/changelog) for these tool-version details.
+
+Resolve the shared workspace from the repository root. On Dart 3.13 or newer,
+the listing command also reports its members:
 
 ```powershell
 dart pub get
-dart pub workspace list
 dart analyze
 ```
+
+On Dart 3.13 or newer, also run `dart pub workspace list`. On Dart 3.7 through
+3.12, inspect the root `workspace` entry and each member's
+`resolution: workspace` setting instead.
 
 Run the SDK checks from its package directory:
 

@@ -36,9 +36,14 @@ Resolve the workspace and analyze the root and both packages:
 
 ```powershell
 dart pub get
-dart pub workspace list
 dart analyze
 ```
+
+The workspace manifests support Dart `>=3.7.0 <4.0.0`. On Dart 3.13 or newer,
+also run `dart pub workspace list`. On Dart 3.7 through 3.12, inspect the root
+`workspace` entries and each package's `resolution: workspace` setting
+instead. See [Development conventions](DEVELOPMENT.md#workspace-development)
+for the version details and official references.
 
 Run `dart analyze` and `dart test` from each package directory, then `dart test`
 at the repository root for compatibility entry points. Root commands do not

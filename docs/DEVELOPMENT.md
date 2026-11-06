@@ -62,7 +62,9 @@ Behaviorless type declarations do not need artificial tests. Every class with be
 
 The repository root owns Dart Pub Workspace membership, the shared lockfile, top-level documentation, and build/CI orchestration. Do not add package-local lockfiles or commit generated `.dart_tool/` directories. Each package owns its manifest, production sources, tests, and dependencies. Use `ludava_sdk` from frontends through declared package dependencies; do not use relative paths across package boundaries. Run analysis and tests for each package explicitly because root commands are not assumed to discover all workspace members. Preserve tests for any root compatibility entry points and run those tests in workspace CI too.
 
-From the repository root, run `dart pub get`, `dart pub workspace list`, and `dart analyze`. Then run `dart analyze` and `dart test` from each of `packages/ludava_sdk` and `apps/ludava_tui`. Run `dart test` at the repository root for compatibility entry points. The Windows release build is `tool/build_windows.ps1`; it can be invoked from outside the repository root.
+Pub workspaces were introduced in Dart 3.6; `dart pub workspace list` was added in Dart 3.13. The workspace package manifests declare Dart `>=3.7.0 <4.0.0`, so workspace resolution works across the supported range but the listing command requires Dart 3.13 or newer. See the official [Pub workspace guide](https://dart.dev/tools/pub/workspaces) and [Dart changelog](https://dart.dev/changelog). With Dart 3.7 through 3.12, run `dart pub get` and inspect the root `workspace` entries and each member's `resolution: workspace` field instead of using the listing command.
+
+From the repository root, run `dart pub get` and `dart analyze`; on Dart 3.13 or newer, also run `dart pub workspace list`. Then run `dart analyze` and `dart test` from each of `packages/ludava_sdk` and `apps/ludava_tui`. Run `dart test` at the repository root for compatibility entry points. The Windows release build is `tool/build_windows.ps1`; it can be invoked from outside the repository root.
 
 ## Dart formatting in CI
 
