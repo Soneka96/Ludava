@@ -202,7 +202,7 @@ Here, `request` is a `DiagnosticGameMemoryRequest` prepared by the caller from t
 
 ## Current implementation
 
-The checked-in Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. Its high-level source ownership is:
+The checked-in Dart workspace contains `packages/ludava_sdk`, `apps/ludava_tui`, and `apps/ludava_app`. Its high-level source ownership is:
 
 ```text
 Ludava/
@@ -224,6 +224,13 @@ Ludava/
 │   ├── lib/features/                        # Connection, trainer, editor, diagnostics UI
 │   ├── lib/shared/                          # TUI-local constants and terminal backend
 │   └── test/                                # Mirrored TUI tests
+├── apps/ludava_app/
+│   ├── lib/main.dart                        # Flutter application entry point
+│   ├── lib/app/                             # SDK runtime ownership and app root
+│   ├── lib/features/                        # Feature-first Flutter presentation
+│   ├── lib/shared/                          # Flutter-local design system and shared UI
+│   ├── test/                                # Flutter widget and unit tests
+│   └── windows/                             # Native Flutter Windows runner
 ├── bin/                                     # Root compatibility entry points
 ├── lib/app/ludava_cli.dart                  # Root compatibility export
 ├── test/                                    # Root compatibility tests
@@ -231,7 +238,7 @@ Ludava/
 └── tool/                                    # Build and boundary checks
 ```
 
-The SDK has no root `lib/app/`. The TUI has no interactive text menu; it owns Nocterm presentation and the explicit diagnostic CLI. Root `bin/`, `lib/`, and `test/` are compatibility surfaces, not another trainer implementation. The future Flutter package `apps/ludava_app` has not been created.
+The SDK has no root `lib/app/`. The TUI has no interactive text menu; it owns Nocterm presentation and the explicit diagnostic CLI. The Flutter app owns the desktop entry point and presentation lifecycle while consuming the public SDK API. Root `bin/`, `lib/`, and `test/` are compatibility surfaces, not another trainer implementation.
 
 The SDK's `game_memory` feature contains generic read/write use cases, Windows process-memory access, and shared process-handle operation ownership. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the current title ID, measured PPU hash, and executable name; a shared title ID alone cannot distinguish embedded games.
 

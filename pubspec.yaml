@@ -15,3 +15,4 @@ dev_dependencies:
 workspace:
   - packages/ludava_sdk
   - apps/ludava_tui
+  - apps/ludava_app
