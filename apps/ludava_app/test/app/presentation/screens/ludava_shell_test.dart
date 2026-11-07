@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
-import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
+import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -14,6 +14,8 @@ void main() {
         var minimizeCalls = 0;
         var maximizeCalls = 0;
         var closeCalls = 0;
+        final maximizeState = ValueNotifier(false);
+        addTearDown(maximizeState.dispose);
 
         await tester.pumpWidget(
           _wrap(
@@ -25,6 +27,7 @@ void main() {
               onCancelEditing: () {},
               onMinimize: () => minimizeCalls++,
               onToggleMaximize: () => maximizeCalls++,
+              isMaximized: maximizeState,
               onClose: () => closeCalls++,
               onRefresh: () {},
               onRedetect: () {},
@@ -36,8 +39,9 @@ void main() {
         expect(find.byType(SessionConnectionBody), findsOneWidget);
         expect(find.byType(TrainerFieldsPanel), findsNothing);
         expect(find.text('Connect to RPCS3'), findsOneWidget);
+        expect(find.text('RPCS3 Disconnected'), findsOneWidget);
         await tester.tap(find.byTooltip('Minimize window'));
-        await tester.tap(find.byTooltip('Maximize or restore window'));
+        await tester.tap(find.byTooltip('Maximize window'));
         await tester.tap(find.byTooltip('Close window'));
 
         expect(minimizeCalls, 1);
@@ -52,6 +56,8 @@ void main() {
     ) async {
       final profile = GameProfileCatalog.profiles.first;
       final field = profile.fields.values.first;
+      final maximizeState = ValueNotifier(false);
+      addTearDown(maximizeState.dispose);
       final session = TrainerSessionState(
         processIds: const [42],
         selectedProcessId: 42,
@@ -75,6 +81,7 @@ void main() {
             onCancelEditing: () {},
             onMinimize: () {},
             onToggleMaximize: () {},
+            isMaximized: maximizeState,
             onClose: () {},
             onRefresh: () {},
             onRedetect: () {},

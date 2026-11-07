@@ -4,6 +4,7 @@ import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart
 import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() {
@@ -11,6 +12,8 @@ void main() {
     testWidgets('Class LudavaWindowTitleBar uses the supplied theme', (
       tester,
     ) async {
+      final maximizeState = ValueNotifier(false);
+      addTearDown(maximizeState.dispose);
       final tokens = GraphiteTealTheme.tokens.copyWith(
         surface: const Color(0xFF112233),
         borderSubtle: const Color(0xFF334455),
@@ -22,6 +25,8 @@ void main() {
           theme: theme,
           home: Scaffold(
             body: LudavaWindowTitleBar(
+              session: TrainerSessionState(),
+              isMaximized: maximizeState,
               onMinimize: () {},
               onToggleMaximize: () {},
               onClose: () {},
@@ -46,9 +51,10 @@ void main() {
         theme.colorScheme.secondary,
       );
       expect(find.text('Ludava'), findsOneWidget);
+      expect(find.text('RPCS3 Disconnected'), findsOneWidget);
       expect(find.byType(DragToMoveArea), findsOneWidget);
       expect(find.byTooltip('Minimize window'), findsOneWidget);
-      expect(find.byTooltip('Maximize or restore window'), findsOneWidget);
+      expect(find.byTooltip('Maximize window'), findsOneWidget);
       expect(find.byTooltip('Close window'), findsOneWidget);
       expect(
         tester
@@ -61,7 +67,7 @@ void main() {
         LudavaDimensions.minimumInteractiveTarget,
       );
       expect(
-        tester.getSize(find.byTooltip('Maximize or restore window')).width,
+        tester.getSize(find.byTooltip('Maximize window')).width,
         LudavaDimensions.minimumInteractiveTarget,
       );
       expect(
@@ -76,27 +82,36 @@ void main() {
       );
       expect(
         controls.map((control) => control.tooltip),
-        contains('Maximize or restore window'),
+        contains('Maximize window'),
       );
       expect(
         controls.map((control) => control.tooltip),
         contains('Close window'),
       );
+
+      maximizeState.value = true;
+      await tester.pump();
+      expect(find.byTooltip('Restore window'), findsOneWidget);
+      expect(find.byIcon(Icons.filter_none_rounded), findsOneWidget);
     });
 
     testWidgets('Class LudavaWindowTitleBar fits narrow and wide widths', (
       tester,
     ) async {
-      tester.view.physicalSize = const Size(360, 120);
+      tester.view.physicalSize = const Size(720, 120);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      final maximizeState = ValueNotifier(false);
+      addTearDown(maximizeState.dispose);
 
       await tester.pumpWidget(
         MaterialApp(
           theme: LudavaTheme.graphiteAndTeal,
           home: Scaffold(
             body: LudavaWindowTitleBar(
+              session: TrainerSessionState(),
+              isMaximized: maximizeState,
               onMinimize: () {},
               onToggleMaximize: () {},
               onClose: () {},
@@ -121,12 +136,16 @@ void main() {
       var minimizeCount = 0;
       var maximizeCount = 0;
       var closeCount = 0;
+      final maximizeState = ValueNotifier(false);
+      addTearDown(maximizeState.dispose);
 
       await tester.pumpWidget(
         MaterialApp(
           theme: LudavaTheme.graphiteAndTeal,
           home: Scaffold(
             body: LudavaWindowTitleBar(
+              session: TrainerSessionState(processIds: const [10]),
+              isMaximized: maximizeState,
               onMinimize: () => minimizeCount++,
               onToggleMaximize: () => maximizeCount++,
               onClose: () => closeCount++,
@@ -136,9 +155,10 @@ void main() {
       );
 
       await tester.tap(find.byTooltip('Minimize window'));
-      await tester.tap(find.byTooltip('Maximize or restore window'));
+      await tester.tap(find.byTooltip('Maximize window'));
       await tester.tap(find.byTooltip('Close window'));
 
+      expect(find.text('RPCS3 Connected'), findsOneWidget);
       expect(minimizeCount, 1);
       expect(maximizeCount, 1);
       expect(closeCount, 1);

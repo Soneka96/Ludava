@@ -4,6 +4,7 @@ import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
   group('Property LudavaTheme.graphiteAndTeal behaves correctly', () {
@@ -53,6 +54,8 @@ void main() {
     testWidgets('Property LudavaTheme supports a test-only semantic variant', (
       tester,
     ) async {
+      final maximizeState = ValueNotifier(false);
+      addTearDown(maximizeState.dispose);
       final alternateTokens = GraphiteTealTheme.tokens.copyWith(
         surface: Colors.deepPurple,
         borderSubtle: Colors.orange,
@@ -66,6 +69,8 @@ void main() {
           theme: alternateTheme,
           home: Scaffold(
             body: LudavaWindowTitleBar(
+              session: TrainerSessionState(),
+              isMaximized: maximizeState,
               onMinimize: () {},
               onToggleMaximize: () {},
               onClose: () {},

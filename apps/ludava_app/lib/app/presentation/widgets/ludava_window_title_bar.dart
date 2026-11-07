@@ -1,11 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:ludava_app/app/presentation/widgets/ludava_window_control_button.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator.dart';
 import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Renders the integrated Ludava title bar and accessible window controls.
 class LudavaWindowTitleBar extends StatelessWidget {
+  /// Latest SDK snapshot used to show basic RPCS3 process availability.
+  final TrainerSessionState session;
+
+  /// Current native maximize state.
+  final ValueListenable<bool> isMaximized;
+
   /// Minimizes the application window.
   final VoidCallback onMinimize;
 
@@ -17,6 +27,8 @@ class LudavaWindowTitleBar extends StatelessWidget {
 
   /// Creates the title bar with the native window actions supplied by its owner.
   const LudavaWindowTitleBar({
+    required this.session,
+    required this.isMaximized,
     required this.onMinimize,
     required this.onToggleMaximize,
     required this.onClose,
@@ -28,15 +40,6 @@ class LudavaWindowTitleBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
-    final maximizeButton = SizedBox(
-      width: LudavaDimensions.windowControlWidth,
-      height: LudavaDimensions.titleBarHeight,
-      child: IconButton(
-        tooltip: 'Maximize or restore window',
-        onPressed: onToggleMaximize,
-        icon: const Icon(Icons.crop_square_rounded),
-      ),
-    );
     return DecoratedBox(
       key: const ValueKey('ludava-titlebar-surface'),
       decoration: BoxDecoration(
@@ -71,18 +74,30 @@ class LudavaWindowTitleBar extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const Spacer(),
+                      Rpcs3ConnectionIndicator(session: session),
+                      const SizedBox(width: LudavaSpacing.md),
                     ],
                   ),
                 ),
               ),
             ),
-            _buildControl(
+            LudavaWindowControlButton(
               tooltip: 'Minimize window',
               icon: Icons.remove_rounded,
               onPressed: onMinimize,
             ),
-            maximizeButton,
-            _buildControl(
+            ValueListenableBuilder<bool>(
+              valueListenable: isMaximized,
+              builder: (context, maximized, child) => LudavaWindowControlButton(
+                tooltip: maximized ? 'Restore window' : 'Maximize window',
+                icon: maximized
+                    ? Icons.filter_none_rounded
+                    : Icons.crop_square_rounded,
+                onPressed: onToggleMaximize,
+              ),
+            ),
+            LudavaWindowControlButton(
               tooltip: 'Close window',
               icon: Icons.close_rounded,
               onPressed: onClose,
@@ -92,19 +107,4 @@ class LudavaWindowTitleBar extends StatelessWidget {
       ),
     );
   }
-
-  /// Creates a caption button with the theme's shared hit target and style.
-  Widget _buildControl({
-    required String tooltip,
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) => SizedBox(
-    width: LudavaDimensions.windowControlWidth,
-    height: LudavaDimensions.titleBarHeight,
-    child: IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: LudavaDimensions.iconSmall),
-    ),
-  );
 }

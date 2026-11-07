@@ -279,7 +279,7 @@ void main() {
           findsOneWidget,
         );
         expect(find.byTooltip('Minimize window'), findsOneWidget);
-        expect(find.byTooltip('Maximize or restore window'), findsOneWidget);
+        expect(find.byTooltip('Maximize window'), findsOneWidget);
         expect(find.byTooltip('Close window'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
@@ -344,7 +344,7 @@ void main() {
 
       await tester.pumpWidget(_app(sdk: sdk, windowController: window));
       await tester.tap(find.byTooltip('Minimize window'));
-      await tester.tap(find.byTooltip('Maximize or restore window'));
+      await tester.tap(find.byTooltip('Maximize window'));
       await tester.tap(find.byTooltip('Close window'));
 
       expect(window.configureCalls, 1);

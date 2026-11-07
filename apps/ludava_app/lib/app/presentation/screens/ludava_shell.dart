@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
-import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
+import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
@@ -30,6 +31,9 @@ class LudavaShell extends StatelessWidget {
   /// Toggles the native window between maximized and restored states.
   final VoidCallback onToggleMaximize;
 
+  /// Current maximized state reported by the native window manager.
+  final ValueListenable<bool> isMaximized;
+
   /// Closes the native window.
   final VoidCallback onClose;
 
@@ -51,6 +55,7 @@ class LudavaShell extends StatelessWidget {
     required this.onCancelEditing,
     required this.onMinimize,
     required this.onToggleMaximize,
+    required this.isMaximized,
     required this.onClose,
     required this.onRefresh,
     required this.onRedetect,
@@ -66,6 +71,8 @@ class LudavaShell extends StatelessWidget {
       body: Column(
         children: [
           LudavaWindowTitleBar(
+            session: session,
+            isMaximized: isMaximized,
             onMinimize: onMinimize,
             onToggleMaximize: onToggleMaximize,
             onClose: onClose,

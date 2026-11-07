@@ -50,6 +50,7 @@ class _LudavaAppState extends State<LudavaApp> {
   @override
   void dispose() {
     _shuttingDown = true;
+    _windowController.dispose();
     unawaited(_disposeResources());
     super.dispose();
   }
@@ -70,6 +71,7 @@ class _LudavaAppState extends State<LudavaApp> {
         onCancelEditing: _cancelFieldEdit,
         onMinimize: _minimizeWindow,
         onToggleMaximize: _toggleMaximizeWindow,
+        isMaximized: _windowController.isMaximized,
         onClose: _closeWindow,
         onRefresh: _refreshSession,
         onRedetect: _redetectSession,

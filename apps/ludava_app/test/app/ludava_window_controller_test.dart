@@ -55,6 +55,7 @@ void main() {
             minimumSize = minimum;
             initialSize = initial;
           },
+          registerWindowStateObserver: (_) => () {},
         );
 
         controller.configure();
@@ -63,6 +64,33 @@ void main() {
         expect(initialSize, const Size(1180, 760));
       },
     );
+
+    test('Method LudavaWindowController.configure() tracks maximize and restore events', () {
+      final window = Window.borrowed(0);
+      ValueChanged<bool>? onMaximizedChanged;
+      var removeCalls = 0;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        isWindows: () => true,
+        onConfigureWindow: (_, _, _) {},
+        registerWindowStateObserver: (onChanged) {
+          onMaximizedChanged = onChanged;
+          return () => removeCalls++;
+        },
+      );
+
+      controller.configure();
+      expect(controller.isMaximized.value, isFalse);
+
+      onMaximizedChanged!(true);
+      expect(controller.isMaximized.value, isTrue);
+
+      onMaximizedChanged!(false);
+      expect(controller.isMaximized.value, isFalse);
+
+      controller.dispose();
+      expect(removeCalls, 1);
+    });
   });
 
   group('Method LudavaWindowController.minimize() behaves correctly', () {

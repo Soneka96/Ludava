@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ludava_app/features/connection/presentation/connection_dimensions.dart';
-import 'package:ludava_app/features/connection/presentation/rpcs3_process_picker.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_picker.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
