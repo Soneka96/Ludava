@@ -22,7 +22,7 @@ void main() {
 
       await tester.pumpWidget(_wrap(session));
 
-      expect(find.text('RPCS3 Connected'), findsOneWidget);
+      expect(find.text('RPCS3'), findsOneWidget);
       expect(find.byTooltip('RPCS3 Connected'), findsOneWidget);
       expect(find.text('No active game'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -33,7 +33,7 @@ void main() {
     ) async {
       await tester.pumpWidget(_wrap(TrainerSessionState()));
 
-      expect(find.text('RPCS3 Disconnected'), findsOneWidget);
+      expect(find.text('RPCS3'), findsOneWidget);
       expect(find.byTooltip('RPCS3 Disconnected'), findsOneWidget);
     });
   });

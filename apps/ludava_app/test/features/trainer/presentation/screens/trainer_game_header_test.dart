@@ -293,7 +293,10 @@ void main() {
         LudavaBreakpoints.trainerHeaderWide,
         LudavaBreakpoints.trainerHeaderWide + 1,
       ]) {
-        tester.view.physicalSize = Size(width, 320);
+        tester.view.physicalSize = Size(
+          width,
+          LudavaDimensions.minimumWindowHeight,
+        );
         await tester.pumpWidget(
           _wrap(
             TrainerGameHeader(

@@ -50,11 +50,7 @@ void main() {
       expect(markDecoration.color, theme.colorScheme.secondary);
       expect(markDecoration.borderRadius, BorderRadius.circular(4));
       expect(find.text('Ludava'), findsOneWidget);
-      expect(
-        tester.widget<Text>(find.text('Ludava')).style?.fontWeight,
-        theme.textTheme.titleSmall?.fontWeight,
-      );
-      expect(find.text('RPCS3 Disconnected'), findsOneWidget);
+      expect(find.text('RPCS3'), findsOneWidget);
       expect(find.byType(DragToMoveArea), findsOneWidget);
       expect(find.byTooltip('Minimize window'), findsOneWidget);
       expect(find.byTooltip('Maximize window'), findsOneWidget);
@@ -161,7 +157,7 @@ void main() {
       await tester.tap(find.byTooltip('Maximize window'));
       await tester.tap(find.byTooltip('Close window'));
 
-      expect(find.text('RPCS3 Connected'), findsOneWidget);
+      expect(find.text('RPCS3'), findsOneWidget);
       expect(minimizeCount, 1);
       expect(maximizeCount, 1);
       expect(closeCount, 1);

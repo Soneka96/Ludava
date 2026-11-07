@@ -34,7 +34,7 @@ class Rpcs3ConnectionIndicator extends StatelessWidget {
             Icon(Icons.circle_rounded, size: _dotSize, color: color),
             const SizedBox(width: LudavaSpacing.sm),
             Text(
-              message,
+              'RPCS3',
               style: theme.textTheme.labelMedium?.copyWith(color: color),
             ),
           ],

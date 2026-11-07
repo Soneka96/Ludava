@@ -14,6 +14,7 @@ void main() {
       expect(theme.brightness, Brightness.dark);
       expect(theme.useMaterial3, isTrue);
       expect(theme.textTheme.bodyMedium?.fontFamily, 'Segoe UI');
+      expect(theme.textTheme.titleSmall?.fontWeight, FontWeight.w600);
       expect(theme.filledButtonTheme.style, isNotNull);
       expect(theme.outlinedButtonTheme.style, isNotNull);
       expect(theme.textButtonTheme.style, isNotNull);

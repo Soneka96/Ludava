@@ -40,7 +40,7 @@ void main() {
         expect(find.byType(SessionConnectionBody), findsOneWidget);
         expect(find.byType(TrainerFieldsPanel), findsNothing);
         expect(find.text('Connect to RPCS3'), findsOneWidget);
-        expect(find.text('RPCS3 Disconnected'), findsOneWidget);
+        expect(find.text('RPCS3'), findsOneWidget);
         await tester.tap(find.byTooltip('Minimize window'));
         await tester.tap(find.byTooltip('Maximize window'));
         await tester.tap(find.byTooltip('Close window'));
