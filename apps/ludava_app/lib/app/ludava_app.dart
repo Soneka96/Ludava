@@ -1,15 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ludava_app/app/ludava_window_controller.dart';
+import 'package:ludava_app/app/ludava_window_title_bar.dart';
+import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// Root Flutter presentation for one owned [LudavaSdk] runtime.
 class LudavaApp extends StatefulWidget {
   /// Optional SDK instance, primarily used to provide deterministic test state.
   final LudavaSdk? sdk;
 
-  /// Creates the application and optionally accepts its owned [sdk].
-  const LudavaApp({this.sdk, super.key});
+  /// Optional native window controller for tests and desktop composition.
+  final LudavaWindowController? windowController;
+
+  /// Optional theme override for deterministic presentation tests.
+  final ThemeData? theme;
+
+  /// Creates the application and optionally accepts owned runtime seams.
+  const LudavaApp({this.sdk, this.windowController, this.theme, super.key});
 
   /// Creates state that owns the SDK runtime and its state subscription.
   @override
@@ -18,6 +29,7 @@ class LudavaApp extends StatefulWidget {
 
 class _LudavaAppState extends State<LudavaApp> {
   late final LudavaSdk _sdk;
+  late final LudavaWindowController _windowController;
   late TrainerSessionState _session;
   StreamSubscription<TrainerSessionState>? _stateSubscription;
   bool _shuttingDown = false;
@@ -26,6 +38,8 @@ class _LudavaAppState extends State<LudavaApp> {
   @override
   void initState() {
     super.initState();
+    _windowController = widget.windowController ?? LudavaWindowController();
+    _windowController.configure();
     _sdk = widget.sdk ?? LudavaSdk.create();
     _session = _sdk.session.state;
     _stateSubscription = _sdk.session.stateChanges.listen(_handleStateChanged);
@@ -42,23 +56,52 @@ class _LudavaAppState extends State<LudavaApp> {
 
   /// Renders the current connection summary from the latest SDK snapshot.
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Ludava',
-    debugShowCheckedModeBanner: false,
-    home: Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: _buildSessionSummary(),
+  Widget build(BuildContext context) {
+    final theme = widget.theme ?? LudavaTheme.graphiteAndTeal;
+    return MaterialApp(
+      title: 'Ludava',
+      debugShowCheckedModeBanner: false,
+      theme: theme,
+      home: DragToResizeArea(
+        resizeEdgeSize: AppLayoutConstants.resizeHandleSize,
+        child: Scaffold(
+          body: Column(
+            children: [
+              LudavaWindowTitleBar(
+                onMinimize: _minimizeWindow,
+                onToggleMaximize: _toggleMaximizeWindow,
+                onClose: _closeWindow,
+              ),
+              Expanded(
+                child: SafeArea(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(
+                        AppLayoutConstants.contentInset,
+                      ),
+                      child: _buildSessionSummary(theme),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  /// Minimizes the current native application window when it is available.
+  void _minimizeWindow() => _windowController.minimize();
+
+  /// Toggles the current native window between maximized and restored sizes.
+  void _toggleMaximizeWindow() => _windowController.toggleMaximize();
+
+  /// Closes the current native application window when it is available.
+  void _closeWindow() => _windowController.close();
 
   /// Shows a basic startup summary until the feature screens are added.
-  Widget _buildSessionSummary() {
+  Widget _buildSessionSummary(ThemeData theme) {
     final state = _session;
     final message = switch (state) {
       TrainerSessionState(:final errorMessage?) => errorMessage,
@@ -72,7 +115,11 @@ class _LudavaAppState extends State<LudavaApp> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('LUDAVA', style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          'Ludava',
+          key: const ValueKey('ludava-session-heading'),
+          style: theme.textTheme.headlineMedium,
+        ),
         const SizedBox(height: 12),
         Text(message, textAlign: TextAlign.center),
       ],

@@ -89,6 +89,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.3"
+  cnativeapi:
+    dependency: transitive
+    description:
+      name: cnativeapi
+      sha256: c43703998995e132b0656d2b8a95ed2bedc6b22ccee2c827bcdc075e0330e319
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.10"
+  code_assets:
+    dependency: transitive
+    description:
+      name: code_assets
+      sha256: "1ef22a0be3af9370bd9481ac76db114db92bfe75d5ca2b2d7bc911764478a4d9"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
   collection:
     dependency: transitive
     description:
@@ -184,6 +200,14 @@ packages:
     description:
       name: glob
       sha256: "218aeb56050c714f62a3182775320dfa04602b55074873e24e31bbd39bda96fb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
+  hooks:
+    dependency: transitive
+    description:
+      name: hooks
+      sha256: eaac480a35ec0814146c2c48d96aaa829e0e44a7662c88ae84c9edf4bc35651f
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
@@ -307,6 +331,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  native_toolchain_c:
+    dependency: transitive
+    description:
+      name: native_toolchain_c
+      sha256: "120b6fc66acd8a5ddeaeb1e59b78836bb3ec9919bd9d9dfb1e2401985710c2c0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.19.6"
+  nativeapi:
+    dependency: transitive
+    description:
+      name: nativeapi
+      sha256: "118045bb549cb6fabad472a3a22a537e7310bbf20097350f5027808b4a5853ce"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.10"
+  nativeapi_flutter:
+    dependency: transitive
+    description:
+      name: nativeapi_flutter
+      sha256: "357a405c69212f5157da1bd3be183a53c2b841d0de0eb51f4a3947913712aec4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.10"
   nocterm:
     dependency: transitive
     description:
@@ -339,6 +387,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
+  platform:
+    dependency: transitive
+    description:
+      name: platform
+      sha256: a36d119c13416516a7b5913fbe8af8531e11633d784c550b2125f76c758524ec
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.0"
   pool:
     dependency: transitive
     description:
@@ -355,6 +411,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.4"
+  process:
+    dependency: transitive
+    description:
+      name: process
+      sha256: "4242ba3508d37e01808bdf71ad1d5bb93a8d671bf2e7450e6b1b353fb0808891"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.0.6"
   pub_semver:
     dependency: transitive
     description:
@@ -371,6 +435,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.2.2"
+  record_use:
+    dependency: transitive
+    description:
+      name: record_use
+      sha256: "1cb8564af8d43b464294411db9217f5ec04891c6f22ee2c32d73ae05e88a6bd2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.1"
   shelf:
     dependency: transitive
     description:
@@ -560,6 +632,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.1"
+  window_manager:
+    dependency: transitive
+    description:
+      name: window_manager
+      sha256: bdd6b1a2c1ce50f3bba7ffbaa0d5dc5feb6b6a24fd20269da4de90244f77a471
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.0"
   yaml:
     dependency: transitive
     description:
@@ -578,4 +658,4 @@ packages:
     version: "0.0.6"
 sdks:
   dart: ">=3.13.0 <4.0.0"
-  flutter: ">=3.18.0-18.0.pre.54"
+  flutter: ">=3.47.0"
