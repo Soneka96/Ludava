@@ -18,9 +18,9 @@ Keep game-specific offsets, value types, endianness, write bounds, and evidence 
 
 The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU loads and process-finished events into identity evidence, then deciding whether that evidence selects a supported profile, belongs to `game_detection`.
 
-### Standalone PS3 game evidence
+### Game identity and evidence ownership
 
-A standalone PS3 release is represented by a profile in `game_catalog`, just like an embedded Collection game. Its title ID, executable name, PPU hash, and lifecycle must come from the actual RPCS3 build being supported; Collection menu identity and embedded-game transitions must not be assumed. Automatic matching continues to require the current title ID, executable name, and measured PPU hash. External memory-address research remains a candidate until Ludava reads are compared with distinct live gameplay values, and it does not enable writes. See [`GAME_DETECTION.md`](GAME_DETECTION.md) and [`COMPATIBILITY.md`](COMPATIBILITY.md) for the evidence distinctions and current measurements.
+Game/build profiles are data in `game_catalog`; current identity uses the registered title ID, executable name and measured PPU hash, evaluated with fresh lifecycle evidence. External live research can qualify for `researchConfirmed` under the [development workflow](DEVELOPMENT.md#research-first-game-field-workflow); an untested address cannot enable writes by itself. See [game detection](features/game-detection.md), [game memory](features/game-memory.md), and per-game research in [`games/`](games/collection.md).
 
 `game_memory` owns the shared process-memory operation that opens a process handle, executes the generic field read or guarded write use case, records operation and cleanup failures separately, and closes the handle. Trainer-session and diagnostic services share this operation while keeping their distinct identity and authorization policies. `game_detection` owns the RPCS3 evidence workflow and profile decision; session and diagnostic services request detection through that feature capability.
 
@@ -152,7 +152,7 @@ Construct application services and presentation dependencies explicitly at the c
 
 - Test behavior at its owner. Use fakes for deterministic memory boundaries and test the Windows adapter through an injected native API; unit tests must not read or write a live game's memory.
 - Test pure value/codec/address behavior directly. Test use cases with fake repository contracts, repositories with fake data sources, and data sources with fake native APIs.
-- Add a small number of integration tests for important seams. Passing automated tests does not establish game/build compatibility; that requires recorded live-game evidence in `docs/COMPATIBILITY.md`.
+- Add a small number of integration tests for important seams. Passing automated tests does not establish game/build compatibility; that requires recorded live-game evidence in the corresponding `docs/games/<profile>.md`.
 - Keep tests for root compatibility entry points and run those checks in workspace CI alongside the SDK and TUI suites.
 - Use one top-level group per public method, named `Method methodName() behaves correctly`. Name each scenario `Method methodName() <outcome>` and add `when <condition>` when the condition is not already clear from the outcome. Use clear outcomes such as `returns`, `preserves`, `rejects`, and `throws`.
 - Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
@@ -172,7 +172,7 @@ Construct application services and presentation dependencies explicitly at the c
 
 ## Compatibility evidence
 
-Compatibility is recorded per exact game/build and capability. Keep experimental, read-verified, write-verified, and unsupported states distinct. A process ID, selected profile, passing unit test, or plausible value is not proof of game identity or compatibility. See [COMPATIBILITY.md](COMPATIBILITY.md) for the evidence required to change a status.
+Compatibility is recorded per exact game/build and capability. Keep experimental, read-verified, write-verified, and unsupported states distinct. A process ID, selected profile, passing unit test, or plausible value is not proof of game identity or compatibility. See [per-game evidence](games/collection.md) for the evidence required to change a status.
 
 ## SDK runtime API
 
@@ -235,4 +235,4 @@ The `game_detection` log data source preserves ordered PPU-load and process-fini
 
 The TUI command runner exposes an asynchronous lifecycle that awaits `LudavaSdk.dispose()` after diagnostics, interactive shutdown, startup failure, and nonterminal exits. Do not add a synchronous command path that starts asynchronous SDK disposal without awaiting it.
 
-The owner measured distinct Collection EBOOT, RC1, RC2, and RC3 PPU hashes and lifecycle transitions in RPCS3 `0.0.43-20565-eee3f0f7`. The observed base was `0x300000000` in two process sessions. The final compiled CLI was live-smoke-tested with RC2: it matched the profile and base and read `0`, which does not prove gameplay was active. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing; the records do not map each game to each device or identify the exact RPCS3 build for that confirmation. Other RPCS3 builds remain unverified. The shared write use case still requires a complete valid preliminary field read, a deliberate user action, a complete native transfer, and matching read-back.
+The current game/build evidence is owned by the [game records](games/collection.md); generic active-game handling is documented in [game detection](features/game-detection.md), and guarded memory writes are documented in [game memory](features/game-memory.md).
