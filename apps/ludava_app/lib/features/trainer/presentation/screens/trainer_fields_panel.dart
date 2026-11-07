@@ -11,6 +11,15 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Renders the current profile's fields as adaptive cards or compact rows.
 class TrainerFieldsPanel extends StatelessWidget {
+  /// Minimum width that keeps the card hierarchy comfortably readable.
+  static const double _minimumCardWidth = 320;
+
+  /// Maximum width that prevents a single card from stretching across the app.
+  static const double _maximumCardWidth = 420;
+
+  /// Caps the panel at four columns even when embedded in a wider surface.
+  static const int _maximumCardsPerRow = 4;
+
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
 
@@ -53,13 +62,29 @@ class TrainerFieldsPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < LudavaBreakpoints.fieldCards;
-        return ListView.separated(
+        final availableWidth = constraints.maxWidth - 2 * LudavaSpacing.xl;
+        final cardCount =
+            ((availableWidth + LudavaSpacing.md) /
+                    (_minimumCardWidth + LudavaSpacing.md))
+                .floor()
+                .clamp(1, _maximumCardsPerRow);
+        final cardWidth =
+            ((availableWidth - LudavaSpacing.md * (cardCount - 1)) / cardCount)
+                .clamp(_minimumCardWidth, _maximumCardWidth)
+                .toDouble();
+        return SingleChildScrollView(
           padding: const EdgeInsets.all(LudavaSpacing.xl),
-          itemCount: fields.length,
-          separatorBuilder: (context, index) =>
-              const SizedBox(height: LudavaSpacing.md),
-          itemBuilder: (context, index) =>
-              _buildField(context, profile, fields[index], compact: compact),
+          child: Wrap(
+            spacing: LudavaSpacing.md,
+            runSpacing: LudavaSpacing.md,
+            children: [
+              for (final field in fields)
+                SizedBox(
+                  width: compact ? availableWidth : cardWidth,
+                  child: _buildField(context, profile, field, compact: compact),
+                ),
+            ],
+          ),
         );
       },
     );

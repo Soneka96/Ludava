@@ -34,6 +34,67 @@ void main() {
     });
 
     testWidgets(
+      'Class TrainerFieldsPanel places multiple bounded cards in a wide row',
+      (tester) async {
+        tester.view.physicalSize = const Size(1180, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          _wrap(_session(value: 17, includeSecondField: true)),
+        );
+        final bolts = find.byKey(const ValueKey('trainer-field-bolts'));
+        final scrap = find.byKey(const ValueKey('trainer-field-scrap'));
+        final boltsPosition = tester.getTopLeft(bolts);
+        final scrapPosition = tester.getTopLeft(scrap);
+
+        expect(boltsPosition.dy, scrapPosition.dy);
+        expect(scrapPosition.dx, greaterThan(boltsPosition.dx));
+        expect(tester.getSize(bolts).width, inInclusiveRange(320, 420));
+        expect(tester.getSize(scrap).width, inInclusiveRange(320, 420));
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('Class TrainerFieldsPanel bounds a single wide card', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1800, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_wrap(_session(value: 17)));
+
+      expect(
+        tester.getSize(find.byKey(const ValueKey('trainer-field-bolts'))).width,
+        inInclusiveRange(320, 420),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Class TrainerFieldsPanel scrolls multiple card rows', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1180, 560);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _wrap(_session(value: 17, includeManyFields: true)),
+      );
+      final laterField = find.text('Part 11');
+
+      expect(laterField, findsOneWidget);
+      await tester.ensureVisible(laterField);
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(laterField).dy, lessThan(560));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
       'Class TrainerFieldsPanel uses semantic surface roles in cards',
       (tester) async {
         tester.view.physicalSize = const Size(1180, 720);
@@ -120,6 +181,31 @@ void main() {
             findsOneWidget,
           );
         }
+      },
+    );
+
+    testWidgets(
+      'Class TrainerFieldsPanel keeps wide validation content visible',
+      (tester) async {
+        tester.view.physicalSize = const Size(1180, 560);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          _wrap(_session(value: 17), editingFieldId: 'bolts'),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '4294967296',
+        );
+        await tester.pump();
+
+        expect(
+          find.text('Enter a value from 0 to 4,294,967,295.'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
       },
     );
 
@@ -468,6 +554,7 @@ TrainerSessionState _session({
   bool omitMinimum = false,
   bool omitMaximum = false,
   bool includeSecondField = false,
+  bool includeManyFields = false,
   bool emptyProfile = false,
   bool includeBoltsRead = true,
 }) {
@@ -495,6 +582,22 @@ TrainerSessionState _session({
       maximumValue: 100,
     );
   }
+  if (includeManyFields) {
+    for (var index = 0; index < 12; index++) {
+      final id = 'part-$index';
+      fields[id] = GameField(
+        id: id,
+        name: 'Part $index',
+        guestOffset: 8 + index * 4,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus: VerificationStatus.verified,
+        writeStatus: VerificationStatus.verified,
+        minimumValue: 0,
+        maximumValue: 100,
+      );
+    }
+  }
   final profile = GameProfile(
     id: 'test-game',
     gameName: 'Test game',
@@ -520,6 +623,16 @@ TrainerSessionState _session({
       fieldId: 'scrap',
       value: 7,
     );
+  }
+  if (includeManyFields) {
+    for (var index = 0; index < 12; index++) {
+      final id = 'part-$index';
+      readResults[id] = GameReadResult(
+        status: GameReadStatus.success,
+        fieldId: id,
+        value: index,
+      );
+    }
   }
   return TrainerSessionState(
     processIds: hasProcess ? const [123] : const [],
