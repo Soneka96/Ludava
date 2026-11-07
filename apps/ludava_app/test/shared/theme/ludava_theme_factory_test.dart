@@ -116,10 +116,7 @@ void main() {
         );
         final buttonMaterial = tester.widget<Material>(
           find
-              .ancestor(
-                of: find.text('Apply'),
-                matching: find.byType(Material),
-              )
+              .ancestor(of: find.text('Apply'), matching: find.byType(Material))
               .first,
         );
         expect(buttonMaterial.color, colors.accent);
