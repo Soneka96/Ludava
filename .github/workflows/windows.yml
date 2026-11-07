@@ -25,9 +25,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
+          flutter-version: '3.47.5'
 
       - name: Resolve workspace dependencies
         run: dart pub get
@@ -60,10 +61,49 @@ jobs:
         run: dart analyze
         working-directory: apps/ludava_tui
 
+      - name: Analyze Flutter app
+        run: flutter analyze
+        working-directory: apps/ludava_app
+
       - name: Build Windows executable and discovery library
         shell: pwsh
         working-directory: ${{ runner.temp }}
         run: '& "$env:GITHUB_WORKSPACE\tool\build_windows.ps1"'
+
+      - name: Build Flutter Windows release bundle
+        shell: pwsh
+        run: .\tool\build_flutter_windows.ps1
+
+      - name: Verify relocated Flutter Windows bundle
+        shell: pwsh
+        run: |
+          $bundleDirectory = Join-Path $env:GITHUB_WORKSPACE 'apps\ludava_app\build\windows\x64\runner\Release'
+          $requiredFiles = @(
+            'ludava_app.exe',
+            'flutter_windows.dll',
+            'cnativeapi.dll',
+            'ludava_process_discovery.dll'
+          )
+          foreach ($requiredFile in $requiredFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $bundleDirectory $requiredFile) -PathType Leaf)) {
+              throw "Flutter release bundle is missing $requiredFile."
+            }
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $bundleDirectory 'data\flutter_assets') -PathType Container)) {
+            throw 'Flutter release bundle is missing data\flutter_assets.'
+          }
+
+          $relocatedDirectory = Join-Path $env:TEMP ("ludava-flutter-relocated-" + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $relocatedDirectory | Out-Null
+          Get-ChildItem -LiteralPath $bundleDirectory | Copy-Item -Destination $relocatedDirectory -Recurse -Force
+          $applicationPath = Join-Path $relocatedDirectory 'ludava_app.exe'
+          $application = Start-Process -FilePath $applicationPath -WorkingDirectory $relocatedDirectory -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 3
+          $application.Refresh()
+          if ($application.HasExited) {
+            throw "Relocated Flutter app exited with code $($application.ExitCode)."
+          }
+          Stop-Process -Id $application.Id -Force
 
       - name: Test SDK
         run: dart test
@@ -72,6 +112,10 @@ jobs:
       - name: Test TUI
         run: dart test
         working-directory: apps/ludava_tui
+
+      - name: Test Flutter app
+        run: flutter test
+        working-directory: apps/ludava_app
 
       - name: Test root compatibility entry points
         run: dart test

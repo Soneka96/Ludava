@@ -5,14 +5,20 @@ $packages = @(
     @{
         Name = 'ludava_sdk'
         Path = 'packages\ludava_sdk'
-        ForbiddenImports = 'package:(ludava|ludava_tui|nocterm|flutter)/'
-        ForbiddenDependencies = '(?m)^\s*(ludava|ludava_tui|nocterm|flutter)\s*:'
+        ForbiddenImports = 'package:(ludava|ludava_tui|ludava_app|nocterm|flutter)/'
+        ForbiddenDependencies = '(?m)^\s*(ludava|ludava_tui|ludava_app|nocterm|flutter)\s*:'
     },
     @{
         Name = 'ludava_tui'
         Path = 'apps\ludava_tui'
-        ForbiddenImports = 'package:(ludava|flutter)/|package:ludava_sdk/(?!ludava_sdk\.dart$)'
-        ForbiddenDependencies = '(?m)^\s*(ludava|flutter)\s*:'
+        ForbiddenImports = 'package:(ludava|ludava_app|flutter)/|package:ludava_sdk/(?!ludava_sdk\.dart$)'
+        ForbiddenDependencies = '(?m)^\s*(ludava|ludava_app|flutter)\s*:'
+    },
+    @{
+        Name = 'ludava_app'
+        Path = 'apps\ludava_app'
+        ForbiddenImports = 'package:(ludava|ludava_tui)/|package:ludava_sdk/(?!ludava_sdk\.dart$)'
+        ForbiddenDependencies = '(?m)^\s*(ludava|ludava_tui)\s*:'
     }
 )
 $uriPattern = @'
@@ -62,4 +68,4 @@ foreach ($package in $packages) {
     }
 }
 
-Write-Host 'SDK and TUI package dependency boundaries are valid.'
+Write-Host 'SDK and frontend package dependency boundaries are valid.'

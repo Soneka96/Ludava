@@ -1,10 +1,10 @@
 # Ludava
 
-> A Windows trainer for supported RPCS3 games, powered by a reusable Dart SDK.
+> A personal Windows trainer for supported RPCS3 games, powered by a reusable Dart SDK.
 
-Ludava currently uses a Nocterm terminal interface. Game and build compatibility is documented with the [game research records](docs/games/collection.md); source profiles define the actual supported fields.
+Ludava includes a Nocterm frontend and a Flutter Windows desktop app. Game and build compatibility is documented with the [game research records](docs/games/collection.md); source profiles define the actual supported fields.
 
-The Windows CI workflow validates formatting, analysis and test suites, workspace boundaries, and executable packaging. See [GitHub Actions](https://github.com/Soneka96/Ludava/actions) for current results.
+The Windows CI workflow validates formatting, analysis and test suites, workspace boundaries, and TUI and Flutter packaging. See [GitHub Actions](https://github.com/Soneka96/Ludava/actions) for current results.
 
 ## Start here
 
@@ -17,6 +17,8 @@ dart run bin/ludava.dart
 This root command remains as a compatibility entry point. To run the TUI
 package's own entry point, change to `apps/ludava_tui` and run
 `dart run bin/ludava.dart` there.
+
+For the graphical desktop app, use the [Flutter Windows build and ROG Ally guide](docs/guides/windows-build.md#flutter-windows-desktop-build).
 
 Run `.\tool\build_windows.ps1` first to create the native process-discovery
 library used by `dart run` and the compiled executable.
@@ -51,7 +53,7 @@ build and transfer steps.
 
 ## Development
 
-The Dart workspace contains a reusable SDK (`packages/ludava_sdk`) and the Nocterm terminal frontend (`apps/ludava_tui`). The planned Flutter Windows app will reuse the SDK instead of implementing a second memory engine. See [architecture](docs/ARCHITECTURE.md) and [development conventions](docs/DEVELOPMENT.md) for package responsibilities, testing and workspace setup.
+The Dart workspace contains a reusable SDK (`packages/ludava_sdk`), the Nocterm terminal frontend (`apps/ludava_tui`), and a Flutter Windows frontend (`apps/ludava_app`). Both frontends use the SDK rather than implementing separate memory engines. See [architecture](docs/ARCHITECTURE.md) and [development conventions](docs/DEVELOPMENT.md) for package responsibilities, testing and workspace setup.
 
 ## Documentation
 
