@@ -79,6 +79,7 @@ void main() {
             buildId: 'MIXED',
             executable: 'mixed.self',
             readStatus: VerificationStatus.verified,
+            writeStatus: VerificationStatus.researchConfirmed,
             fields: {
               'bolts': GameField(
                 id: 'bolts',
@@ -121,6 +122,39 @@ void main() {
 
           await tester.sendKey(LogicalKey.digit1);
           expect(openedFields.map((field) => field.id), ['weapons']);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerMenuComponent keeps writable fields read-only when the profile is not writable',
+      () async {
+        await testNocterm('read-only profile with writable fields', (
+          tester,
+        ) async {
+          final openedFields = <GameField>[];
+          var refreshCount = 0;
+          await tester.pumpComponent(
+            _menu(
+              _session(profile: _profile(profileWritable: false)),
+              onOpenField: openedFields.add,
+              onRefresh: () => refreshCount++,
+            ),
+          );
+
+          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('244,866'));
+          expect(
+            tester.terminalState,
+            containsText('Selected field is read-only'),
+          );
+          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendEnter();
+          await tester.sendKey(LogicalKey.keyR);
+
+          expect(openedFields, isEmpty);
+          expect(refreshCount, 1);
+          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
         });
       },
     );
@@ -464,6 +498,24 @@ void main() {
     );
 
     test(
+      'Class TrainerMenuComponent does not open a field when no profile is selected',
+      () async {
+        await testNocterm('no selected profile', (tester) async {
+          final openedFields = <GameField>[];
+          await tester.pumpComponent(
+            _menu(TrainerSessionState(), onOpenField: openedFields.add),
+          );
+
+          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendEnter();
+
+          expect(openedFields, isEmpty);
+          expect(tester.terminalState, containsText('No readable fields'));
+        });
+      },
+    );
+
+    test(
       'Class TrainerMenuComponent shows a helpful message when too small',
       () async {
         await testNocterm('small terminal message', (tester) async {
@@ -573,6 +625,7 @@ TrainerSessionState _session({
 GameProfile _profile({
   String id = 'rc2-collection',
   bool profileReadable = true,
+  bool profileWritable = true,
   bool readableFields = true,
   bool includeWeapons = true,
   bool includeFields = true,
@@ -583,6 +636,10 @@ GameProfile _profile({
   executable: 'RC2.ppu.self',
   readStatus:
       profileReadable ? VerificationStatus.verified : VerificationStatus.none,
+  writeStatus:
+      profileWritable
+          ? VerificationStatus.researchConfirmed
+          : VerificationStatus.none,
   fields: {
     if (includeFields)
       'bolts': GameField(
