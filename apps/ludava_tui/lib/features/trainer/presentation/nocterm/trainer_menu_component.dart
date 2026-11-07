@@ -147,9 +147,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
                 ),
                 const SizedBox(height: 1),
                 _separator(),
-                Text(
-                  '↑↓ Navigate   $actionHint',
-                ),
+                Text('↑↓ Navigate   $actionHint'),
                 const Text('R Refresh     G Re-detect  Q Quit'),
               ],
             ),

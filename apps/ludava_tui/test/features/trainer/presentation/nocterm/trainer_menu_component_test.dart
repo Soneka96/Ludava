@@ -104,10 +104,7 @@ void main() {
           );
 
           await tester.pumpComponent(
-            _menu(
-              _session(profile: profile),
-              onOpenField: openedFields.add,
-            ),
+            _menu(_session(profile: profile), onOpenField: openedFields.add),
           );
 
           expect(
@@ -599,6 +596,9 @@ GameProfile _profile({
             readableFields
                 ? VerificationStatus.verified
                 : VerificationStatus.none,
+        writeStatus: VerificationStatus.researchConfirmed,
+        minimumValue: 0,
+        maximumValue: 0xffffffff,
       ),
     if (includeFields && includeWeapons)
       'weapons': GameField(
@@ -611,6 +611,9 @@ GameProfile _profile({
             readableFields
                 ? VerificationStatus.verified
                 : VerificationStatus.none,
+        writeStatus: VerificationStatus.researchConfirmed,
+        minimumValue: 0,
+        maximumValue: 0xffffffff,
       ),
     if (includeFields)
       'secret': GameField(

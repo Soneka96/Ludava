@@ -797,6 +797,9 @@ GameProfile _profile({
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
         readStatus: VerificationStatus.verified,
+        writeStatus: VerificationStatus.researchConfirmed,
+        minimumValue: 0,
+        maximumValue: 0xffffffff,
       ),
   },
 );
