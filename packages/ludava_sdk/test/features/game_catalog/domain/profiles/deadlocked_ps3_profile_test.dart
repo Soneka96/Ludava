@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('Property profile behaves correctly', () {
     test(
-      'Property profile exposes the observed Deadlocked identity and candidate Bolts field',
+      'Property profile exposes the observed Deadlocked identity and verified Bolts field',
       () {
         final profile = DeadlockedPs3Profile.profile;
         final field = profile.findField('bolts');
@@ -19,22 +19,22 @@ void main() {
           profile.executableHash,
           'PPU-c44d700265e50dfe49054c1703f8fea668cc33b9',
         );
-        expect(profile.readStatus, VerificationStatus.experimental);
-        expect(profile.writeStatus, VerificationStatus.none);
+        expect(profile.readStatus, VerificationStatus.verified);
+        expect(profile.writeStatus, VerificationStatus.verified);
         expect(profile.canRead, isTrue);
-        expect(profile.canWrite, isFalse);
+        expect(profile.canWrite, isTrue);
         expect(profile.fields, hasLength(1));
         expect(field?.id, 'bolts');
         expect(field?.name, 'Bolts');
         expect(field?.guestOffset, 0x009c32e8);
         expect(field?.valueType, MemoryValueType.unsigned32);
         expect(field?.byteOrder, ByteOrder.big);
-        expect(field?.readStatus, VerificationStatus.experimental);
-        expect(field?.writeStatus, VerificationStatus.none);
+        expect(field?.readStatus, VerificationStatus.verified);
+        expect(field?.writeStatus, VerificationStatus.verified);
         expect(field?.minimumValue, 0);
         expect(field?.maximumValue, 0xffffffff);
         expect(field?.canRead, isTrue);
-        expect(field?.canWrite, isFalse);
+        expect(field?.canWrite, isTrue);
       },
     );
 

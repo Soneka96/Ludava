@@ -12,7 +12,7 @@ import 'package:test/test.dart';
 void main() {
   group('Method execute() behaves correctly', () {
     test(
-      'Method execute() rejects Deadlocked writes before reading or writing memory',
+      'Method execute() requires explicit confirmation before reading Deadlocked memory',
       () {
         final repository = _WriteGameFieldTestRepository();
         final result = WriteGameFieldUseCase(repository).execute(
@@ -21,13 +21,40 @@ void main() {
             fieldId: 'bolts',
             memoryBase: 0x310000000,
             value: 123,
+            confirmed: false,
+          ),
+        );
+
+        expect(result.status, GameWriteStatus.confirmationRequired);
+        expect(repository.readCalls, 0);
+        expect(repository.writeCalls, 0);
+      },
+    );
+
+    test(
+      'Method execute() writes Deadlocked Bolts through the guarded read-back path',
+      () {
+        final repository = _WriteGameFieldTestRepository(
+          readResults: [_completeRead(4903), _completeRead(4904)],
+        );
+        final result = WriteGameFieldUseCase(repository).execute(
+          WriteGameFieldParams(
+            profile: DeadlockedPs3Profile.profile,
+            fieldId: 'bolts',
+            memoryBase: 0x300000000,
+            value: 4904,
             confirmed: true,
           ),
         );
 
-        expect(result.status, GameWriteStatus.unsupportedProfile);
-        expect(repository.readCalls, 0);
-        expect(repository.writeCalls, 0);
+        expect(result.status, GameWriteStatus.success);
+        expect(result.readBackValue, 4904);
+        expect(repository.readCalls, 2);
+        expect(repository.writeCalls, 1);
+        expect(repository.lastReadAddress, 0x3009c32e8);
+        expect(repository.lastWriteAddress, 0x3009c32e8);
+        expect(repository.lastReadByteCount, 4);
+        expect(repository.writtenBytes, [0, 0, 0x13, 0x28]);
       },
     );
 
@@ -585,7 +612,12 @@ class _WriteGameFieldTestRepository implements IGameMemoryRepository {
 
 MemoryReadResult _completeRead(int value) => MemoryReadResult(
   status: MemoryReadStatus.complete,
-  bytes: [0, 0, 0, value],
+  bytes: [
+    (value >> 24) & 0xff,
+    (value >> 16) & 0xff,
+    (value >> 8) & 0xff,
+    value & 0xff,
+  ],
   bytesRead: 4,
   requestedBytes: 4,
 );

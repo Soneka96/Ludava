@@ -30,9 +30,11 @@ void main() {
     );
 
     test(
-      'Class TrainerMenuComponent displays and keeps Deadlocked Bolts read-only',
+      'Class TrainerMenuComponent displays and opens the write-verified Deadlocked Bolts editor',
       () async {
-        await testNocterm('standalone read-only game profile', (tester) async {
+        await testNocterm('standalone verified-write game profile', (
+          tester,
+        ) async {
           final openedFields = <GameField>[];
           await tester.pumpComponent(
             _menu(
@@ -54,17 +56,14 @@ void main() {
             tester.terminalState,
             containsText('Ratchet: Deadlocked · PS3 NPUA80646'),
           );
-          expect(tester.terminalState, containsText('Bolts (read-only)'));
+          expect(tester.terminalState, containsText('Bolts'));
           expect(tester.terminalState, containsText('1,234'));
-          expect(
-            tester.terminalState,
-            containsText('Selected field is read-only'),
-          );
+          expect(tester.terminalState, containsText('1–9 Edit'));
 
           await tester.sendKey(LogicalKey.digit1);
           await tester.sendEnter();
 
-          expect(openedFields, isEmpty);
+          expect(openedFields.map((field) => field.id), ['bolts', 'bolts']);
         });
       },
     );
