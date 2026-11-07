@@ -31,9 +31,6 @@ void main() {
         controller.refresh();
         await _settleController();
         expect(fixture.discoveryCalls, discoveries + 1);
-        controller.redetect();
-        await _settleController();
-        expect(fixture.discoveryCalls, discoveries + 2);
 
         await controller.dispose();
       },

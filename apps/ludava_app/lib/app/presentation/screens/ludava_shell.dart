@@ -40,9 +40,6 @@ class LudavaShell extends StatelessWidget {
   /// Refreshes the selected session or retries process discovery.
   final VoidCallback onRefresh;
 
-  /// Re-detects the selected game or retries process discovery.
-  final VoidCallback onRedetect;
-
   /// Selects an RPCS3 process through the SDK session.
   final ValueChanged<int> onSelectProcess;
 
@@ -58,7 +55,6 @@ class LudavaShell extends StatelessWidget {
     required this.isMaximized,
     required this.onClose,
     required this.onRefresh,
-    required this.onRedetect,
     required this.onSelectProcess,
     super.key,
   });
@@ -86,11 +82,7 @@ class LudavaShell extends StatelessWidget {
                 child: SizedBox.expand(
                   child: Column(
                     children: [
-                      TrainerGameHeader(
-                        session: session,
-                        onRefresh: onRefresh,
-                        onRedetect: onRedetect,
-                      ),
+                      TrainerGameHeader(session: session, onRefresh: onRefresh),
                       Expanded(
                         child: SafeArea(
                           child:

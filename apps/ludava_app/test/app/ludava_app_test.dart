@@ -36,6 +36,10 @@ void main() {
       final heading = tester.widget<Text>(find.text('Connect to RPCS3'));
       expect(heading.style?.color, Colors.purple);
       expect(find.byType(DragToResizeArea), findsOneWidget);
+      expect(
+        find.byTooltip('Refresh values or rediscover RPCS3'),
+        findsOneWidget,
+      );
       expect(discoveryCalls, 1);
       final titleBar = tester.widget<DecoratedBox>(
         find.byKey(const ValueKey('ludava-titlebar-surface')),
@@ -67,8 +71,11 @@ void main() {
         await tester.tap(find.text('Process ID 240'));
         await tester.pump();
 
-        expect(find.text('RPCS3 process · PID 240'), findsOneWidget);
-        expect(find.text('No game'), findsOneWidget);
+        expect(find.text('No active game'), findsOneWidget);
+        expect(
+          find.byTooltip('No active game\nRPCS3 process ID: 240'),
+          findsOneWidget,
+        );
         await controller.disposeSdk();
         await tester.pumpWidget(const SizedBox());
       },

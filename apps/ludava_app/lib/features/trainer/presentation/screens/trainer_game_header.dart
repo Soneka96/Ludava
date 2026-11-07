@@ -5,86 +5,58 @@ import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Composes game identity, readiness, and session actions for the trainer.
+/// Composes the game title, readiness, and single refresh action.
 class TrainerGameHeader extends StatelessWidget {
+  /// Accessible name and tooltip for the single refresh action.
+  static const String _refreshLabel = 'Refresh values or rediscover RPCS3';
+
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
 
-  /// Refreshes the selected session or retries process discovery.
+  /// Refreshes field values or rediscovers RPCS3 when no process is selected.
   final VoidCallback onRefresh;
 
-  /// Re-detects the selected game or retries process discovery.
-  final VoidCallback onRedetect;
-
-  /// Creates the responsive trainer header from the current SDK snapshot.
+  /// Creates the compact trainer header from the current SDK snapshot.
   const TrainerGameHeader({
     required this.session,
     required this.onRefresh,
-    required this.onRedetect,
     super.key,
   });
 
-  /// Rearranges identity, readiness, and actions at the shared width breakpoint.
+  /// Displays identity, readiness, and a fixed-size icon-only refresh button.
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final compact =
-          constraints.maxWidth < LudavaBreakpoints.trainerHeaderWide;
-      final theme = Theme.of(context);
-      final tokens = theme.extension<LudavaThemeTokens>()!;
-      final actions = Wrap(
-        spacing: LudavaSpacing.sm,
-        runSpacing: LudavaSpacing.xs,
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<LudavaThemeTokens>()!;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: LudavaSpacing.xl,
+        vertical: LudavaSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
+      ),
+      child: Row(
         children: [
-          OutlinedButton.icon(
-            onPressed: onRefresh,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Refresh'),
-          ),
-          OutlinedButton.icon(
-            onPressed: onRedetect,
-            icon: const Icon(Icons.manage_search_rounded),
-            label: const Text('Re-detect'),
+          Expanded(child: TrainerGameIdentity(session: session)),
+          const SizedBox(width: LudavaSpacing.sm),
+          TrainerGameStatus(session: session),
+          const SizedBox(width: LudavaSpacing.sm),
+          Semantics(
+            button: true,
+            label: _refreshLabel,
+            child: IconButton(
+              tooltip: _refreshLabel,
+              onPressed: onRefresh,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(
+                width: LudavaDimensions.minimumInteractiveTarget,
+                height: LudavaDimensions.minimumInteractiveTarget,
+              ),
+              icon: const Icon(Icons.refresh_rounded),
+            ),
           ),
         ],
-      );
-
-      return Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: LudavaSpacing.xl,
-          vertical: LudavaSpacing.lg,
-        ),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
-        ),
-        child: compact
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: TrainerGameIdentity(session: session)),
-                      const SizedBox(width: LudavaSpacing.sm),
-                      TrainerGameStatus(session: session),
-                    ],
-                  ),
-                  const SizedBox(height: LudavaSpacing.sm),
-                  Align(alignment: Alignment.centerRight, child: actions),
-                ],
-              )
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(child: TrainerGameIdentity(session: session)),
-                  const SizedBox(width: LudavaSpacing.md),
-                  TrainerGameStatus(session: session),
-                  const SizedBox(width: LudavaSpacing.md),
-                  actions,
-                ],
-              ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }

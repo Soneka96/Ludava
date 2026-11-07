@@ -10,33 +10,52 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
   group('Class TrainerFieldRow presentation behavior', () {
-    testWidgets('Class TrainerFieldRow shows equivalent field data and edit', (
-      tester,
-    ) async {
-      var editCalls = 0;
-      await tester.pumpWidget(
-        _wrap(
-          SizedBox(
-            width: LudavaDimensions.minimumWindowWidth,
-            child: TrainerFieldRow(
-              field: _field(),
-              readResult: _read(4294967295),
-              canRead: true,
-              canWrite: true,
-              isEditing: false,
-              onEdit: () => editCalls++,
+    testWidgets(
+      'Class TrainerFieldRow shows one horizontal field row and Edit icon',
+      (tester) async {
+        var editCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            SizedBox(
+              width: LudavaDimensions.minimumWindowWidth,
+              child: TrainerFieldRow(
+                field: _field(),
+                readResult: _read(4294967295),
+                canRead: true,
+                canWrite: true,
+                isEditing: false,
+                onEdit: () => editCalls++,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('Bolts'), findsOneWidget);
-      expect(find.text('Writable'), findsOneWidget);
-      expect(find.text('4,294,967,295'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TextButton, 'Edit'));
-      expect(editCalls, 1);
-      expect(tester.takeException(), isNull);
-    });
+        expect(find.text('Bolts'), findsOneWidget);
+        expect(find.text('Writable'), findsNothing);
+        expect(find.text('4,294,967,295'), findsOneWidget);
+        expect(
+          tester
+              .getSize(find.byKey(const ValueKey('trainer-field-row-bolts')))
+              .height,
+          LudavaDimensions.minimumInteractiveTarget,
+        );
+        final row = tester.getRect(
+          find.byKey(const ValueKey('trainer-field-row-bolts')),
+        );
+        expect(tester.getRect(find.text('Bolts')).center.dy, row.center.dy);
+        expect(
+          tester.getRect(find.text('4,294,967,295')).center.dy,
+          row.center.dy,
+        );
+        expect(
+          tester.getRect(find.byTooltip('Edit Bolts')).center.dy,
+          row.center.dy,
+        );
+        await tester.tap(find.byTooltip('Edit Bolts'));
+        expect(editCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('Class TrainerFieldRow keeps unavailable values explicit', (
       tester,
@@ -59,8 +78,8 @@ void main() {
 
       expect(find.text('Bolts'), findsOneWidget);
       expect(find.text('Unavailable'), findsOneWidget);
-      expect(find.text('Read-only'), findsOneWidget);
-      expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
+      expect(find.text('Read-only'), findsNothing);
+      expect(find.byTooltip('Edit Bolts'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -83,7 +102,13 @@ void main() {
         ),
       );
 
-      expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
+      expect(find.byTooltip('Edit Bolts'), findsNothing);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('trainer-field-row-bolts')))
+            .height,
+        LudavaDimensions.minimumInteractiveTarget,
+      );
       expect(find.text('4,294,967,295'), findsNothing);
       expect(find.text('42'), findsOneWidget);
     });

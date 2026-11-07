@@ -78,7 +78,6 @@ class _LudavaAppState extends State<LudavaApp> {
           isMaximized: _windowController.isMaximized,
           onClose: _requestWindowClose,
           onRefresh: _controller.refresh,
-          onRedetect: _controller.redetect,
           onSelectProcess: (processId) => _controller.selectProcess(processId),
         ),
       ),

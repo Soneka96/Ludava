@@ -129,7 +129,7 @@ void main() {
       );
       expect(
         find.text(
-          'The active game could not be verified. Select Re-detect to try again.',
+          'The active game could not be verified. Select Refresh to try again.',
         ),
         findsOneWidget,
       );
@@ -143,7 +143,7 @@ void main() {
         ),
       );
       expect(
-        find.text('Game detection failed. Select Re-detect to try again.'),
+        find.text('Game detection failed. Select Refresh to try again.'),
         findsOneWidget,
       );
 

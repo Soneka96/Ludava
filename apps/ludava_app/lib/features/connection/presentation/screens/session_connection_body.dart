@@ -81,11 +81,11 @@ class SessionConnectionBody extends StatelessWidget {
         '${detection?.gameTitle ?? 'This game'} is not supported by Ludava.',
       GameDetectionStatus.ambiguous => _evidenceMessage(
         detection?.evidenceDescription,
-        'The active game could not be verified. Select Re-detect to try again.',
+        'The active game could not be verified. Select Refresh to try again.',
       ),
       GameDetectionStatus.failed => _evidenceMessage(
         detection?.evidenceDescription,
-        'Game detection failed. Select Re-detect to try again.',
+        'Game detection failed. Select Refresh to try again.',
       ),
       GameDetectionStatus.supportedGame when session.memoryBase == null =>
         'The game was detected, but its session memory base is unavailable.',

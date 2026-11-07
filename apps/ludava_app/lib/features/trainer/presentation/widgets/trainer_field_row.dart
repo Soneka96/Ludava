@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_access_label.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_value.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Presents one profile field's name, access, value, and action in a row.
+/// Presents one profile field's name, current value, and conditional edit action.
 class TrainerFieldRow extends StatelessWidget {
   /// Profile metadata for the current field.
   final GameField field;
@@ -18,13 +17,13 @@ class TrainerFieldRow extends StatelessWidget {
   /// Whether the current session can apply a write.
   final bool canWrite;
 
-  /// Whether the inline editor is already open.
+  /// Whether the inline editor is already open for this field.
   final bool isEditing;
 
   /// Opens the inline editor after presentation eligibility is checked.
   final VoidCallback onEdit;
 
-  /// Creates the single-row presentation of one trainer field.
+  /// Creates one fixed-height horizontal row for a trainer field.
   const TrainerFieldRow({
     required this.field,
     required this.readResult,
@@ -35,53 +34,51 @@ class TrainerFieldRow extends StatelessWidget {
     super.key,
   });
 
-  /// Keeps field identity separate from its value and edit action.
+  /// Keeps the field name, value, and Edit action on one horizontal line.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      key: ValueKey('trainer-field-row-${field.id}'),
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
+    return SizedBox(
+      height: LudavaDimensions.minimumInteractiveTarget,
+      child: Row(
+        key: ValueKey('trainer-field-row-${field.id}'),
+        children: [
+          Expanded(
+            flex: 4,
+            child: Tooltip(
+              message: field.name,
+              child: Text(
                 field.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleSmall,
               ),
-              const SizedBox(height: LudavaSpacing.xs),
-              TrainerFieldAccessLabel(canRead: canRead, canWrite: canWrite),
-            ],
+            ),
           ),
-        ),
-        const SizedBox(width: LudavaSpacing.md),
-        Flexible(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Flexible(
-                child: TrainerFieldValue(
-                  readResult: readResult,
-                  canRead: canRead,
-                ),
+          const SizedBox(width: LudavaSpacing.sm),
+          Expanded(
+            flex: 3,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TrainerFieldValue(
+                readResult: readResult,
+                canRead: canRead,
               ),
-              if (canWrite && !isEditing) ...[
-                const SizedBox(width: LudavaSpacing.xs),
-                TextButton.icon(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit'),
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
-      ],
+          if (canWrite && !isEditing)
+            SizedBox(
+              width: LudavaDimensions.minimumInteractiveTarget,
+              height: LudavaDimensions.minimumInteractiveTarget,
+              child: IconButton(
+                tooltip: 'Edit ${field.name}',
+                onPressed: onEdit,
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

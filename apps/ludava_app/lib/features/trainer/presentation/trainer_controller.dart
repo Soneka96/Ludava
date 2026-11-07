@@ -46,16 +46,6 @@ class TrainerController implements Listenable {
     }
   }
 
-  /// Rechecks game identity for a selected process or retries discovery.
-  void redetect() {
-    _ensureActive();
-    if (_session.selectedProcessId == null) {
-      _sdk.session.connect();
-    } else {
-      _sdk.session.redetect();
-    }
-  }
-
   /// Selects an RPCS3 process through the SDK trainer session.
   bool selectProcess(int processId) {
     _ensureActive();

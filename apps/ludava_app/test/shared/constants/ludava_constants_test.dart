@@ -28,12 +28,6 @@ void main() {
     });
   });
 
-  group('Property LudavaBreakpoints behaves correctly', () {
-    test('Property LudavaBreakpoints exposes current layout thresholds', () {
-      expect(LudavaBreakpoints.trainerHeaderWide, 640);
-    });
-  });
-
   group('Property ConnectionDimensions behaves correctly', () {
     test(
       'Property ConnectionDimensions exposes readable process dimensions',

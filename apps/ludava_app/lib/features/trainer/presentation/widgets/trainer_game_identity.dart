@@ -1,32 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/shared/constants/ludava_constants.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Displays the active game title and useful build or process context.
+/// Displays the game title and hides build or process details in a tooltip.
 class TrainerGameIdentity extends StatelessWidget {
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
 
-  /// Creates the game identity and process context presentation.
+  /// Creates the one-line game identity for the current SDK snapshot.
   const TrainerGameIdentity({required this.session, super.key});
 
-  /// Wraps long names and context so they remain discoverable.
+  /// Truncates long titles while keeping their full details discoverable.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tokens = theme.extension<LudavaThemeTokens>()!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(_gameTitle, style: theme.textTheme.titleMedium),
-        const SizedBox(height: LudavaSpacing.xs),
-        Text(
-          _contextDescription,
-          style: theme.textTheme.bodySmall?.copyWith(color: tokens.textMuted),
-        ),
-      ],
+    return Tooltip(
+      message: _tooltipDetails,
+      child: Text(
+        _gameTitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.titleMedium,
+      ),
     );
   }
 
@@ -36,21 +30,29 @@ class TrainerGameIdentity extends StatelessWidget {
     if (profile != null) return profile.gameName;
     final detectedTitle = session.detection?.gameTitle;
     if (detectedTitle != null && detectedTitle.isNotEmpty) return detectedTitle;
-    if (session.selectedProcessId != null) return 'No active game';
+    if (_hasSelectedProcess) return 'No active game';
     if (session.processIds.length > 1) return 'Select an RPCS3 process';
+    if (session.processIds.isNotEmpty) return 'RPCS3 detected';
     return 'Connect to RPCS3';
   }
 
-  /// Describes the matched build and selected process or discovery state.
-  String get _contextDescription {
-    final processId = session.selectedProcessId;
+  /// Reports whether the selected process is still in the discovery snapshot.
+  bool get _hasSelectedProcess =>
+      session.selectedProcessId != null &&
+      session.processIds.contains(session.selectedProcessId);
+
+  /// Combines hidden build and process details for the title tooltip.
+  String get _tooltipDetails {
+    final details = <String>[_gameTitle];
     final buildId = session.profile?.buildId;
-    if (processId != null) {
-      final process = 'RPCS3 process · PID $processId';
-      return buildId == null ? process : '$buildId · $process';
+    if (buildId != null) details.add('Build ID: $buildId');
+    if (_hasSelectedProcess) {
+      details.add('RPCS3 process ID: ${session.selectedProcessId}');
+    } else if (session.processIds.isNotEmpty) {
+      details.add('Available process IDs: ${session.processIds.join(', ')}');
+    } else {
+      details.add('RPCS3 not detected');
     }
-    final count = session.processIds.length;
-    if (count == 0) return 'Start RPCS3 to detect a game';
-    return '$count RPCS3 processes found';
+    return details.join('\n');
   }
 }

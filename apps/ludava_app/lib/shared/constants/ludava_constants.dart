@@ -69,12 +69,6 @@ abstract final class LudavaDimensions {
   static const double iconMedium = 24;
 }
 
-/// Responsive thresholds selected from available logical width.
-abstract final class LudavaBreakpoints {
-  /// Width at which the trainer game header moves its actions to a second row.
-  static const double trainerHeaderWide = 640;
-}
-
 /// Shared dimensions for RPCS3 connection guidance and process choices.
 abstract final class ConnectionDimensions {
   /// Maximum readable width for connection guidance and picker content.

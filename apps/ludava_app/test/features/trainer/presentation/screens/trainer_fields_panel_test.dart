@@ -74,7 +74,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.widgetWithText(TextButton, 'Edit').first);
+      await tester.tap(find.byTooltip('Edit Bolts'));
 
       expect(editedFieldId, 'bolts');
       expect(tester.takeException(), isNull);
@@ -170,7 +170,7 @@ void main() {
           find.byKey(const ValueKey('inline-editor-input-bolts')),
           findsNothing,
         );
-        expect(find.text('Read-only'), findsOneWidget);
+        expect(find.byTooltip('Edit Bolts'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -193,11 +193,11 @@ void main() {
         expect(find.text('Read failed'), findsOneWidget);
         expect(find.text('0'), findsNothing);
         expect(find.text('Writable'), findsNothing);
-        expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
+        expect(find.byTooltip('Edit Bolts'), findsNothing);
 
         await tester.pumpWidget(_wrap(_session(includeRead: false)));
         expect(find.text('Unavailable'), findsOneWidget);
-        expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
+        expect(find.byTooltip('Edit Bolts'), findsNothing);
 
         await tester.pumpWidget(
           _wrap(
@@ -216,7 +216,7 @@ void main() {
       },
     );
 
-    testWidgets('Class TrainerFieldsPanel keeps denied fields read-only', (
+    testWidgets('Class TrainerFieldsPanel hides Edit for denied fields', (
       tester,
     ) async {
       _setMinimumView(tester);
@@ -232,8 +232,7 @@ void main() {
 
       for (final state in deniedStates) {
         await tester.pumpWidget(_wrap(state));
-        expect(find.text('Read-only'), findsOneWidget);
-        expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
+        expect(find.byTooltip('Edit Bolts'), findsNothing);
       }
       expect(tester.takeException(), isNull);
     });

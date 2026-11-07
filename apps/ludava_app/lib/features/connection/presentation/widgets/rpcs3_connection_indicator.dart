@@ -19,10 +19,8 @@ class Rpcs3ConnectionIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
-    final connected = session.processIds.isNotEmpty;
-    final status = connected ? 'Connected' : 'Disconnected';
-    final message = 'RPCS3 $status';
-    final color = connected ? tokens.success : tokens.textMuted;
+    final message = _tooltipMessage;
+    final color = _statusColor(tokens);
 
     return Tooltip(
       message: message,
@@ -41,5 +39,28 @@ class Rpcs3ConnectionIndicator extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Reports whether the selected process is still in the discovery snapshot.
+  bool get _hasSelectedProcess =>
+      session.selectedProcessId != null &&
+      session.processIds.contains(session.selectedProcessId);
+
+  /// Describes absence, pending selection, or the selected process accurately.
+  String get _tooltipMessage {
+    if (session.processIds.isEmpty) return 'RPCS3 not detected';
+    if (_hasSelectedProcess) {
+      return 'RPCS3 connected · process ${session.selectedProcessId}';
+    }
+    return session.processIds.length == 1
+        ? 'RPCS3 detected · awaiting process selection'
+        : 'RPCS3 detected · select one of ${session.processIds.length} processes';
+  }
+
+  /// Maps discovery state to its semantic status color.
+  Color _statusColor(LudavaThemeTokens tokens) {
+    if (_hasSelectedProcess) return tokens.success;
+    if (session.processIds.isNotEmpty) return tokens.warning;
+    return tokens.textMuted;
   }
 }
