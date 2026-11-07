@@ -34,7 +34,7 @@ Trainer session coordination, diagnostic workflows, validation policies, and the
 
 SDK composition may construct dependencies, connect adapters to use cases, create feature application services, own resources, and coordinate startup/disposal. It must not implement game detection, memory-write policy, value decoding, session transitions, or duplicate application workflows.
 
-Nocterm and future Flutter frontends consume public typed SDK contracts. They do not assemble native memory adapters, construct internal repositories/use cases, duplicate detection or write authorization, or parse formatted SDK output to recover business data. Presentation owns input, rendering, navigation, and user-facing messages. Nocterm is the sole supported interactive terminal; explicit diagnostic commands remain. Remove the obsolete text menu and its menu-only logic and tests. Keep a compatibility exception only for a documented, supported use case.
+Nocterm and Flutter frontends consume public typed SDK contracts. They do not assemble native memory adapters, construct internal repositories/use cases, duplicate detection or write authorization, or parse formatted SDK output to recover business data. Presentation owns input, rendering, navigation, and user-facing messages. Nocterm is the sole supported interactive terminal; explicit diagnostic commands remain. Remove the obsolete text menu and its menu-only logic and tests. Keep a compatibility exception only for a documented, supported use case.
 
 Prefer small typed capabilities over redundant abstractions. Do not add a service locator, dependency-injection framework, command bus, generic action registry, unnecessary factory, behaviorless base class, or interface without a meaningful replacement/testing purpose.
 
@@ -54,6 +54,8 @@ packages/ludava_sdk/lib/features/trainer/            # UI-independent workflows 
 packages/ludava_sdk/lib/shared/                      # SDK-owned shared declarations
 apps/ludava_tui/lib/features/                        # feature-first Nocterm and CLI presentation
 apps/ludava_tui/lib/shared/                          # TUI-local shared components
+apps/ludava_app/lib/features/                        # feature-first Flutter presentation
+apps/ludava_app/lib/shared/                          # Flutter-local design system and shared UI
 ```
 
 Only create a layer or subfolder when it contains a real responsibility. In particular, a simple operation belongs in its use case; an application workflow is for coordination across multiple operations. Do not create empty `domain/`, `data/`, `application/`, or `presentation/` folders for symmetry.
@@ -66,7 +68,7 @@ game_memory    → game_catalog
 trainer        → game_detection + game_catalog + rpcs3_connection + game_memory
 SDK runtime    → trainer application services + concrete SDK feature data sources
 TUI            → SDK public API
-future Flutter → SDK public API
+Flutter app    → SDK public API
 ```
 
 `game_catalog` is independent of detection and memory, so those features can share profile data without depending on each other. `rpcs3_connection` does not import `game_detection`; the detection feature consumes its process/session entities and raw log adapter. The generic memory feature does not import RPCS3 or trainer code. No SDK feature imports the SDK runtime, and no feature outside `trainer` imports trainer code. Frontends use declared SDK package dependencies rather than relative paths across package boundaries.
@@ -85,14 +87,14 @@ apps/ludava_app/
 
 `ludava_sdk` owns the reusable trainer engine: RPCS3 integration, process discovery, game detection and profiles, memory operations, session validation, field constraints, structured results, reactive state, and UI-independent application operations. Windows-specific native source and integration belong to the SDK. The SDK must not depend on Flutter or Nocterm, and it must be independently analyzable and testable without initializing a terminal.
 
-`ludava_tui` owns Nocterm, terminal input and rendering, navigation, focus, editor interaction state, TUI components, diagnostic CLI presentation, and its executable packaging. It depends on `ludava_sdk`. The future `ludava_app` will own Flutter, desktop windows, widgets, navigation, layout, themes, GUI interaction state, and its executable packaging. It will depend on `ludava_sdk`; the two frontends must not depend on each other. The Flutter package is a later project and is not created as part of the workspace migration.
+`ludava_tui` owns Nocterm, terminal input and rendering, navigation, focus, editor interaction state, TUI components, diagnostic CLI presentation, and its executable packaging. `ludava_app` owns Flutter, desktop windows, widgets, navigation, layout, themes, GUI interaction state, and its executable packaging. Both depend on `ludava_sdk`; the two frontends must not depend on each other. Flutter remains a presentation layer and consumes only the SDK's public API.
 
 The repository root owns workspace configuration, shared dependency resolution, top-level documentation, and build/CI orchestration. Each package owns its `lib/`, `test/`, package dependencies, and package-specific integration tests. Keep one workspace lockfile and do not commit generated package configuration directories.
 
 The allowed dependency direction is:
 
 ```text
-ludava_tui → ludava_sdk ← ludava_app (future)
+ludava_tui → ludava_sdk ← ludava_app
 ```
 
 No production or test import may point from the SDK to a frontend, from one frontend to the other, or across package boundaries using relative paths. Frontends call typed SDK operations directly; do not add a presentation-specific event dispatcher or duplicate engine behavior.
@@ -107,15 +109,17 @@ The approved migration moves existing capabilities without changing runtime beha
 - **Game identity evidence:** parse RPCS3 log syntax in `game_detection/data`; update detection policy in `game_detection`. Keep raw file reading and process/session ownership in `rpcs3_connection`.
 - **Trainer field:** add the researched field to its game profile. Reuse the generic address, read, and write use cases in `game_memory`; add focused profile and operation tests.
 - **Emulator integration:** add process/log/session adapters under a dedicated connection feature. Keep emulator-specific process and log details out of `game_memory`.
-- **Future frontends:** keep shared operations in the SDK boundary and let each frontend call those operations from its own feature-organized presentation. Do not call Windows adapters directly from widgets or terminal components.
+- **Frontends:** keep shared operations in the SDK boundary and let each frontend call those operations from its own feature-organized presentation. Do not call Windows adapters directly from widgets or terminal components.
 
 ## Trainer state and presentation boundaries
 
-The trainer application layer owns the one authoritative `TrainerSessionState`. Publish immutable snapshots through a Dart-native observation contract so Nocterm, diagnostic flows, and a future Flutter presentation can consume the same application behavior without importing a UI toolkit. Define how a new subscriber obtains the current snapshot, notify subscribers after every state transition, and provide deterministic cleanup for subscriptions and the publisher. Published collections must not be mutable through a snapshot.
+The trainer application layer owns the one authoritative `TrainerSessionState`. Publish immutable snapshots through a Dart-native observation contract so Nocterm, diagnostic flows, and Flutter can consume the same application behavior without importing a UI toolkit. Define how a new subscriber obtains the current snapshot, notify subscribers after every state transition, and provide deterministic cleanup for subscriptions and the publisher. Published collections must not be mutable through a snapshot.
 
 Keep only transient interaction state in presentation: for example, the selected row, an unsaved editor buffer, cursor position, and focus. Do not copy process identity, detected profile, memory base, or verified field values into a second presentation model. When the authoritative session changes, clear or re-evaluate presentation state tied to the previous process, game, profile, or memory base. Revalidate identity and memory evidence before every write; a presentation snapshot never grants write authority.
 
 The TUI's root Nocterm component observes SDK state, chooses the active screen, coordinates navigation, and cleans up its subscription. Connection, trainer, and editor screens render their own flows and call typed SDK operations; they do not open native process handles or duplicate application workflows. Extract reusable components when they own a meaningful rendering or interaction responsibility, not just to wrap a single text element. Keep Nocterm-specific types under the owning feature in `apps/ludava_tui/lib/`; the SDK controller and state contract remain reusable by another UI.
+
+The Flutter app's composition root owns one `LudavaSdk` runtime for its application lifetime, subscribes to the current state snapshot and later changes, and disposes the subscription and runtime deterministically. Flutter widgets render SDK-owned process, detection, profile, field, read, and write facts; only temporary presentation state such as navigation, focus, and an unsaved editor draft belongs in the frontend. Profile fields drive the trainer UI, and the SDK remains the sole authority for write permission and guarded operations. Keep adaptive layouts on shared field components so cards and compact rows use the same model and editing callbacks. Put Flutter-specific components under their owning feature and design tokens or genuinely reused UI in `apps/ludava_app/lib/shared/`.
 
 The diagnostics feature follows the same boundary: the TUI owns command syntax, argument parsing, human-readable output, and CLI exit codes. The SDK owns reusable diagnostic operation orchestration, including process discovery, identity and memory-base evaluation, memory access, and structured result classifications. Preserve the read policy: a manually selected profile may be read without matching current identity when the request does not require current identity, and the SDK must classify that result as unverified. A request that requires current identity must fail when identity does not match. Writes always require matching current process identity and memory base, explicit confirmation, and the existing complete read/write/read-back checks. TUI command runners must call typed SDK operations; they must not construct memory repositories or use cases, open native process-memory adapters, or decide diagnostic write authorization. Keep message formatting in the TUI and operation status in typed SDK results rather than parsing SDK error strings.
 
@@ -198,7 +202,7 @@ Here, `request` is a `DiagnosticGameMemoryRequest` prepared by the caller from t
 
 ## Current implementation
 
-The checked-in Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. Its high-level source ownership is:
+The checked-in Dart workspace contains `packages/ludava_sdk`, `apps/ludava_tui`, and `apps/ludava_app`. Its high-level source ownership is:
 
 ```text
 Ludava/
@@ -220,6 +224,13 @@ Ludava/
 │   ├── lib/features/                        # Connection, trainer, editor, diagnostics UI
 │   ├── lib/shared/                          # TUI-local constants and terminal backend
 │   └── test/                                # Mirrored TUI tests
+├── apps/ludava_app/
+│   ├── lib/main.dart                        # Flutter application entry point
+│   ├── lib/app/                             # SDK runtime ownership and app root
+│   ├── lib/features/                        # Feature-first Flutter presentation
+│   ├── lib/shared/                          # Flutter-local design system and shared UI
+│   ├── test/                                # Flutter widget and unit tests
+│   └── windows/                             # Native Flutter Windows runner
 ├── bin/                                     # Root compatibility entry points
 ├── lib/app/ludava_cli.dart                  # Root compatibility export
 ├── test/                                    # Root compatibility tests
@@ -227,7 +238,7 @@ Ludava/
 └── tool/                                    # Build and boundary checks
 ```
 
-The SDK has no root `lib/app/`. The TUI has no interactive text menu; it owns Nocterm presentation and the explicit diagnostic CLI. Root `bin/`, `lib/`, and `test/` are compatibility surfaces, not another trainer implementation. The future Flutter package `apps/ludava_app` has not been created.
+The SDK has no root `lib/app/`. The TUI has no interactive text menu; it owns Nocterm presentation and the explicit diagnostic CLI. The Flutter app owns the desktop entry point and presentation lifecycle while consuming the public SDK API. Root `bin/`, `lib/`, and `test/` are compatibility surfaces, not another trainer implementation.
 
 The SDK's `game_memory` feature contains generic read/write use cases, Windows process-memory access, and shared process-handle operation ownership. `rpcs3_connection` contains Tool Help process discovery, process metadata, raw RPCS3 log access, and memory-base resolution. `game_detection` contains ordered identity events, detection outcomes, and profile matching. Automatic matching requires the current title ID, measured PPU hash, and executable name; a shared title ID alone cannot distinguish embedded games.
 

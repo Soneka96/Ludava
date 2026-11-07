@@ -1,9 +1,15 @@
-# Windows x64 build and ROG Ally setup
+# Windows builds and ROG Ally setup
 
-Build Ludava on a Windows x64 development PC with the Dart SDK, LLVM Clang,
-and the Windows 10/11 SDK installed. Flutter is not required.
+Build Ludava on a Windows x64 development PC with Visual Studio's C++ desktop
+tools, LLVM Clang, and the Windows 10/11 SDK. The Flutter desktop build uses
+Flutter 3.47 or newer with its bundled Dart 3.13 SDK or newer. Run
+`flutter doctor -v` to check whether the Windows development requirements are available.
 
-From the repository root, run:
+## Nocterm TUI build
+
+The TUI executable is Dart/Nocterm and does not bundle Flutter. The build
+script resolves the complete workspace, so the build PC needs Flutter 3.47 or
+newer on `PATH` and uses its bundled Dart SDK. From the repository root, run:
 
 ```powershell
 .\tool\build_windows.ps1
@@ -32,24 +38,42 @@ The root CLI remains available as a compatibility entry point. For the TUI
 package-native command, run `dart run bin/ludava.dart` from `apps/ludava_tui`.
 Diagnostic help is available from either directory with `dart run bin/ludava.dart --help`.
 
-Resolve the workspace and analyze the root and both packages:
+## Flutter Windows desktop build
+
+From the repository root, run:
+
+```powershell
+.\tool\build_flutter_windows.ps1
+```
+
+The script builds the SDK's native process-discovery library and the Flutter
+Windows release app. The complete movable bundle is written to
+`apps\ludava_app\build\windows\x64\runner\Release`. It includes
+`ludava_app.exe`, Flutter runtime DLLs, the `data` assets folder, the
+`window_manager` native library, and `ludava_process_discovery.dll`. Copy the
+whole `Release` directory when moving the app; keep its files together. The
+target PC does not need Dart or Flutter. It does need the Microsoft Visual C++
+runtime required by the Flutter Windows runner.
+
+Resolve the workspace and analyze the root, SDK, TUI, and Flutter app:
 
 ```powershell
 dart pub get
 dart analyze
 ```
 
-The workspace manifests support Dart `>=3.7.0 <4.0.0`. On Dart 3.13 or newer,
-also run `dart pub workspace list`. On Dart 3.7 through 3.12, inspect the root
-`workspace` entries and each package's `resolution: workspace` setting
-instead. See [Development conventions](../DEVELOPMENT.md#workspace-development)
-for the version details and official references.
+The SDK and TUI support Dart `>=3.7.0 <4.0.0`; the Flutter app requires Dart
+3.13 or newer with Flutter 3.47 or newer. Full workspace resolution therefore
+uses Flutter's bundled Dart SDK. Run `dart pub workspace list` from Dart 3.13 or
+newer. See [Development conventions](../DEVELOPMENT.md#workspace-development)
+for version details and official references.
 
 Run `dart analyze` and `dart test` from each package directory, then `dart test`
-at the repository root for compatibility entry points. Root commands do not
-automatically replace the package suites.
+at the repository root for compatibility entry points. Run `flutter analyze`
+and `flutter test` from `apps\ludava_app`. Root commands do not automatically
+replace the package suites.
 
-## Copy to a ROG Ally
+## Copy the TUI build to a ROG Ally
 
 1. Build `build\Ludava.exe` and `build\ludava_process_discovery.dll` on the Windows x64 development PC.
 2. Copy both files to the ROG Ally and keep them in the same directory.
@@ -58,6 +82,18 @@ automatically replace the package suites.
 5. If RPCS3 is open with no game, Ludava reports no active game and shows no field value until a game is detected and refreshed.
 6. Press **1–9** to open a field directly, or use **↑/↓** to move and **Enter** to open the selected field. Press **R** to refresh, **G** to re-detect, and **Q** to quit. The value editor starts with the current ungrouped value and cursor at the end. **Enter** applies a changed, valid value without an extra confirmation prompt; **Escape** cancels.
 7. Before every write, Ludava rechecks the process session, PPU hash, and base. It requires a complete preliminary read, complete native write, and matching read-back before reporting success.
+
+## Copy the Flutter desktop app to a ROG Ally
+
+1. Build the release bundle with `.\tool\build_flutter_windows.ps1` from the repository root.
+2. Copy the complete `apps\ludava_app\build\windows\x64\runner\Release`
+   directory to the ROG Ally. Keep the executable, DLLs, and `data` directory
+   together; do not copy only `ludava_app.exe`.
+3. Ensure the Microsoft Visual C++ runtime required by the Windows runner is
+   installed on the ROG Ally. Dart and Flutter are not required there.
+4. Launch `ludava_app.exe`. The app connects through the SDK and uses the same
+   process selection, identity, memory-base, and guarded-write checks as the
+   TUI.
 
 ## Physical keyboard acceptance
 
