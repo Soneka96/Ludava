@@ -1,8 +1,8 @@
 # Ludava
 
-> A Windows game-memory trainer with a keyboard-driven Nocterm interface for the PS3 Collection.
+> A Windows trainer for supported RPCS3 games, powered by a reusable Dart SDK.
 
-**Status:** The owner tested bolt reading and writing in Ludava for all three Collection games on November 5, 2026. A separate live RPCS3 log experiment measured distinct PPU hashes for the Collection menu and RC1/RC2/RC3 on RPCS3 `0.0.43-20565-eee3f0f7`. The final compiled CLI was live-smoke-tested with RC2: it matched the profile, resolved the session base, and read `0` (which does not prove gameplay was active). The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during testing on a Windows laptop and a ROG Ally. The records do not map each game to each device or identify the exact RPCS3 build for that later confirmation; compatibility with other builds remains unverified.
+Ludava currently uses a Nocterm terminal interface. Game and build compatibility is documented with the [game research records](docs/games/collection.md); source profiles define the actual supported fields.
 
 The Windows CI workflow validates formatting, analysis and test suites, workspace boundaries, and executable packaging. See [GitHub Actions](https://github.com/Soneka96/Ludava/actions) for current results.
 
@@ -28,39 +28,13 @@ through fields and **Enter** to open the selected field. In the editor,
 the game, and **Q** to quit. The editor starts with the current value ungrouped
 and its cursor at the end.
 
-Ludava selects a single running RPCS3 process automatically. If multiple processes are found, choose one with **↑/↓**, **1–9**, and **Enter**. For the measured Collection build, it identifies the current embedded game from the latest PPU load and stop events in a fresh process log. When identity is confirmed, it uses one unique guest memory base from that process session's log without asking you to confirm it. Ludava does not hardcode `0x300000000`.
+Ludava discovers RPCS3 automatically and lets you choose a process when several are running. It resolves game identity and session memory base from current evidence, without a normal-user address prompt.
 
-The shared Collection title ID `BCUS98282` cannot distinguish RC1, RC2, and RC3 by itself. Ludava also matches the executable filename and measured PPU hash. A stop, menu executable, unknown hash, conflicting log, or unclear process ownership leaves the game unresolved and does not load a trainer. Automatic refresh reads and writes require a fresh matching process session, PPU hash, profile, and base; a stale read clears the displayed value, and writes also require a complete preliminary read and matching read-back. Interactive writes apply directly after Enter without an extra confirmation dialog; diagnostic writes still require `--confirm-write`.
+Ludava verifies fresh RPCS3 executable and session evidence before selecting a profile or writing memory. Unsupported, stopped, or ambiguous sessions remain unresolved. The generic rules are described in [game detection](docs/features/game-detection.md) and [game memory](docs/features/game-memory.md).
 
-Start a supported Collection game, then launch Ludava. When the identity is confirmed, the trainer opens the matching profile. Press **G** to clear displayed values and check identity again. A detected unsupported title has no trainer profile.
+## Diagnostics (optional)
 
-If bolts are unavailable, start the selected Collection game in RPCS3 and press **R**. If the game is already running, check the on-screen status for identity or memory-base errors.
-
-Each Collection profile stores a separate big-endian unsigned 32-bit bolt offset: RC1 `0x009BC3A0`, RC2 `0x01329E80`, RC3 `0x00C1EDAC`. These offsets are not interchangeable with the standalone PS3 game profiles.
-
-## Ratchet: Deadlocked PS3 (research stage)
-
-The SDK catalog includes a standalone `deadlocked-ps3` profile for title ID `NPUA80646`. One RPCS3 log session identified game version `01.00/01.01`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9` on RPCS3 `0.0.43-20567-6a59542f`. Two distinct Ludava reads (`1,785` and `4,903`) matched owner-provided gameplay HUD screenshots in that session. An owner-authorized guarded write changed Bolts from `6,278` to `6,279`; SDK read-back, refresh, and the post-write HUD all showed `6,279`. Read and write verification are recorded for this observed build only. See [Deadlocked PS3 research](docs/DEADLOCKED_PS3_RESEARCH.md).
-
-## Diagnostic commands
-
-The explicit commands below are for troubleshooting. Reads may use a manually selected profile and are labeled unverified unless current identity evidence matches. A write is rejected unless the current RPCS3 process, PPU identity, and session memory base match the selected profile and arguments. The examples below use RC2.
-
-Read the current bolt count:
-
-```powershell
-dart run bin/ludava.dart read --game rc2-collection --field bolts --pid RPCS3_PID --memory-base 0x300000000
-```
-
-Repeat the `read` command to refresh the value. Each command opens the selected process for that operation and closes its handle before exiting.
-
-Write an unsigned 32-bit bolt value explicitly with `--value` and `--confirm-write`:
-
-```powershell
-dart run bin/ludava.dart write --game rc2-collection --field bolts --pid RPCS3_PID --memory-base 0x300000000 --value 244866 --confirm-write
-```
-
-The shared write operation rechecks current process/session identity and base, requires a complete valid read of the selected field, writes four big-endian bytes, checks the native result and byte count, and reads the field back. It reports success only when the read-back matches the requested value. The owner tested a write to `120`; Ludava displayed `120`, and the owner screenshot showed `120` on the game's HUD. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 on a Windows laptop and a ROG Ally; the records do not identify the exact game/device pairing or RPCS3 build. RatchetHax research remains separate from Ludava's implementation.
+For development and troubleshooting, use the [diagnostic CLI guide](docs/guides/diagnostics.md). The terminal commands are not required for ordinary trainer use.
 
 ## Portable Windows build
 
@@ -72,82 +46,22 @@ Build the Windows x64 executable and its native process-discovery library with:
 
 Copy `build\Ludava.exe` and `build\ludava_process_discovery.dll` to the ROG
 Ally, keeping them in the same directory. Dart and Flutter are not required on
-the Ally. See [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md) for the
+the Ally. See [Windows build and ROG Ally setup](docs/guides/windows-build.md) for the
 build and transfer steps.
 
-## Dart workspace
+## Development
 
-The repository contains two workspace packages:
+The Dart workspace contains a reusable SDK (`packages/ludava_sdk`) and the Nocterm terminal frontend (`apps/ludava_tui`). The planned Flutter Windows app will reuse the SDK instead of implementing a second memory engine. See [architecture](docs/ARCHITECTURE.md) and [development conventions](docs/DEVELOPMENT.md) for package responsibilities, testing and workspace setup.
 
-- `packages/ludava_sdk` owns the reusable trainer engine, profiles, RPCS3 integration, memory safety, native process-discovery source, and the `LudavaSdk` runtime.
-- `apps/ludava_tui` owns the Nocterm interface, diagnostic command syntax and output, and Windows executable packaging. It consumes typed SDK capabilities without constructing SDK memory or detection internals.
+## Documentation
 
-Nocterm is the only interactive terminal interface. Diagnostic `read`,
-`write`, and `--help` commands remain available; the old text-based menu has
-been removed. Root `bin/` commands remain compatibility wrappers. The future
-Flutter application will be added as `apps/ludava_app` in a later project; it
-is not part of this workspace yet. See [Architecture and testing](docs/ARCHITECTURE.md)
-for the runtime API and package ownership.
-
-The SDK runtime assembles and owns its session and diagnostics capabilities.
-Their feature services perform detection and memory operations. Disposal is
-terminal: retained capability references reject further operations, while the
-last immutable session snapshot remains readable. See the architecture guide
-for the lifecycle and stream contract.
-
-Pub workspaces require Dart 3.6 or newer, while `dart pub workspace list` was
-added in Dart 3.13. Ludava's declared minimum is Dart 3.7, so the workspace
-works throughout the supported range but the listing command does not run on
-every supported SDK. See the official [Pub workspace guide](https://dart.dev/tools/pub/workspaces)
-and [Dart changelog](https://dart.dev/changelog) for these tool-version details.
-
-Resolve the shared workspace from the repository root. On Dart 3.13 or newer,
-the listing command also reports its members:
-
-```powershell
-dart pub get
-dart analyze
-```
-
-On Dart 3.13 or newer, also run `dart pub workspace list`. On Dart 3.7 through
-3.12, inspect the root `workspace` entry and each member's
-`resolution: workspace` setting instead.
-
-Run the SDK checks from its package directory:
-
-Start each package command block from the repository root in a new shell.
-
-```powershell
-Set-Location packages/ludava_sdk
-dart analyze
-dart test
-```
-
-Run the TUI checks from its package directory:
-
-```powershell
-Set-Location apps/ludava_tui
-dart analyze
-dart test
-```
-
-Run root compatibility entry-point tests from the repository root with
-`dart test`. Workspace tests are run per package; root test commands do not
-replace the SDK and TUI package suites.
-
-## Architecture
-
-Ludava separates `game_catalog`, `rpcs3_connection`, `game_detection`, `game_memory`, and `trainer`. Profiles are shared catalog data; detection owns identity policy, the connection feature owns RPCS3 process/log infrastructure, and memory access remains generic. See [Architecture and testing](docs/ARCHITECTURE.md) for package ownership, dependency rules, extension points, and test organization.
-
-- [MVP scope and acceptance gates](docs/MVP.md)
-- [Compatibility evidence matrix](docs/COMPATIBILITY.md)
-- [RPCS3 game-detection investigation](docs/GAME_DETECTION.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Windows build and ROG Ally setup](docs/WINDOWS_BUILD.md)
-- [Research handoff](docs/RESEARCH_HANDOFF.md)
-- [Development policy and conventions](docs/DEVELOPMENT.md)
-
-Technical references: [Dart native interop](https://dart.dev/interop/c-interop), [Flutter Windows development](https://docs.flutter.dev/platform-integration/windows/setup).
+- [Architecture and workspace](docs/ARCHITECTURE.md)
+- [Development and research conventions](docs/DEVELOPMENT.md)
+- [Feature behavior](docs/features/game-detection.md)
+- [Game research and compatibility](docs/games/collection.md)
+- [Windows build and setup guide](docs/guides/windows-build.md)
+- [Optional diagnostic commands](docs/guides/diagnostics.md)
+- [Future initiatives](docs/ROADMAP.md)
 
 ## Engineering principles
 
@@ -157,10 +71,6 @@ Technical references: [Dart native interop](https://dart.dev/interop/c-interop),
 4. A failed read is never a zero; fields without write-enabling research stay disabled.
 5. Automated tests and plausible values do not prove game/build compatibility.
 6. Keep work incremental and report limitations honestly.
-
-## Repository status
-
-The three Collection profiles store separate big-endian unsigned 32-bit bolt offsets and measured PPU hashes for RPCS3 `0.0.43-20565-eee3f0f7`. The owner observed guest base `0x300000000` in two process sessions; the base is resolved from the current log rather than treated as a constant. Later owner confirmation covers automatic detection and trainer operation across RC1, RC2, and RC3, with tests on a Windows laptop and a ROG Ally. Per-game device pairing and the exact runtime build were not recorded; compatibility with other RPCS3 builds remains unverified.
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 

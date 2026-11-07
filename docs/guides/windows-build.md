@@ -42,7 +42,7 @@ dart analyze
 The workspace manifests support Dart `>=3.7.0 <4.0.0`. On Dart 3.13 or newer,
 also run `dart pub workspace list`. On Dart 3.7 through 3.12, inspect the root
 `workspace` entries and each package's `resolution: workspace` setting
-instead. See [Development conventions](DEVELOPMENT.md#workspace-development)
+instead. See [Development conventions](../DEVELOPMENT.md#workspace-development)
 for the version details and official references.
 
 Run `dart analyze` and `dart test` from each package directory, then `dart test`
@@ -53,8 +53,8 @@ automatically replace the package suites.
 
 1. Build `build\Ludava.exe` and `build\ludava_process_discovery.dll` on the Windows x64 development PC.
 2. Copy both files to the ROG Ally and keep them in the same directory.
-3. Start RPCS3 and a supported Ratchet & Clank Collection game.
-4. Launch `Ludava.exe`. With one RPCS3 process and measured identity evidence, Ludava selects the embedded game and session base automatically. When multiple processes share a log folder, or the game/hash/base is unresolved, Ludava does not authorize a trainer write.
+3. Start RPCS3 and a game supported by an available Ludava profile.
+4. Launch `Ludava.exe`. With one RPCS3 process and measured identity evidence, Ludava selects the matching game profile and session base automatically. When multiple processes share a log folder, or the game/hash/base is unresolved, Ludava does not authorize a trainer write.
 5. If RPCS3 is open with no game, Ludava reports no active game and shows no field value until a game is detected and refreshed.
 6. Press **1–9** to open a field directly, or use **↑/↓** to move and **Enter** to open the selected field. Press **R** to refresh, **G** to re-detect, and **Q** to quit. The value editor starts with the current ungrouped value and cursor at the end. **Enter** applies a changed, valid value without an extra confirmation prompt; **Escape** cancels.
 7. Before every write, Ludava rechecks the process session, PPU hash, and base. It requires a complete preliminary read, complete native write, and matching read-back before reporting success.
@@ -65,15 +65,4 @@ Nocterm's Windows backend reads Win32 console key events and translates them dir
 
 For final keyboard acceptance, run the TUI in both the VS Code integrated PowerShell terminal and standalone Windows Terminal. Use the physical keyboard to open an available field, press Escape, and confirm the editor closes without writing or displaying protocol text. Press Ctrl+C and confirm the app exits safely without inserting protocol text. Also verify number shortcuts, arrows, Home/End, Backspace/Delete, Enter, refresh selection, and terminal input restoration after exit. Automated byte-stream tests do not replace this physical-key check.
 
-## PR #7 merge gate
-
-PR #7 requires both a passing GitHub Actions run and real Windows x64 acceptance
-before merge. Windows acceptance must launch the packaged executable with its
-companion DLL, exercise process discovery and RC1/RC2/RC3 detection and reads,
-check the physical keyboard behavior above, and confirm relocation works. A
-guarded live write requires explicit owner authorization. If CI or required
-Windows acceptance is incomplete, keep the PR in draft and report those checks
-as unverified. Automated tests and successful builds do not replace live-game
-verification.
-
-The owner tested live bolt reads and writes in all three Collection games on November 5, 2026. A separate RPCS3 log experiment measured their PPU hashes on RPCS3 `0.0.43-20565-eee3f0f7`. The final compiled CLI was live-smoke-tested with RC2. The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during Windows laptop and ROG Ally testing. The records do not map each game to each device or identify the exact RPCS3 build for that later confirmation; compatibility with other RPCS3 builds remains unverified. The Ally does not need Dart or Flutter installed, but it needs both files listed above. RPCS3 must still be installed and running. RPCS3's [support guidance](https://github.com/RPCS3/rpcs3/wiki/How-to-ask-for-Support) places the Windows log in the `log` folder inside the RPCS3 directory; support reports also describe it as near the executable.
+For compatibility evidence and supported game identities, consult the [game research records](../games/collection.md). The current Windows CI/build workflow is authoritative for its own execution results; do not preserve changing run IDs in this guide.

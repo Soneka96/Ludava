@@ -21,6 +21,9 @@ try {
         $changedPaths[2] -cne 'renamed file.dart') {
         throw 'Git name-status parsing must keep additions, modifications, and renamed destinations only.'
     }
+    if (@(ConvertFrom-GitNameStatus '').Count -ne 0) {
+        throw 'An empty successful Git name-status result must produce no changed paths.'
+    }
 
     $originalProcessInvoker = (Get-Command Invoke-CapturedProcess -CommandType Function).ScriptBlock
     $script:fetchCount = 0
@@ -101,7 +104,9 @@ try {
         'R100', 'old.dart', 'renamed with spaces.dart',
         'D', 'deleted.dart'
     ) -join [string][char]0
+    $script:formatCallCount = 0
     $script:failMergeBase = $false
+    $script:failDiff = $false
     Set-Item Function:\Invoke-CapturedProcess -Value {
         param($FileName, $Arguments, $WorkingDirectory)
         if ($Arguments[0] -eq 'rev-parse') {
@@ -128,6 +133,13 @@ try {
         }
         if ($Arguments[0] -eq 'diff') {
             $script:diffArguments = $Arguments
+            if ($script:failDiff) {
+                return [pscustomobject]@{
+                    ExitCode = 1
+                    StandardOutput = ''
+                    StandardError = 'diff failed'
+                }
+            }
             return [pscustomobject]@{
                 ExitCode = 0
                 StandardOutput = $script:fakeDiffOutput
@@ -135,6 +147,7 @@ try {
             }
         }
         if ($Arguments[0] -eq 'format') {
+            $script:formatCallCount++
             return [pscustomobject]@{
                 ExitCode = 0
                 StandardOutput = ''
@@ -159,6 +172,19 @@ try {
             throw 'Changed-file comparison must use the target merge base and include rename/deletion statuses.'
         }
 
+        $script:fakeDiffOutput = ''
+        $script:formatCallCount = 0
+        $emptyDiffMessages = @(
+            Invoke-ChangedDartFormattingCheck 'main' 6>&1 |
+                ForEach-Object { $_.ToString() }
+        )
+        if ($emptyDiffMessages -notcontains "No added or modified Dart files differ from 'main'.") {
+            throw 'A successful empty Dart diff must report that no files need formatting.'
+        }
+        if ($script:formatCallCount -ne 0) {
+            throw 'A successful empty Dart diff must not invoke Dart formatting.'
+        }
+
         $script:failMergeBase = $true
         $failureMessage = $null
         try {
@@ -172,11 +198,29 @@ try {
             -not $failureMessage.Contains('failed with exit code 1')) {
             throw 'A failed merge-base comparison must stop the check with an error.'
         }
+
+        $script:failMergeBase = $false
+        $script:failDiff = $true
+        $failureMessage = $null
+        try {
+            Invoke-ChangedDartFormattingCheck 'main'
+        }
+        catch {
+            $failureMessage = $_.Exception.Message
+        }
+        if ([string]::IsNullOrWhiteSpace($failureMessage) -or
+            -not $failureMessage.Contains('git diff') -or
+            -not $failureMessage.Contains('failed with exit code 1')) {
+            throw 'A failed Git diff with empty output must stop the check with an error.'
+        }
     }
     finally {
         Set-Item Function:\Invoke-CapturedProcess -Value $originalProcessInvoker
         $script:repositoryRoot = $originalRepositoryRoot
-        Remove-Variable fakeDiffOutput, failMergeBase, mergeBaseArguments, diffArguments -Scope Script -ErrorAction SilentlyContinue
+        Remove-Variable -Name @(
+            'fakeDiffOutput', 'failMergeBase', 'failDiff', 'formatCallCount',
+            'mergeBaseArguments', 'diffArguments'
+        ) -Scope Script -ErrorAction SilentlyContinue
     }
 
     $formattedPath = Join-Path $testDirectory 'dart file with spaces.dart'

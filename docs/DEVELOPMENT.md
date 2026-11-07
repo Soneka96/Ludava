@@ -17,6 +17,18 @@ The project's own development work follows these rules:
 5. Enable writes only for fields whose profile records research-confirmed or verified evidence. Keep Ludava's live-runtime validation status distinct from external research; process discovery or manual profile selection alone does not identify the active game/build.
 6. Prefer simple, well-separated responsibilities and incremental refactors.
 
+## Research-first game field workflow
+
+When adding a game or field, **check existing trainer references first** (including Cheat Engine tables, community references, emulator cheat tools, and original research). Record sources, versions, observed address and guest-offset derivation, value type/endianness, and what was actually tested in that game's document under `docs/games/`. Treat external source code and license restrictions separately: use independently corroborated facts; do not copy GPL implementation into Ludava.
+
+An **address copied from a third party without live corroboration remains a candidate**, not automatically write-enabled. Documented external live testing of a matching build and field, with behavioral evidence, can qualify as `researchConfirmed` and permit existing guarded writes **without a redundant full Ludava manual research ceremony**. This does not justify marking Ludava live compatibility `verified` or bypassing current-process, executable hash, guest base, bounds, preliminary-read, complete-write and read-back checks. Reserve `verified` for recorded corresponding Ludava runtime results. Preserve uncertainty when builds differ.
+
+Research and test values on the development machine where practical; the ROG Ally need only be a final interactive testing device. Do not require lengthy handheld terminal commands, or new diagnostic UI/tooling solely to collect data already available locally. Reuse generic engine tests; add focused mapping tests and one proportionate smoke test where possible. No compulsory repeated approval sequence per field.
+
+## Surgical documentation updates
+
+Update **only the document that owns a changed fact**. Feature mechanism changes belong under `docs/features/`; one game's memory address or build finding belongs in its `docs/games/<profile>.md`; build instructions belong in `docs/guides/`; future priorities belong in `ROADMAP.md`. Never update unrelated files to synchronize status summaries. Keep the roadmap a concise list of meaningful future initiatives (goal, scope, done condition); remove completed initiatives instead of retaining a PR/test history.
+
 ## Source and test conventions
 
 These conventions apply to new code and files materially changed by a task:
@@ -60,7 +72,7 @@ Treat `docs/ARCHITECTURE.md` and this document as the repository source of truth
 
 Document stable knowledge: how the system works, why decisions exist, how to build and use Ludava, where responsibilities belong, technical limits, and reproducible research. Update documentation when functionality, public interfaces, supported games, research conclusions, architectural rules, or instructions change; do not edit it just because a commit, test run, or CI run occurred.
 
-Give each fact one authoritative home and link to it elsewhere. `ARCHITECTURE.md` owns architecture rules, this document owns development and documentation conventions, `WINDOWS_BUILD.md` owns Windows build instructions, `ROADMAP.md` owns milestones, and per-game research documents own detailed game evidence. The README introduces Ludava and links to deeper documentation. Future game-specific research belongs in one document per game under `docs/games/`; shared Collection information may have one Collection-level document. General architecture may explain detection without repeating game hashes or memory addresses. This PR does not perform that future migration.
+Give each fact one authoritative home and link to it elsewhere. `ARCHITECTURE.md` owns architecture rules, this document owns development and documentation conventions, `guides/windows-build.md` owns Windows build instructions, `ROADMAP.md` owns future initiatives, and `games/` records own detailed game evidence; `features/` explains feature behavior. The README introduces Ludava and links to deeper documentation. Game-specific research belongs in one document per game under `docs/games/`; shared Collection evidence belongs in `docs/games/collection.md`. General architecture may explain detection without repeating game hashes or memory addresses. Keep future additions self-contained; avoid hand-maintained game indexes.
 
 GitHub Actions is authoritative for current CI results. Permanent documentation must not repeat changing run numbers, automated test counts, or pass/fail status; link to [GitHub Actions](https://github.com/Soneka96/Ludava/actions) instead and describe the validation categories the workflow covers. PR descriptions may preserve run-specific results as historical records. Keep meaningful historical research observations, such as recorded gameplay values and exact RPCS3 builds; remove only duplicated, volatile status metadata.
 

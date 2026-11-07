@@ -1,9 +1,9 @@
-# Ratchet: Deadlocked PS3 (NPUA80646) research
+# Ratchet: Deadlocked — standalone PS3 (NPUA80646)
 
 **Research reviewed:** 2026-11-06  
 **Evidence status:** runtime identity, two distinct live Bolts reads, and an owner-authorized write/read-back/HUD outcome are verified for this one recorded build/session only.
 
-## External candidate
+## External candidate and mapping
 
 The [RatchetHax Deadlocked PS3 address reference](https://github.com/ParadoxEpoch/RatchetHax/blob/main/games/rc4_ps3_npua80646.js) identifies its target as Ratchet & Clank Deadlocked (PS3), `NPUA80646`. The repository is GPL-3.0 licensed. Ludava records only the address fact below; no RatchetHax source, object structure, implementation, or comments were copied.
 
@@ -67,3 +67,5 @@ The process identity, executable hash, and guest base were present in the observ
 ## Limitations
 
 Only one RPCS3 build and one game version have observed identity, read, and write evidence. The two HUD/read pairs (`1,785` and `4,903`) and the write/read-back/HUD outcome (`6,279`) support Bolts reading and writing for this build/session. No compatibility claim is made for other regions, updates, RPCS3 builds, or devices.
+
+The generic active-game validation and guarded write rules are documented in [game detection](../features/game-detection.md) and [game memory](../features/game-memory.md). Do not infer another build's compatibility from this recorded session.

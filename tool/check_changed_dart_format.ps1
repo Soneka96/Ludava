@@ -182,6 +182,7 @@ function Invoke-DartFormatCheck {
 function ConvertFrom-GitNameStatus {
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$NameStatusOutput
     )
 
