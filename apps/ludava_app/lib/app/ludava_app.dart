@@ -2,14 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
-import 'package:ludava_app/app/ludava_window_title_bar.dart';
-import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
-import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_fields_panel.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
-import 'package:window_manager/window_manager.dart';
 
 /// Root Flutter presentation for one owned [LudavaSdk] runtime.
 class LudavaApp extends StatefulWidget {
@@ -66,57 +61,18 @@ class _LudavaAppState extends State<LudavaApp> {
       title: 'Ludava',
       debugShowCheckedModeBanner: false,
       theme: theme,
-      home: DragToResizeArea(
-        resizeEdgeSize: LudavaDimensions.windowResizeHandleSize,
-        child: Scaffold(
-          body: Column(
-            children: [
-              LudavaWindowTitleBar(
-                onMinimize: _minimizeWindow,
-                onToggleMaximize: _toggleMaximizeWindow,
-                onClose: _closeWindow,
-              ),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: LudavaDimensions.maximumContentWidth,
-                    ),
-                    child: SizedBox.expand(
-                      child: Column(
-                        children: [
-                          TrainerGameHeader(
-                            session: _session,
-                            onRefresh: _refreshSession,
-                            onRedetect: _redetectSession,
-                          ),
-                          Expanded(
-                            child: SafeArea(
-                              child:
-                                  _session.detection?.status ==
-                                      GameDetectionStatus.supportedGame
-                                  ? TrainerFieldsPanel(
-                                      session: _session,
-                                      editingFieldId: _editingFieldId,
-                                      onEditField: _editField,
-                                      onApplyField: _applyField,
-                                      onCancelEditing: _cancelFieldEdit,
-                                    )
-                                  : SessionConnectionBody(
-                                      session: _session,
-                                      onSelectProcess: _selectProcess,
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      home: LudavaShell(
+        session: _session,
+        editingFieldId: _editingFieldId,
+        onEditField: _editField,
+        onApplyField: _applyField,
+        onCancelEditing: _cancelFieldEdit,
+        onMinimize: _minimizeWindow,
+        onToggleMaximize: _toggleMaximizeWindow,
+        onClose: _closeWindow,
+        onRefresh: _refreshSession,
+        onRedetect: _redetectSession,
+        onSelectProcess: _selectProcess,
       ),
     );
   }

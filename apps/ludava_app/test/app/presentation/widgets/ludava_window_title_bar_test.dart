@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ludava_app/app/ludava_window_title_bar.dart';
+import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
 import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
