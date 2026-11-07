@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/features/game_detection/application/rpcs3_game_detection_workflow.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/rpcs3_game_identity_log_event.entity.dart';
@@ -159,6 +160,105 @@ void main() {
     });
 
     test(
+      'Method detect() resolves Deadlocked from its observed standalone PPU event',
+      () {
+        final result = _workflow(
+          processIds: const [41],
+          readMetadata: (_) => _metadata('other'),
+          readLogs: (_) => [_deadlockedSnapshot()],
+        ).detect(41, _metadata('selected'));
+
+        expect(result.status, GameDetectionStatus.supportedGame);
+        expect(result.profile, same(DeadlockedPs3Profile.profile));
+        expect(result.titleId, 'NPUA80646');
+        expect(result.executable, 'EBOOT.BIN');
+        expect(
+          result.executableHash,
+          'PPU-c44d700265e50dfe49054c1703f8fea668cc33b9',
+        );
+      },
+    );
+
+    test(
+      'Method detect() leaves Deadlocked ambiguous while its PPU hash is pending',
+      () {
+        final profile = DeadlockedPs3Profile.profile;
+        final result = _workflow(
+          processIds: const [41],
+          readMetadata: (_) => _metadata('other'),
+          readLogs:
+              (_) => [
+                _snapshot(
+                  events: [
+                    Rpcs3GameIdentityLogEvent(
+                      titleId: profile.buildId,
+                      executable: profile.executable,
+                    ),
+                  ],
+                ),
+              ],
+        ).detect(41, _metadata('selected'));
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test(
+      'Method detect() does not treat the Collection menu hash as Deadlocked',
+      () {
+        final result = _workflow(
+          processIds: const [41],
+          readMetadata: (_) => _metadata('other'),
+          readLogs:
+              (_) => [
+                _snapshot(
+                  events: const [
+                    Rpcs3GameIdentityLogEvent(
+                      titleId: 'NPUA80646',
+                      executable: 'EBOOT.BIN',
+                      executableHash:
+                          'PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5',
+                    ),
+                  ],
+                ),
+              ],
+        ).detect(41, _metadata('selected'));
+
+        expect(result.status, GameDetectionStatus.noActiveGame);
+        expect(result.profile, isNull);
+      },
+    );
+
+    test(
+      'Method detect() invalidates Deadlocked identity after a stop event',
+      () {
+        final result = _workflow(
+          processIds: const [41],
+          readMetadata: (_) => _metadata('other'),
+          readLogs:
+              (_) => [
+                _snapshot(
+                  events: [
+                    Rpcs3GameIdentityLogEvent(
+                      titleId: DeadlockedPs3Profile.profile.buildId,
+                      executable: DeadlockedPs3Profile.profile.executable,
+                      executableHash:
+                          DeadlockedPs3Profile.profile.executableHash,
+                    ),
+                    const Rpcs3GameIdentityLogEvent(processFinished: true),
+                  ],
+                ),
+              ],
+        ).detect(41, _metadata('selected'));
+
+        expect(result.status, GameDetectionStatus.noActiveGame);
+        expect(result.profile, isNull);
+      },
+    );
+
+    test(
       'Method detect() leaves identity unresolved while the PPU hash is pending',
       () {
         final result = _workflow(
@@ -248,6 +348,16 @@ Rpcs3GameIdentityLogSnapshot _supportedSnapshot() => _snapshot(
       titleId: Rc2CollectionProfile.profile.buildId,
       executable: Rc2CollectionProfile.profile.executable,
       executableHash: Rc2CollectionProfile.profile.executableHash,
+    ),
+  ],
+);
+
+Rpcs3GameIdentityLogSnapshot _deadlockedSnapshot() => _snapshot(
+  events: [
+    Rpcs3GameIdentityLogEvent(
+      titleId: DeadlockedPs3Profile.profile.buildId,
+      executable: DeadlockedPs3Profile.profile.executable,
+      executableHash: DeadlockedPs3Profile.profile.executableHash,
     ),
   ],
 );
