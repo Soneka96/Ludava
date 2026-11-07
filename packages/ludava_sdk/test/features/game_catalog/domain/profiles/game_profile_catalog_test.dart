@@ -1,4 +1,5 @@
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
@@ -19,6 +20,10 @@ void main() {
         GameProfileCatalog.find(Rc3CollectionProfile.id),
         same(Rc3CollectionProfile.profile),
       );
+      expect(
+        GameProfileCatalog.find(DeadlockedPs3Profile.id),
+        same(DeadlockedPs3Profile.profile),
+      );
     });
 
     test('Method find() returns null when profile id is not registered', () {
@@ -27,13 +32,14 @@ void main() {
   });
 
   group('Property profiles behaves correctly', () {
-    test('Property profiles exposes all three Collection games in order', () {
+    test('Property profiles exposes all games in catalog order', () {
       expect(
         GameProfileCatalog.profiles.map((profile) => profile.id).toList(),
         [
           Rc1CollectionProfile.id,
           Rc2CollectionProfile.id,
           Rc3CollectionProfile.id,
+          DeadlockedPs3Profile.id,
         ],
       );
     });
