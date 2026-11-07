@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_fields_panel.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 

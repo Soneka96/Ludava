@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_fields_panel.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
