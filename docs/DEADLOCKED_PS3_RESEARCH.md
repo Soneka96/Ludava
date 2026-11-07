@@ -1,7 +1,7 @@
 # Ratchet: Deadlocked PS3 (NPUA80646) research
 
 **Research reviewed:** 2026-11-06  
-**Evidence status:** runtime identity observed in one RPCS3 session; one live Bolts value matches a supplied HUD screenshot, with a second distinct value still required for read verification.
+**Evidence status:** runtime identity, two distinct live Bolts reads, and an owner-authorized write/read-back/HUD outcome are verified for this one recorded build/session only.
 
 ## External candidate
 
@@ -40,21 +40,32 @@ The process identity, executable hash, and guest base were present in the observ
 
 - First HUD Bolts value: **1,785**, visible in the owner-provided gameplay screenshot on 2026-11-07.
 - First Ludava read: **1,785**, from a diagnostic read against the current `NPUA80646` RPCS3 session; the output reported the current PPU hash matched the profile.
-- A second invocation of the diagnostic read also returned **1,785** while the HUD screenshot still showed that count. These are repeated reads of one value, not two distinct gameplay values.
-- Second distinct HUD value and Ludava read: **NOT PERFORMED**.
-- Whether the mapping tracks a natural gameplay change: **UNVERIFIED**.
+- Second distinct HUD value: **4,903**, visible in the owner-provided gameplay screenshot on 2026-11-07.
+- Second Ludava diagnostic read: **4,903**, after the HUD value changed; output again reported the current PPU hash matched the profile.
+- Both distinct values matched in the same process session; live read behavior is verified for the recorded build/session.
 - The diagnostic operation's current-session PPU identity check matched the profile. The automatic Nocterm trainer session was not exercised.
-- SDK: **403 tests passed**, including the fresh AOT process-discovery integration test; TUI: **185 tests passed**; root compatibility: **5 tests passed**. Analysis passed in all three packages. Changed-file formatting and workspace boundary checks passed.
-- GitHub Actions Windows x64 verification run 15: **PASS**, including changed-file formatting, all analyses and suites, the project build, and packaged help.
+- SDK: **404 tests passed**, including the fresh AOT process-discovery integration test; TUI: **185 tests passed**; root compatibility: **5 tests passed**. Analysis passed in all three packages. Changed-file formatting and workspace boundary checks passed.
+- GitHub Actions Windows x64 verification run 16: **PASS** for the preceding head, including changed-file formatting, all analyses and suites, the project build, and packaged help. A rerun after the final write-status promotion is pending.
 - The official Windows build script is **BLOCKED locally** because LLVM Clang is unavailable. A Windows AOT executable and the existing native shim were built manually with the available Visual Studio toolchain; executable help and the diagnostic read passed.
 
 ## Write verification
 
-- Attempted: **No**.
-- Owner authorization for a live write test: **Not requested or recorded**.
-- Read-back and HUD outcome: **NOT APPLICABLE**.
-- Production write status: **DISABLED** (`VerificationStatus.none`).
+- Attempted: **Yes**, after explicit owner authorization on 2026-11-07.
+- Requested test value: **6,279** after a preliminary read of **6,278**.
+- Read-back: **6,279**; subsequent refresh read: **6,279**.
+- HUD outcome: **6,279**, visible in the owner-provided post-write gameplay screenshot on 2026-11-07.
+- Profile and field write status: `verified` for the recorded build/session.
+
+## Live write attempt
+
+- Authorization: **Owner explicitly authorized** a guarded Bolts write test on 2026-11-07 after read verification.
+- Pre-write diagnostic read: **6,278**.
+- Requested value: **6,279** (one-point increase).
+- SDK result: **Write and read-back complete**, matching `6,279`.
+- Subsequent diagnostic refresh: **6,279**.
+- Post-write HUD outcome: **6,279**, matching the requested value and SDK read-back.
+- Write verification status: **VERIFIED** for the recorded build/session; no cross-build claim is made.
 
 ## Limitations
 
-Only one RPCS3 build and one game version have observed identity evidence. The HUD screenshot and two reads agree at `1,785`, but the same value was observed each time. The external address remains a candidate until a second distinct in-game Bolts value matches a Ludava read. No live write is permitted until read verification and explicit owner approval for a deliberate write-validation test are established. No compatibility claim is made for other regions, updates, RPCS3 builds, or devices.
+Only one RPCS3 build and one game version have observed identity, read, and write evidence. The two HUD/read pairs (`1,785` and `4,903`) and the write/read-back/HUD outcome (`6,279`) support Bolts reading and writing for this build/session. No compatibility claim is made for other regions, updates, RPCS3 builds, or devices.
