@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_window_title_bar.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
+import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() {
@@ -10,15 +10,11 @@ void main() {
     testWidgets('Class LudavaWindowTitleBar uses the supplied theme', (
       tester,
     ) async {
-      const tokens = LudavaThemeTokens(
-        windowChrome: Color(0xFF112233),
-        surfaceRaised: Color(0xFF223344),
-        outlineSubtle: Color(0xFF334455),
-        textMuted: Color(0xFF445566),
-        success: Color(0xFF556677),
-        warning: Color(0xFF667788),
+      final tokens = GraphiteTealTheme.tokens.copyWith(
+        surface: const Color(0xFF112233),
+        borderSubtle: const Color(0xFF334455),
       );
-      final theme = ThemeData.dark().copyWith(extensions: const [tokens]);
+      final theme = ThemeData.dark().copyWith(extensions: [tokens]);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -36,10 +32,10 @@ void main() {
       final surface = tester.widget<DecoratedBox>(
         find.byKey(const ValueKey('ludava-titlebar-surface')),
       );
-      expect((surface.decoration as BoxDecoration).color, tokens.windowChrome);
+      expect((surface.decoration as BoxDecoration).color, tokens.surface);
       expect(
         ((surface.decoration as BoxDecoration).border! as Border).bottom.color,
-        tokens.outlineSubtle,
+        tokens.borderSubtle,
       );
       final mark = tester.widget<DecoratedBox>(
         find.byKey(const ValueKey('ludava-titlebar-mark')),

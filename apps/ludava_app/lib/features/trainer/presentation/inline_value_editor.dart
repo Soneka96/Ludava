@@ -95,8 +95,8 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
         margin: const EdgeInsets.only(top: AppLayoutConstants.fieldListGap),
         padding: const EdgeInsets.all(AppLayoutConstants.fieldCardInset),
         decoration: BoxDecoration(
-          color: tokens.windowChrome,
-          border: Border.all(color: tokens.outlineSubtle),
+          color: tokens.surface,
+          border: Border.all(color: tokens.borderSubtle),
           borderRadius: BorderRadius.circular(
             AppLayoutConstants.smallCornerRadius,
           ),
@@ -129,10 +129,10 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
                 labelText: 'New ${widget.field.name}',
                 helperText: _rangeDescription,
                 border: OutlineInputBorder(
-                  borderSide: BorderSide(color: tokens.outlineSubtle),
+                  borderSide: BorderSide(color: tokens.borderSubtle),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: theme.colorScheme.secondary),
+                  borderSide: BorderSide(color: tokens.focus),
                 ),
               ),
               onChanged: (_) => setState(() {

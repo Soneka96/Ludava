@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/connection/presentation/rpcs3_process_picker.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
+import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 void main() {
   group('Class Rpcs3ProcessPicker selection behavior', () {
@@ -28,6 +29,30 @@ void main() {
       await tester.tap(find.text('Process ID 240'));
 
       expect(selectedProcess, 240);
+    });
+
+    testWidgets('Class Rpcs3ProcessPicker uses the semantic border role', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LudavaTheme.graphiteAndTeal,
+          home: Scaffold(
+            body: Rpcs3ProcessPicker(
+              processIds: const [120, 240],
+              onSelectProcess: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      final divider = tester.widget<Divider>(find.byType(Divider).first);
+      expect(
+        divider.color,
+        LudavaTheme.graphiteAndTeal
+            .extension<LudavaThemeTokens>()!
+            .borderSubtle,
+      );
     });
 
     testWidgets(

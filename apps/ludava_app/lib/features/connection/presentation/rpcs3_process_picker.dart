@@ -46,7 +46,7 @@ class Rpcs3ProcessPicker extends StatelessWidget {
                   height: AppLayoutConstants.connectionPickerDividerHeight,
                   color: Theme.of(context)
                       .extension<LudavaThemeTokens>()!
-                      .outlineSubtle,
+                      .borderSubtle,
                 ),
                 itemBuilder: (context, index) {
                   final processId = processIds[index];

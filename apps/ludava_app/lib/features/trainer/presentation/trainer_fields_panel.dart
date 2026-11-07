@@ -89,8 +89,8 @@ class TrainerFieldsPanel extends StatelessWidget {
             )
           : const EdgeInsets.all(AppLayoutConstants.fieldCardInset),
       decoration: BoxDecoration(
-        color: compact ? null : tokens.surfaceRaised,
-        border: Border.all(color: tokens.outlineSubtle),
+        color: compact ? null : tokens.surfaceElevated,
+        border: Border.all(color: tokens.borderSubtle),
         borderRadius: BorderRadius.circular(
           AppLayoutConstants.smallCornerRadius,
         ),

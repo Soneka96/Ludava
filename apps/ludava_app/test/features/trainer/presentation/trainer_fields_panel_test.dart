@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
+import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
@@ -29,6 +30,27 @@ void main() {
       expect(find.text('Writable'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'Class TrainerFieldsPanel uses semantic surface roles in cards',
+      (tester) async {
+        tester.view.physicalSize = const Size(1180, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(_wrap(_session(value: 0)));
+        final tokens = LudavaTheme.graphiteAndTeal
+            .extension<LudavaThemeTokens>()!;
+        final field = tester.widget<Container>(
+          find.byKey(const ValueKey('trainer-field-bolts')),
+        );
+        final decoration = field.decoration! as BoxDecoration;
+
+        expect(decoration.color, tokens.surfaceElevated);
+        expect((decoration.border! as Border).top.color, tokens.borderSubtle);
+      },
+    );
 
     testWidgets(
       'Class TrainerFieldsPanel renders compact rows at narrow width',

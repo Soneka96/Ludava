@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:ludava_app/shared/constants/layout_constants.dart';
-import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Shows current game identity, RPCS3 process, readiness, and session actions.
 class TrainerGameHeader extends StatelessWidget {
+  /// Fill opacity keeps status badges readable without dominating the header.
+  static const double _badgeFillOpacity = 0.12;
+
+  /// Outline opacity separates the badge from its surrounding surface.
+  static const double _badgeOutlineOpacity = 0.35;
+
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
 
@@ -35,7 +40,7 @@ class TrainerGameHeader extends StatelessWidget {
         vertical: AppLayoutConstants.headerVerticalInset,
       ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: tokens.outlineSubtle)),
+        border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
       ),
       child: Row(
         children: [
@@ -116,12 +121,12 @@ class TrainerGameHeader extends StatelessWidget {
         vertical: AppLayoutConstants.statusBadgeVerticalInset,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: LudavaTheme.statusBadgeFillOpacity),
+        color: color.withValues(alpha: _badgeFillOpacity),
         borderRadius: BorderRadius.circular(
           AppLayoutConstants.statusBadgeRadius,
         ),
         border: Border.all(
-          color: color.withValues(alpha: LudavaTheme.statusBadgeOutlineOpacity),
+          color: color.withValues(alpha: _badgeOutlineOpacity),
         ),
       ),
       child: Text(

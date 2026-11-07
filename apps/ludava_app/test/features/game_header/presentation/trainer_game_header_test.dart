@@ -37,6 +37,13 @@ void main() {
         tester.widget<Text>(find.text('Ready')).style?.color,
         LudavaTheme.graphiteAndTeal.extension<LudavaThemeTokens>()!.success,
       );
+      final header = tester.widget<Container>(find.byType(Container).first);
+      expect(
+        ((header.decoration! as BoxDecoration).border! as Border).bottom.color,
+        LudavaTheme.graphiteAndTeal
+            .extension<LudavaThemeTokens>()!
+            .borderSubtle,
+      );
       await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
       await tester.tap(find.widgetWithText(OutlinedButton, 'Re-detect'));
 

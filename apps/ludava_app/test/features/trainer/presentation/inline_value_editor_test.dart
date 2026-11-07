@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/inline_value_editor.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
+import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
@@ -31,6 +32,38 @@ void main() {
       expect(find.text('Current value: 0'), findsOneWidget);
       expect(writeCalls, 0);
     });
+
+    testWidgets(
+      'Class InlineValueEditor uses semantic focus and border roles',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            InlineValueEditor(
+              field: _field(maximumValue: 100),
+              currentValue: 17,
+              writeResult: null,
+              onApply: _success,
+              onCancel: () {},
+            ),
+          ),
+        );
+        final tokens = LudavaTheme.graphiteAndTeal
+            .extension<LudavaThemeTokens>()!;
+        final input = tester.widget<TextField>(_inputFinder);
+
+        expect(
+          (input.decoration!.border! as OutlineInputBorder).borderSide.color,
+          tokens.borderSubtle,
+        );
+        expect(
+          (input.decoration!.focusedBorder! as OutlineInputBorder)
+              .borderSide
+              .color,
+          tokens.focus,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('Class InlineValueEditor applies only after explicit Apply', (
       tester,

@@ -3,92 +3,118 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 void main() {
-  group('Class LudavaThemeTokens behavior', () {
-    test('Class LudavaThemeTokens copyWith replaces all selected tokens', () {
-      const tokens = LudavaThemeTokens(
-        windowChrome: Colors.black,
-        surfaceRaised: Colors.blueGrey,
-        outlineSubtle: Colors.grey,
-        textMuted: Colors.white70,
-        success: Colors.green,
-        warning: Colors.amber,
-      );
+  Map<String, Color> roles(LudavaThemeTokens tokens) => {
+    'canvas': tokens.canvas,
+    'surface': tokens.surface,
+    'surfaceElevated': tokens.surfaceElevated,
+    'surfaceHover': tokens.surfaceHover,
+    'surfacePressed': tokens.surfacePressed,
+    'accent': tokens.accent,
+    'onAccent': tokens.onAccent,
+    'textPrimary': tokens.textPrimary,
+    'textSecondary': tokens.textSecondary,
+    'textMuted': tokens.textMuted,
+    'textDisabled': tokens.textDisabled,
+    'borderSubtle': tokens.borderSubtle,
+    'borderDefault': tokens.borderDefault,
+    'borderStrong': tokens.borderStrong,
+    'focus': tokens.focus,
+    'success': tokens.success,
+    'warning': tokens.warning,
+    'error': tokens.error,
+    'information': tokens.information,
+  };
 
-      final unchanged = tokens.copyWith();
-      final updated = tokens.copyWith(
-        windowChrome: Colors.red,
-        surfaceRaised: Colors.redAccent,
-        outlineSubtle: Colors.black12,
-        textMuted: Colors.black54,
-        success: Colors.lightGreen,
-        warning: Colors.deepOrange,
-      );
+  group('Method copyWith behaves correctly', () {
+    test(
+      'Method copyWith preserves other roles when replacing selected ones',
+      () {
+        const initial = LudavaThemeTokens(
+          canvas: Colors.black,
+          surface: Colors.black,
+          surfaceElevated: Colors.black,
+          surfaceHover: Colors.black,
+          surfacePressed: Colors.black,
+          accent: Colors.black,
+          onAccent: Colors.black,
+          textPrimary: Colors.black,
+          textSecondary: Colors.black,
+          textMuted: Colors.black,
+          textDisabled: Colors.black,
+          borderSubtle: Colors.black,
+          borderDefault: Colors.black,
+          borderStrong: Colors.black,
+          focus: Colors.black,
+          success: Colors.black,
+          warning: Colors.black,
+          error: Colors.black,
+          information: Colors.black,
+        );
 
-      expect(unchanged.windowChrome, tokens.windowChrome);
-      expect(unchanged.surfaceRaised, tokens.surfaceRaised);
-      expect(unchanged.outlineSubtle, tokens.outlineSubtle);
-      expect(unchanged.textMuted, tokens.textMuted);
-      expect(unchanged.success, tokens.success);
-      expect(unchanged.warning, tokens.warning);
-      expect(updated.windowChrome, Colors.red);
-      expect(updated.surfaceRaised, Colors.redAccent);
-      expect(updated.outlineSubtle, Colors.black12);
-      expect(updated.textMuted, Colors.black54);
-      expect(updated.success, Colors.lightGreen);
-      expect(updated.warning, Colors.deepOrange);
-    });
+        final copied = initial.copyWith(
+          surface: Colors.red,
+          focus: Colors.blue,
+        );
+        final expected = roles(initial)
+          ..['surface'] = Colors.red
+          ..['focus'] = Colors.blue;
 
-    test('Class LudavaThemeTokens lerp interpolates semantic colors', () {
+        expect(roles(copied), expected);
+        expect(roles(initial).values, everyElement(Colors.black));
+      },
+    );
+  });
+
+  group('Method lerp behaves correctly', () {
+    test('Method lerp interpolates each role and returns this for null', () {
       const first = LudavaThemeTokens(
-        windowChrome: Colors.black,
-        surfaceRaised: Colors.black,
-        outlineSubtle: Colors.black,
+        canvas: Colors.black,
+        surface: Colors.black,
+        surfaceElevated: Colors.black,
+        surfaceHover: Colors.black,
+        surfacePressed: Colors.black,
+        accent: Colors.black,
+        onAccent: Colors.black,
+        textPrimary: Colors.black,
+        textSecondary: Colors.black,
         textMuted: Colors.black,
+        textDisabled: Colors.black,
+        borderSubtle: Colors.black,
+        borderDefault: Colors.black,
+        borderStrong: Colors.black,
+        focus: Colors.black,
         success: Colors.black,
         warning: Colors.black,
+        error: Colors.black,
+        information: Colors.black,
       );
       const second = LudavaThemeTokens(
-        windowChrome: Colors.white,
-        surfaceRaised: Colors.white,
-        outlineSubtle: Colors.white,
+        canvas: Colors.white,
+        surface: Colors.white,
+        surfaceElevated: Colors.white,
+        surfaceHover: Colors.white,
+        surfacePressed: Colors.white,
+        accent: Colors.white,
+        onAccent: Colors.white,
+        textPrimary: Colors.white,
+        textSecondary: Colors.white,
         textMuted: Colors.white,
+        textDisabled: Colors.white,
+        borderSubtle: Colors.white,
+        borderDefault: Colors.white,
+        borderStrong: Colors.white,
+        focus: Colors.white,
         success: Colors.white,
         warning: Colors.white,
+        error: Colors.white,
+        information: Colors.white,
       );
+      final midpoint = Color.lerp(Colors.black, Colors.white, 0.5)!;
 
-      final start = first.lerp(second, 0);
-      final midpoint = first.lerp(second, 0.5);
-      final end = first.lerp(second, 1);
-      final unchanged = first.lerp(null, 0.5);
-
-      expect(start.windowChrome, Colors.black);
-      expect(start.surfaceRaised, Colors.black);
-      expect(start.outlineSubtle, Colors.black);
-      expect(start.textMuted, Colors.black);
-      expect(start.success, Colors.black);
-      expect(start.warning, Colors.black);
-      expect(
-        midpoint.windowChrome,
-        Color.lerp(Colors.black, Colors.white, 0.5),
-      );
-      expect(
-        midpoint.surfaceRaised,
-        Color.lerp(Colors.black, Colors.white, 0.5),
-      );
-      expect(
-        midpoint.outlineSubtle,
-        Color.lerp(Colors.black, Colors.white, 0.5),
-      );
-      expect(midpoint.textMuted, Color.lerp(Colors.black, Colors.white, 0.5));
-      expect(midpoint.success, Color.lerp(Colors.black, Colors.white, 0.5));
-      expect(midpoint.warning, Color.lerp(Colors.black, Colors.white, 0.5));
-      expect(end.windowChrome, Colors.white);
-      expect(end.surfaceRaised, Colors.white);
-      expect(end.outlineSubtle, Colors.white);
-      expect(end.textMuted, Colors.white);
-      expect(end.success, Colors.white);
-      expect(end.warning, Colors.white);
-      expect(unchanged.warning, Colors.black);
+      expect(roles(first.lerp(null, 0.5)), roles(first));
+      expect(roles(first.lerp(second, 0)).values, everyElement(Colors.black));
+      expect(roles(first.lerp(second, 0.5)).values, everyElement(midpoint));
+      expect(roles(first.lerp(second, 1)).values, everyElement(Colors.white));
     });
   });
 }

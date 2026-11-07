@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_app.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
+import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -290,16 +290,7 @@ void main() {
     ) async {
       final sdk = _createSdk(() => const []);
       final alternateTheme = ThemeData.light().copyWith(
-        extensions: const [
-          LudavaThemeTokens(
-            windowChrome: Colors.amber,
-            surfaceRaised: Colors.blueGrey,
-            outlineSubtle: Colors.indigo,
-            textMuted: Colors.teal,
-            success: Colors.green,
-            warning: Colors.orange,
-          ),
-        ],
+        extensions: [GraphiteTealTheme.tokens.copyWith(surface: Colors.amber)],
         textTheme: const TextTheme(
           titleMedium: TextStyle(color: Colors.purple),
         ),

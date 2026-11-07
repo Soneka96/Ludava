@@ -39,8 +39,8 @@ class LudavaWindowTitleBar extends StatelessWidget {
     return DecoratedBox(
       key: const ValueKey('ludava-titlebar-surface'),
       decoration: BoxDecoration(
-        color: tokens.windowChrome,
-        border: Border(bottom: BorderSide(color: tokens.outlineSubtle)),
+        color: tokens.surface,
+        border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
       ),
       child: SizedBox(
         height: AppLayoutConstants.titleBarHeight,
