@@ -16,24 +16,75 @@ void main() {
         final theme = LudavaThemeFactory.build(
           colors: colors,
           style: LudavaStylePresets.comfortable,
+          brightness: GraphiteTealTheme.brightness,
         );
         final scheme = theme.colorScheme;
 
         expect(theme.brightness, Brightness.dark);
         expect(theme.scaffoldBackgroundColor, colors.canvas);
         expect(theme.extension<LudavaThemeTokens>(), same(colors));
+        expect(scheme.brightness, GraphiteTealTheme.brightness);
         expect(scheme.primary, colors.accent);
         expect(scheme.onPrimary, colors.onAccent);
+        expect(scheme.primaryContainer, colors.surfaceElevated);
+        expect(scheme.onPrimaryContainer, colors.textPrimary);
+        expect(scheme.primaryFixed, colors.surfaceElevated);
+        expect(scheme.primaryFixedDim, colors.surface);
+        expect(scheme.onPrimaryFixed, colors.textPrimary);
+        expect(scheme.onPrimaryFixedVariant, colors.textSecondary);
         expect(scheme.secondary, colors.accent);
+        expect(scheme.onSecondary, colors.onAccent);
+        expect(scheme.secondaryContainer, colors.surfaceElevated);
+        expect(scheme.onSecondaryContainer, colors.textPrimary);
+        expect(scheme.secondaryFixed, colors.surfaceElevated);
+        expect(scheme.secondaryFixedDim, colors.surface);
+        expect(scheme.onSecondaryFixed, colors.textPrimary);
+        expect(scheme.onSecondaryFixedVariant, colors.textSecondary);
         expect(scheme.tertiary, colors.information);
+        expect(scheme.onTertiary, colors.canvas);
+        expect(scheme.tertiaryContainer, colors.surfaceElevated);
+        expect(scheme.onTertiaryContainer, colors.textPrimary);
+        expect(scheme.tertiaryFixed, colors.surfaceElevated);
+        expect(scheme.tertiaryFixedDim, colors.surface);
+        expect(scheme.onTertiaryFixed, colors.textPrimary);
+        expect(scheme.onTertiaryFixedVariant, colors.textSecondary);
         expect(scheme.error, colors.error);
+        expect(scheme.onError, colors.canvas);
+        expect(scheme.errorContainer, colors.surfacePressed);
+        expect(scheme.onErrorContainer, colors.textPrimary);
         expect(scheme.surface, colors.surface);
         expect(scheme.onSurface, colors.textPrimary);
+        expect(scheme.surfaceDim, colors.canvas);
+        expect(scheme.surfaceBright, colors.borderStrong);
+        expect(scheme.surfaceContainerLowest, colors.canvas);
+        expect(scheme.surfaceContainerLow, colors.surface);
+        expect(scheme.surfaceContainer, colors.surface);
+        expect(scheme.surfaceContainerHigh, colors.surfaceElevated);
+        expect(scheme.surfaceContainerHighest, colors.surfacePressed);
+        expect(scheme.onSurfaceVariant, colors.textSecondary);
         expect(scheme.outline, colors.borderDefault);
         expect(scheme.outlineVariant, colors.borderSubtle);
-        expect(scheme.surfaceContainerHighest, colors.surfacePressed);
+        expect(scheme.shadow, colors.canvas);
+        expect(scheme.scrim, colors.canvas.withValues(alpha: 0.32));
+        expect(scheme.inverseSurface, colors.textPrimary);
+        expect(scheme.onInverseSurface, colors.canvas);
+        expect(scheme.inversePrimary, colors.accent);
+        expect(scheme.surfaceTint, colors.accent);
       },
     );
+
+    test('Method LudavaThemeFactory.build() uses its declared brightness without seed colors', () {
+      final colors = GraphiteTealTheme.colors.copyWith(accent: Colors.purple);
+      final theme = LudavaThemeFactory.build(
+        colors: colors,
+        style: LudavaStylePresets.comfortable,
+        brightness: Brightness.light,
+      );
+
+      expect(theme.brightness, Brightness.light);
+      expect(theme.colorScheme.brightness, Brightness.light);
+      expect(theme.colorScheme.primary, Colors.purple);
+    });
 
     test(
       'Method LudavaThemeFactory.build() uses Comfortable control styles',
@@ -41,6 +92,7 @@ void main() {
         final theme = LudavaThemeFactory.build(
           colors: GraphiteTealTheme.colors,
           style: LudavaStylePresets.comfortable,
+          brightness: GraphiteTealTheme.brightness,
         );
         final style = LudavaStylePresets.comfortable;
         final filled = theme.filledButtonTheme.style!;
@@ -67,6 +119,42 @@ void main() {
       },
     );
 
+    test('Method LudavaThemeFactory.build() centralizes text and icon interaction states', () {
+      final colors = GraphiteTealTheme.colors;
+      final theme = LudavaThemeFactory.build(
+        colors: colors,
+        style: LudavaStylePresets.comfortable,
+        brightness: GraphiteTealTheme.brightness,
+      );
+      final textButton = theme.textButtonTheme.style!;
+      final iconButton = theme.iconButtonTheme.style!;
+
+      expect(
+        textButton.foregroundColor!.resolve({WidgetState.disabled}),
+        colors.textDisabled,
+      );
+      expect(
+        textButton.overlayColor!.resolve({WidgetState.hovered}),
+        _stateOverlayColor(colors.accent, 0.08),
+      );
+      expect(
+        textButton.overlayColor!.resolve({WidgetState.focused}),
+        _stateOverlayColor(colors.accent, 0.1),
+      );
+      expect(
+        iconButton.foregroundColor!.resolve({WidgetState.disabled}),
+        colors.textDisabled,
+      );
+      expect(
+        iconButton.overlayColor!.resolve({WidgetState.hovered}),
+        colors.surfaceHover.withValues(alpha: 0.08),
+      );
+      expect(
+        iconButton.overlayColor!.resolve({WidgetState.focused}),
+        colors.focus.withValues(alpha: 0.12),
+      );
+    });
+
     testWidgets(
       'Method LudavaThemeFactory.build() styles Ludava and Material widgets from alternate colors',
       (tester) async {
@@ -79,6 +167,7 @@ void main() {
         final theme = LudavaThemeFactory.build(
           colors: colors,
           style: LudavaStylePresets.comfortable,
+          brightness: GraphiteTealTheme.brightness,
         );
         final maximizeState = ValueNotifier(false);
         addTearDown(maximizeState.dispose);
@@ -138,3 +227,11 @@ void main() {
     );
   });
 }
+
+/// Resolves a Material state opacity through its 8-bit color alpha channel.
+Color _stateOverlayColor(Color color, double opacity) => Color.fromARGB(
+  (opacity * 255).round(),
+  (color.r * 255).round().clamp(0, 255).toInt(),
+  (color.g * 255).round().clamp(0, 255).toInt(),
+  (color.b * 255).round().clamp(0, 255).toInt(),
+);

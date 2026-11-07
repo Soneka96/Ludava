@@ -4,10 +4,11 @@ import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 /// Builds a shared Material theme from semantic colors and visual style.
 abstract final class LudavaThemeFactory {
-  /// Builds Material 3 styling without coupling it to a particular palette.
+  /// Builds Material 3 styling from semantic colors and [brightness].
   static ThemeData build({
     required LudavaThemeTokens colors,
     required LudavaStylePreset style,
+    required Brightness brightness,
   }) {
     final controlShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(style.controlRadius),
@@ -28,8 +29,8 @@ abstract final class LudavaThemeFactory {
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: _colorScheme(colors),
+      brightness: brightness,
+      colorScheme: _colorScheme(colors, brightness),
       fontFamily: style.fontFamily,
       textTheme: textTheme,
       scaffoldBackgroundColor: colors.canvas,
@@ -113,36 +114,57 @@ abstract final class LudavaThemeFactory {
     );
   }
 
-  /// Maps the semantic color roles used by Material 3 controls.
-  static ColorScheme _colorScheme(LudavaThemeTokens colors) =>
-      ColorScheme.fromSeed(
-        seedColor: colors.accent,
-        brightness: Brightness.dark,
-      ).copyWith(
-        primary: colors.accent,
-        onPrimary: colors.onAccent,
-        primaryContainer: colors.surfaceElevated,
-        onPrimaryContainer: colors.textPrimary,
-        secondary: colors.accent,
-        onSecondary: colors.onAccent,
-        secondaryContainer: colors.surfaceElevated,
-        onSecondaryContainer: colors.textPrimary,
-        tertiary: colors.information,
-        onTertiary: colors.canvas,
-        error: colors.error,
-        onError: colors.canvas,
-        surface: colors.surface,
-        onSurface: colors.textPrimary,
-        onSurfaceVariant: colors.textSecondary,
-        outline: colors.borderDefault,
-        outlineVariant: colors.borderSubtle,
-        surfaceDim: colors.canvas,
-        surfaceBright: colors.borderStrong,
-        surfaceContainerLowest: colors.canvas,
-        surfaceContainerLow: colors.surface,
-        surfaceContainer: colors.surface,
-        surfaceContainerHigh: colors.surfaceElevated,
-        surfaceContainerHighest: colors.surfacePressed,
-        surfaceTint: colors.accent,
-      );
+  /// Maps every Material color role to an explicit semantic token.
+  static ColorScheme _colorScheme(
+    LudavaThemeTokens colors,
+    Brightness brightness,
+  ) => ColorScheme(
+    brightness: brightness,
+    primary: colors.accent,
+    onPrimary: colors.onAccent,
+    primaryContainer: colors.surfaceElevated,
+    onPrimaryContainer: colors.textPrimary,
+    primaryFixed: colors.surfaceElevated,
+    primaryFixedDim: colors.surface,
+    onPrimaryFixed: colors.textPrimary,
+    onPrimaryFixedVariant: colors.textSecondary,
+    secondary: colors.accent,
+    onSecondary: colors.onAccent,
+    secondaryContainer: colors.surfaceElevated,
+    onSecondaryContainer: colors.textPrimary,
+    secondaryFixed: colors.surfaceElevated,
+    secondaryFixedDim: colors.surface,
+    onSecondaryFixed: colors.textPrimary,
+    onSecondaryFixedVariant: colors.textSecondary,
+    tertiary: colors.information,
+    onTertiary: colors.canvas,
+    tertiaryContainer: colors.surfaceElevated,
+    onTertiaryContainer: colors.textPrimary,
+    tertiaryFixed: colors.surfaceElevated,
+    tertiaryFixedDim: colors.surface,
+    onTertiaryFixed: colors.textPrimary,
+    onTertiaryFixedVariant: colors.textSecondary,
+    error: colors.error,
+    onError: colors.canvas,
+    errorContainer: colors.surfacePressed,
+    onErrorContainer: colors.textPrimary,
+    surface: colors.surface,
+    onSurface: colors.textPrimary,
+    surfaceDim: colors.canvas,
+    surfaceBright: colors.borderStrong,
+    surfaceContainerLowest: colors.canvas,
+    surfaceContainerLow: colors.surface,
+    surfaceContainer: colors.surface,
+    surfaceContainerHigh: colors.surfaceElevated,
+    surfaceContainerHighest: colors.surfacePressed,
+    onSurfaceVariant: colors.textSecondary,
+    outline: colors.borderDefault,
+    outlineVariant: colors.borderSubtle,
+    shadow: colors.canvas,
+    scrim: colors.canvas.withValues(alpha: 0.32),
+    inverseSurface: colors.textPrimary,
+    onInverseSurface: colors.canvas,
+    inversePrimary: colors.accent,
+    surfaceTint: colors.accent,
+  );
 }

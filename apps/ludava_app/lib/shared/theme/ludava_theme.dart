@@ -9,5 +9,6 @@ abstract final class LudavaTheme {
   static final ThemeData graphiteAndTeal = LudavaThemeFactory.build(
     colors: GraphiteTealTheme.colors,
     style: LudavaStylePresets.comfortable,
+    brightness: GraphiteTealTheme.brightness,
   );
 }

@@ -1,8 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:ludava_app/shared/theme/ludava_colors.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 /// Graphite & Teal mappings from raw palette values to semantic roles.
 abstract final class GraphiteTealTheme {
+  /// Brightness selected for the shipped Graphite & Teal theme.
+  static const Brightness brightness = Brightness.dark;
+
   /// Semantic roles mapped from the Graphite & Teal raw color palette.
   static const LudavaThemeTokens colors = LudavaThemeTokens(
     canvas: LudavaColors.graphite950,

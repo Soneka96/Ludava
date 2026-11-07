@@ -98,6 +98,7 @@ void main() {
         final theme = LudavaThemeFactory.build(
           colors: colors,
           style: LudavaStylePresets.comfortable,
+          brightness: GraphiteTealTheme.brightness,
         );
 
         await tester.pumpWidget(
