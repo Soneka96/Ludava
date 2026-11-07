@@ -193,6 +193,11 @@ void main() {
         expect(find.text('Read failed'), findsOneWidget);
         expect(find.text('0'), findsNothing);
         expect(find.text('Writable'), findsNothing);
+        expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
+
+        await tester.pumpWidget(_wrap(_session(includeRead: false)));
+        expect(find.text('Unavailable'), findsOneWidget);
+        expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
 
         await tester.pumpWidget(
           _wrap(
@@ -295,6 +300,7 @@ TrainerSessionState _session({
   bool omitMaximum = false,
   bool includeSecondField = false,
   bool includeManyFields = false,
+  bool includeRead = true,
   bool emptyProfile = false,
 }) {
   final fields = <String, GameField>{};
@@ -311,13 +317,15 @@ TrainerSessionState _session({
       minimumValue: omitMinimum ? null : 0,
       maximumValue: omitMaximum ? null : 4294967295,
     );
-    reads['bolts'] =
-        readResult ??
-        GameReadResult(
-          status: GameReadStatus.success,
-          fieldId: 'bolts',
-          value: value,
-        );
+    if (includeRead) {
+      reads['bolts'] =
+          readResult ??
+          GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'bolts',
+            value: value,
+          );
+    }
   }
   if (includeSecondField) {
     fields['scrap'] = _field(id: 'scrap', name: 'Scrap', offset: 4, max: 100);
@@ -351,6 +359,10 @@ TrainerSessionState _session({
   return TrainerSessionState(
     processIds: hasProcess ? const [123] : const [],
     selectedProcessId: hasProcess ? 123 : null,
+    processMetadata: Rpcs3ProcessMetadata(
+      executablePath: r'C:\RPCS3\rpcs3.exe',
+      startedAtUtc: DateTime.utc(2026),
+    ),
     detection: GameDetectionResult(
       status: GameDetectionStatus.supportedGame,
       processId: hasProcess ? 123 : null,

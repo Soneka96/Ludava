@@ -216,9 +216,9 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     return profile.fields.values.where((field) => field.canRead).toList();
   }
 
-  /// Returns whether [field] is writable under the current profile and field evidence.
+  /// Reports whether [field] has an approved current target and successful read.
   bool _canEditField(GameField field) =>
-      component.session.profile?.canWrite == true && field.canWrite;
+      TrainerWriteEligibility.isWriteEligible(component.session, field);
 
   /// Renders the menu divider at the available width.
   Component _separator() => Text(

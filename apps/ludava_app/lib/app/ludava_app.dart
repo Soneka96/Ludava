@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_field_availability.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
@@ -112,7 +111,7 @@ class _LudavaAppState extends State<LudavaApp> {
 
   /// Opens the inline editor only for a currently approved field and target.
   void _editField(GameField field) {
-    if (!TrainerFieldAvailability.canEdit(_session, field)) return;
+    if (!TrainerWriteEligibility.isWriteEligible(_session, field)) return;
     setState(() => _editingFieldId = field.id);
   }
 
@@ -133,7 +132,7 @@ class _LudavaAppState extends State<LudavaApp> {
       final readResult = state.readResults[editingFieldId];
       if (!_sameSession(_session, state) ||
           field == null ||
-          !TrainerFieldAvailability.hasWriteTarget(state, field) ||
+          !TrainerWriteEligibility.hasValidTarget(state, field) ||
           (readResult != null &&
               !readResult.succeeded &&
               state.lastWriteResult?.fieldId != editingFieldId)) {

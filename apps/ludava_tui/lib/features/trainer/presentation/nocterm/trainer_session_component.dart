@@ -156,9 +156,12 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
   /// Opens [field] for editing without copying its verified value.
   void _openField(GameField field) {
     final profile = _session.profile;
-    if (profile == null || !profile.canWrite) return;
+    if (profile == null) return;
     final editableField = profile.findField(field.id);
-    if (editableField == null || !editableField.canWrite) return;
+    if (editableField == null ||
+        !TrainerWriteEligibility.isWriteEligible(_session, editableField)) {
+      return;
+    }
     setState(() => _editingField = editableField);
   }
 
@@ -196,7 +199,8 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
             ? null
             : session.profile?.findField(editingField.id);
     if (editingField != null &&
-        (session.profile?.canWrite != true || currentField?.canWrite != true)) {
+        (currentField == null ||
+            !TrainerWriteEligibility.hasValidTarget(session, currentField))) {
       _editingField = null;
     }
     if (editingField != null &&

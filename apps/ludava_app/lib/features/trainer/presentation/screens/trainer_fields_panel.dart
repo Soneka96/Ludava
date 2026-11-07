@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_field_availability.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
@@ -57,13 +56,16 @@ class TrainerFieldsPanel extends StatelessWidget {
       itemBuilder: (context, index) {
         final field = fields[index];
         final readResult = session.readResults[field.id];
-        final canWrite = TrainerFieldAvailability.canEdit(session, field);
+        final canWrite = TrainerWriteEligibility.isWriteEligible(
+          session,
+          field,
+        );
         final writeResult = session.lastWriteResult?.fieldId == field.id
             ? session.lastWriteResult
             : null;
         final isEditing =
             editingFieldId == field.id &&
-            TrainerFieldAvailability.hasWriteTarget(session, field);
+            TrainerWriteEligibility.hasValidTarget(session, field);
 
         return Column(
           key: ValueKey('trainer-field-${field.id}'),

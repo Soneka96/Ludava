@@ -160,6 +160,33 @@ void main() {
     );
 
     test(
+      'Class TrainerMenuComponent hides edit actions without a valid target or current read',
+      () async {
+        await testNocterm('invalid write target', (tester) async {
+          final openedFields = <GameField>[];
+          for (final session in [
+            _session(hasMemoryBase: false),
+            _session(confidence: GameIdentityConfidence.manuallySelected),
+            _session(reads: const {}),
+          ]) {
+            await tester.pumpComponent(
+              _menu(session, onOpenField: openedFields.add),
+            );
+
+            expect(
+              tester.terminalState,
+              containsText('Selected field is read-only'),
+            );
+            await tester.sendKey(LogicalKey.digit1);
+            await tester.sendEnter();
+          }
+
+          expect(openedFields, isEmpty);
+        });
+      },
+    );
+
+    test(
       'Class TrainerMenuComponent labels failed reads as unavailable',
       () async {
         await testNocterm('unavailable field value', (tester) async {
@@ -604,17 +631,23 @@ TrainerSessionState _session({
       value: 7,
     ),
   },
+  bool hasMemoryBase = true,
+  GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
 }) {
   final selectedProfile = profile ?? _profile();
   return TrainerSessionState(
     processIds: const [42],
     selectedProcessId: 42,
-    memoryBase: 0x300000000,
+    processMetadata: Rpcs3ProcessMetadata(
+      executablePath: r'C:\RPCS3\rpcs3.exe',
+      startedAtUtc: DateTime.utc(2026),
+    ),
+    memoryBase: hasMemoryBase ? 0x300000000 : null,
     detection: GameDetectionResult(
       status: GameDetectionStatus.supportedGame,
       processId: 42,
       gameTitle: selectedProfile.gameName,
-      confidence: GameIdentityConfidence.confirmed,
+      confidence: confidence,
       profile: selectedProfile,
       evidenceDescription: 'Synthetic menu fixture.',
     ),

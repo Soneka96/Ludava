@@ -192,6 +192,10 @@ void main() {
               session: TrainerSessionState(
                 processIds: const [42],
                 selectedProcessId: 42,
+                processMetadata: Rpcs3ProcessMetadata(
+                  executablePath: r'C:\RPCS3\rpcs3.exe',
+                  startedAtUtc: DateTime.utc(2026),
+                ),
                 detection: GameDetectionResult(
                   status: GameDetectionStatus.supportedGame,
                   processId: 42,
