@@ -34,6 +34,7 @@ class _LudavaAppState extends State<LudavaApp> {
   late final LudavaSdk _sdk;
   late final LudavaWindowController _windowController;
   late TrainerSessionState _session;
+  String? _editingFieldId;
   StreamSubscription<TrainerSessionState>? _stateSubscription;
   bool _shuttingDown = false;
 
@@ -88,7 +89,13 @@ class _LudavaAppState extends State<LudavaApp> {
                         child:
                             _session.detection?.status ==
                                 GameDetectionStatus.supportedGame
-                            ? TrainerFieldsPanel(session: _session)
+                            ? TrainerFieldsPanel(
+                                session: _session,
+                                editingFieldId: _editingFieldId,
+                                onEditField: _editField,
+                                onApplyField: _applyField,
+                                onCancelEditing: _cancelFieldEdit,
+                              )
                             : SessionConnectionBody(
                                 session: _session,
                                 onSelectProcess: _selectProcess,
@@ -135,11 +142,68 @@ class _LudavaAppState extends State<LudavaApp> {
   /// Selects an RPCS3 process through the SDK session capability.
   void _selectProcess(int processId) => _sdk.session.selectProcess(processId);
 
+  /// Opens the inline editor only for a currently approved field and target.
+  void _editField(GameField field) {
+    if (!_canEditField(_session, field.id)) return;
+    setState(() => _editingFieldId = field.id);
+  }
+
+  /// Calls the SDK's guarded field-write operation after explicit Apply.
+  GameWriteResult _applyField(String fieldId, int value) =>
+      _sdk.session.writeField(fieldId, value);
+
+  /// Discards the active draft without performing a write.
+  void _cancelFieldEdit() => setState(() => _editingFieldId = null);
+
   /// Applies state updates while the root widget remains mounted.
   void _handleStateChanged(TrainerSessionState state) {
     if (_shuttingDown || !mounted) return;
-    setState(() => _session = state);
+    var editingFieldId = _editingFieldId;
+    if (editingFieldId != null &&
+        (!_sameSession(_session, state) ||
+            !_hasWriteTarget(state, editingFieldId) ||
+            (state.readResults[editingFieldId]?.succeeded != true &&
+                state.lastWriteResult?.fieldId != editingFieldId))) {
+      editingFieldId = null;
+    }
+    setState(() {
+      _session = state;
+      _editingFieldId = editingFieldId;
+    });
   }
+
+  /// Checks confirmed identity, profile/field permissions, and field bounds.
+  bool _hasWriteTarget(TrainerSessionState state, String fieldId) {
+    final profile = state.profile;
+    final field = profile?.findField(fieldId);
+    return profile != null &&
+        profile.canRead &&
+        profile.canWrite &&
+        field != null &&
+        field.canRead &&
+        field.canWrite &&
+        field.minimumValue != null &&
+        field.maximumValue != null &&
+        state.selectedProcessId != null &&
+        state.memoryBase != null &&
+        state.detection?.confidence == GameIdentityConfidence.confirmed;
+  }
+
+  /// Checks that [first] and [second] describe the same SDK write target.
+  bool _sameSession(TrainerSessionState first, TrainerSessionState second) =>
+      first.selectedProcessId == second.selectedProcessId &&
+      first.processMetadata?.startedAtUtc ==
+          second.processMetadata?.startedAtUtc &&
+      first.detection?.status == second.detection?.status &&
+      first.detection?.confidence == second.detection?.confidence &&
+      first.profile?.id == second.profile?.id &&
+      first.detection?.executableHash == second.detection?.executableHash &&
+      first.memoryBase == second.memoryBase;
+
+  /// Checks the currently displayed read result before opening an editor.
+  bool _canEditField(TrainerSessionState state, String fieldId) =>
+      _hasWriteTarget(state, fieldId) &&
+      state.readResults[fieldId]?.succeeded == true;
 
   /// Stops the subscription before awaiting SDK resource disposal.
   Future<void> _disposeResources() async {

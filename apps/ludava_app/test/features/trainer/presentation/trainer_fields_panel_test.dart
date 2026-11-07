@@ -55,6 +55,74 @@ void main() {
       },
     );
 
+    testWidgets('Class TrainerFieldsPanel exposes Edit in both layouts', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      String? editedFieldId;
+
+      for (final width in const [720.0, 1180.0]) {
+        tester.view.physicalSize = Size(width, 560);
+        await tester.pumpWidget(
+          _wrap(
+            _session(value: 17),
+            onEditField: (field) => editedFieldId = field.id,
+          ),
+        );
+
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        expect(editedFieldId, 'bolts');
+      }
+    });
+
+    testWidgets(
+      'Class TrainerFieldsPanel expands the same editor in both layouts',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        for (final width in const [720.0, 1180.0]) {
+          tester.view.physicalSize = Size(width, 560);
+          await tester.pumpWidget(
+            _wrap(_session(value: 17), editingFieldId: 'bolts'),
+          );
+
+          expect(
+            find.byKey(const ValueKey('inline-editor-input-bolts')),
+            findsOneWidget,
+          );
+        }
+      },
+    );
+
+    testWidgets(
+      'Class TrainerFieldsPanel hides an editor when permission is lost',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(_session(value: 17), editingFieldId: 'bolts'),
+        );
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsOneWidget,
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            _session(value: 17, profileWriteStatus: VerificationStatus.none),
+            editingFieldId: 'bolts',
+          ),
+        );
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+      },
+    );
+
     testWidgets('Class TrainerFieldsPanel switches at the shared breakpoint', (
       tester,
     ) async {
@@ -249,9 +317,29 @@ void main() {
   });
 }
 
-Widget _wrap(TrainerSessionState session) => MaterialApp(
+Widget _wrap(
+  TrainerSessionState session, {
+  String? editingFieldId,
+  ValueChanged<GameField>? onEditField,
+  GameWriteResult Function(String fieldId, int value)? onApplyField,
+  VoidCallback? onCancelEditing,
+}) => MaterialApp(
   theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: TrainerFieldsPanel(session: session)),
+  home: Scaffold(
+    body: TrainerFieldsPanel(
+      session: session,
+      editingFieldId: editingFieldId,
+      onEditField: onEditField ?? (_) {},
+      onApplyField:
+          onApplyField ??
+          ((fieldId, value) => GameWriteResult(
+            status: GameWriteStatus.none,
+            fieldId: fieldId,
+            requestedValue: value,
+          )),
+      onCancelEditing: onCancelEditing ?? () {},
+    ),
+  ),
 );
 
 TrainerSessionState _session({

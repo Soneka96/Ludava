@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ludava_app/features/trainer/presentation/inline_value_editor.dart';
 import 'package:ludava_app/shared/constants/layout_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -8,8 +9,27 @@ class TrainerFieldsPanel extends StatelessWidget {
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
 
-  /// Creates field presentations directly from the SDK profile and read data.
-  const TrainerFieldsPanel({required this.session, super.key});
+  /// Field currently being edited inline, if any.
+  final String? editingFieldId;
+
+  /// Opens the editor for a writable field.
+  final ValueChanged<GameField> onEditField;
+
+  /// Invokes the SDK guarded write after an explicit editor action.
+  final GameWriteResult Function(String fieldId, int value) onApplyField;
+
+  /// Discards the inline editor draft.
+  final VoidCallback onCancelEditing;
+
+  /// Creates field presentations and routes editing actions to the app owner.
+  const TrainerFieldsPanel({
+    required this.session,
+    required this.editingFieldId,
+    required this.onEditField,
+    required this.onApplyField,
+    required this.onCancelEditing,
+    super.key,
+  });
 
   /// Switches the field arrangement at the shared desktop breakpoint.
   @override
@@ -54,6 +74,13 @@ class TrainerFieldsPanel extends StatelessWidget {
     final canRead = profile.canRead && field.canRead;
     final canWrite = _canWrite(profile, field, readResult);
     final accessColor = canWrite ? tokens.success : tokens.textMuted;
+    final writeResult = session.lastWriteResult?.fieldId == field.id
+        ? session.lastWriteResult
+        : null;
+    final isEditing =
+        editingFieldId == field.id &&
+        _hasWriteTarget(profile, field) &&
+        (readResult?.succeeded == true || writeResult != null);
     return Container(
       key: ValueKey('trainer-field-${compact ? 'row' : 'card'}-${field.id}'),
       padding: compact
@@ -68,25 +95,43 @@ class TrainerFieldsPanel extends StatelessWidget {
           AppLayoutConstants.smallCornerRadius,
         ),
       ),
-      child: compact
-          ? _buildCompactRow(
-              theme,
-              tokens,
-              field,
-              readResult,
-              canRead,
-              canWrite,
-              accessColor,
-            )
-          : _buildCard(
-              theme,
-              tokens,
-              field,
-              readResult,
-              canRead,
-              canWrite,
-              accessColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          compact
+              ? _buildCompactRow(
+                  theme,
+                  tokens,
+                  field,
+                  readResult,
+                  canRead,
+                  canWrite,
+                  accessColor,
+                  isEditing,
+                )
+              : _buildCard(
+                  theme,
+                  tokens,
+                  field,
+                  readResult,
+                  canRead,
+                  canWrite,
+                  accessColor,
+                  isEditing,
+                ),
+          if (isEditing)
+            InlineValueEditor(
+              field: field,
+              currentValue: readResult?.succeeded == true
+                  ? readResult?.value
+                  : null,
+              writeResult: writeResult,
+              onApply: (value) => onApplyField(field.id, value),
+              onCancel: onCancelEditing,
             ),
+        ],
+      ),
     );
   }
 
@@ -99,6 +144,7 @@ class TrainerFieldsPanel extends StatelessWidget {
     bool canRead,
     bool canWrite,
     Color accessColor,
+    bool isEditing,
   ) => Row(
     children: [
       Expanded(
@@ -124,9 +170,18 @@ class TrainerFieldsPanel extends StatelessWidget {
       const SizedBox(width: AppLayoutConstants.headerItemGap),
       Expanded(
         flex: 2,
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: _buildValue(theme, tokens, readResult, canRead),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Flexible(child: _buildValue(theme, tokens, readResult, canRead)),
+            if (canWrite && !isEditing) ...[
+              const SizedBox(width: AppLayoutConstants.headerTitleGap),
+              TextButton(
+                onPressed: () => onEditField(field),
+                child: const Text('Edit'),
+              ),
+            ],
+          ],
         ),
       ),
     ],
@@ -141,6 +196,7 @@ class TrainerFieldsPanel extends StatelessWidget {
     bool canRead,
     bool canWrite,
     Color accessColor,
+    bool isEditing,
   ) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     mainAxisSize: MainAxisSize.min,
@@ -187,15 +243,27 @@ class TrainerFieldsPanel extends StatelessWidget {
           ),
           const SizedBox(width: AppLayoutConstants.headerItemGap),
           Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _buildValue(
-                theme,
-                tokens,
-                readResult,
-                canRead,
-                card: true,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: _buildValue(
+                    theme,
+                    tokens,
+                    readResult,
+                    canRead,
+                    card: true,
+                  ),
+                ),
+                if (canWrite && !isEditing) ...[
+                  const SizedBox(width: AppLayoutConstants.headerTitleGap),
+                  TextButton.icon(
+                    onPressed: () => onEditField(field),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -243,7 +311,10 @@ class TrainerFieldsPanel extends StatelessWidget {
     GameProfile profile,
     GameField field,
     GameReadResult? readResult,
-  ) =>
+  ) => _hasWriteTarget(profile, field) && readResult?.succeeded == true;
+
+  /// Reports the SDK's current profile, field, range, and session permissions.
+  bool _hasWriteTarget(GameProfile profile, GameField field) =>
       profile.canWrite &&
       field.canWrite &&
       profile.canRead &&
@@ -252,8 +323,7 @@ class TrainerFieldsPanel extends StatelessWidget {
       field.maximumValue != null &&
       session.selectedProcessId != null &&
       session.memoryBase != null &&
-      session.detection?.confidence == GameIdentityConfidence.confirmed &&
-      readResult?.succeeded == true;
+      session.detection?.confidence == GameIdentityConfidence.confirmed;
 
   /// Returns the profile-derived read/write availability label.
   String _accessLabel(bool canRead, bool canWrite) {

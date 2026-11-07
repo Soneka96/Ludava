@@ -75,6 +75,12 @@ abstract final class AppLayoutConstants {
   /// Size of the generic trainer field icon.
   static const double fieldIconSize = 22;
 
+  /// Inset around the inline numeric editor.
+  static const double inlineEditorInset = 16;
+
+  /// Minimum action-button height in the inline editor.
+  static const double inlineEditorActionHeight = 40;
+
   /// Small corner radius for title-bar controls and mark.
   static const double smallCornerRadius = 4;
 

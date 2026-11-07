@@ -1,4 +1,7 @@
+import 'dart:ffi' as ffi;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_app.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
@@ -393,6 +396,269 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
+    testWidgets(
+      'Class LudavaApp does not write while opening or cancelling an edit',
+      (tester) async {
+        final memory = _FakeMemoryApi(writeSucceeds: true);
+        final sdk = _createWritableSdk(memory);
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        await tester.pump();
+
+        expect(_editorText(tester), '17');
+        expect(memory.writeCalls, 0);
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+        expect(memory.writeCalls, 0);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+        expect(memory.writeCalls, 0);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp applies a value through the SDK and read-back',
+      (tester) async {
+        final memory = _FakeMemoryApi(writeSucceeds: true);
+        final sdk = _createWritableSdk(memory);
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        expect(find.text('17'), findsOneWidget);
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        await tester.pump();
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+        expect(memory.writeCalls, 0);
+
+        await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+        await tester.pump();
+
+        expect(memory.writeCalls, 1);
+        expect(find.text('Applied and verified: 42'), findsOneWidget);
+        expect(find.text('42'), findsAtLeastNWidgets(1));
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('Class LudavaApp reports failed writes without success', (
+      tester,
+    ) async {
+      final memory = _FakeMemoryApi(writeSucceeds: false);
+      final sdk = _createWritableSdk(memory);
+
+      await tester.pumpWidget(_app(sdk: sdk));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('inline-editor-input-bolts')),
+        '42',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.pump();
+
+      expect(memory.writeCalls, 1);
+      expect(
+        find.text('The write failed with system error 5.'),
+        findsOneWidget,
+      );
+      expect(find.text('Applied and verified: 42'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets(
+      'Class LudavaApp discards the draft when the target disconnects',
+      (tester) async {
+        var processIsRunning = true;
+        final memory = _FakeMemoryApi(writeSucceeds: true);
+        final sdk = _createWritableSdk(
+          memory,
+          discoverProcessIds: () => processIsRunning ? const [321] : const [],
+        );
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        await tester.pump();
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+
+        processIsRunning = false;
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+        expect(find.text('RPCS3 process · PID 321'), findsNothing);
+        expect(memory.writeCalls, 0);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp discards the draft after the RPCS3 process restarts',
+      (tester) async {
+        var startedAt = DateTime.utc(2026);
+        final memory = _FakeMemoryApi(writeSucceeds: true);
+        final sdk = _createWritableSdk(
+          memory,
+          processStartedAt: () => startedAt,
+        );
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        await tester.pump();
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+
+        startedAt = DateTime.utc(2026, 1, 2);
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+        expect(
+          find.text('The RPCS3 session changed. Re-detect the game.'),
+          findsOneWidget,
+        );
+        expect(memory.writeCalls, 0);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp discards the draft after the memory base changes',
+      (tester) async {
+        var memoryBase = 0x100000;
+        final memory = _FakeMemoryApi(writeSucceeds: true);
+        final sdk = _createWritableSdk(memory, memoryBase: () => memoryBase);
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        await tester.pump();
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+
+        memoryBase = 0x200000;
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+        expect(memory.writeCalls, 0);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp discards the draft after executable identity changes',
+      (tester) async {
+        var executableHash = GameProfileCatalog.profiles.first.executableHash;
+        final memory = _FakeMemoryApi(writeSucceeds: true);
+        final sdk = _createWritableSdk(
+          memory,
+          executableHash: () => executableHash,
+        );
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        await tester.pump();
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+
+        executableHash = 'PPU-changed-executable-hash';
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+        expect(memory.writeCalls, 0);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp does not restore a stale draft when write permission returns',
+      (tester) async {
+        final writableProfile = GameProfileCatalog.find('rc1-collection')!;
+        final readOnlyProfile = GameProfile(
+          id: writableProfile.id,
+          gameName: writableProfile.gameName,
+          buildId: writableProfile.buildId,
+          executable: writableProfile.executable,
+          executableHash: writableProfile.executableHash,
+          readStatus: writableProfile.readStatus,
+          writeStatus: VerificationStatus.none,
+          fields: writableProfile.fields,
+        );
+        var currentProfile = writableProfile;
+        final memory = _FakeMemoryApi(writeSucceeds: true);
+        final sdk = _createWritableSdk(memory, profile: () => currentProfile);
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+        await tester.pump();
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+
+        currentProfile = readOnlyProfile;
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+        expect(find.text('Read-only'), findsOneWidget);
+
+        currentProfile = writableProfile;
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsNothing,
+        );
+        expect(memory.writeCalls, 0);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
     testWidgets('Class LudavaApp displays SDK connection errors', (
       tester,
     ) async {
@@ -424,6 +690,89 @@ LudavaSdk _createSdk(List<int> Function() discoverProcessIds) =>
       detectGame: (_, _) => throw StateError('Not used by these tests.'),
     );
 
+/// Creates an SDK runtime whose guarded memory operations use [memory].
+LudavaSdk _createWritableSdk(
+  _FakeMemoryApi memory, {
+  List<int> Function()? discoverProcessIds,
+  DateTime Function()? processStartedAt,
+  int Function()? memoryBase,
+  String? Function()? executableHash,
+  GameProfile Function()? profile,
+}) {
+  final initialProfile = GameProfileCatalog.find('rc1-collection')!;
+  return LudavaSdk.create(
+    api: memory.api,
+    isWindows: true,
+    pointerSize: 8,
+    discoverProcessIds: discoverProcessIds ?? (() => const [321]),
+    readProcessMetadata: (_) => Rpcs3ProcessMetadata(
+      executablePath: r'C:\Games\rpcs3.exe',
+      startedAtUtc: processStartedAt?.call() ?? DateTime.utc(2026),
+    ),
+    resolveMemoryBaseCandidate: (_) => Rpcs3MemoryBaseCandidate(
+      memoryBase: memoryBase?.call() ?? 0x100000,
+      logPath: 'test.log',
+    ),
+    detectGame: (processId, _) {
+      final detectedProfile = profile?.call() ?? initialProfile;
+      return GameDetectionResult(
+        status: GameDetectionStatus.supportedGame,
+        processId: processId,
+        titleId: detectedProfile.buildId,
+        gameTitle: detectedProfile.gameName,
+        executable: detectedProfile.executable,
+        executableHash:
+            executableHash?.call() ?? detectedProfile.executableHash,
+        confidence: GameIdentityConfidence.confirmed,
+        profile: detectedProfile,
+        evidenceDescription: 'Confirmed test profile.',
+      );
+    },
+  );
+}
+
+/// Reads and writes one test integer through the SDK's native API seam.
+class _FakeMemoryApi {
+  /// Whether fake native writes succeed completely.
+  final bool writeSucceeds;
+
+  /// Current fake field bytes, represented as a big-endian unsigned integer.
+  final List<int> bytes = [0, 0, 0, 17];
+
+  /// Number of fake native write calls.
+  int writeCalls = 0;
+
+  /// Creates a fake memory API with the chosen write result.
+  _FakeMemoryApi({required this.writeSucceeds});
+
+  /// Exposes native process functions through the SDK's supported adapter.
+  WindowsMemoryApi get api => WindowsMemoryApi(
+    openProcess: (_, _, _) => ffi.Pointer<ffi.Void>.fromAddress(0x1234),
+    readProcessMemory: (handle, address, buffer, byteCount, transferred) {
+      for (var index = 0; index < byteCount; index++) {
+        buffer[index] = bytes[index];
+      }
+      transferred.value = byteCount;
+      return 1;
+    },
+    writeProcessMemory: (handle, address, buffer, byteCount, transferred) {
+      writeCalls++;
+      if (!writeSucceeds) {
+        transferred.value = 0;
+        return 0;
+      }
+      bytes
+        ..clear()
+        ..addAll(buffer.asTypedList(byteCount));
+      transferred.value = byteCount;
+      return 1;
+    },
+    closeHandle: (_) => 1,
+    getLastError: () => 5,
+    getCurrentProcessId: () => 999,
+  );
+}
+
 /// Creates an app with a window adapter that never calls native code.
 LudavaApp _app({
   required LudavaSdk sdk,
@@ -435,6 +784,12 @@ LudavaApp _app({
       windowController ?? LudavaWindowController(currentWindow: () => null),
   theme: theme,
 );
+
+/// Returns the numeric input text shown by the active editor.
+String _editorText(WidgetTester tester) => tester
+    .widget<TextField>(find.byKey(const ValueKey('inline-editor-input-bolts')))
+    .controller!
+    .text;
 
 /// Records window controller calls from the app shell tests.
 class _RecordingWindowController extends LudavaWindowController {
