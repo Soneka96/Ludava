@@ -60,6 +60,21 @@ abstract final class AppLayoutConstants {
   /// Height of a separator between RPCS3 process choices.
   static const double connectionPickerDividerHeight = 1;
 
+  /// Width where trainer fields switch from rows to cards.
+  static const double fieldCardBreakpoint = 920;
+
+  /// Inset for a wide trainer field card.
+  static const double fieldCardInset = 20;
+
+  /// Vertical inset for a compact trainer field row.
+  static const double fieldRowVerticalInset = 12;
+
+  /// Vertical spacing between trainer field presentations.
+  static const double fieldListGap = 12;
+
+  /// Size of the generic trainer field icon.
+  static const double fieldIconSize = 22;
+
   /// Small corner radius for title-bar controls and mark.
   static const double smallCornerRadius = 4;
 

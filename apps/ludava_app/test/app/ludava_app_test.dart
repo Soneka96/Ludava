@@ -361,6 +361,38 @@ void main() {
       expect(sdk.session.connect, throwsStateError);
     });
 
+    testWidgets('Class LudavaApp renders fields from the detected profile', (
+      tester,
+    ) async {
+      final profile = GameProfileCatalog.profiles.first;
+      final sdk = LudavaSdk.create(
+        isWindows: false,
+        discoverProcessIds: () => const [321],
+        readProcessMetadata: (_) => Rpcs3ProcessMetadata(
+          executablePath: r'C:\Games\rpcs3.exe',
+          startedAtUtc: DateTime.utc(2026),
+        ),
+        resolveMemoryBaseCandidate: (_) => null,
+        detectGame: (processId, _) => GameDetectionResult(
+          status: GameDetectionStatus.supportedGame,
+          processId: processId,
+          profile: profile,
+          confidence: GameIdentityConfidence.confirmed,
+          evidenceDescription: 'Confirmed test profile.',
+        ),
+      );
+
+      await tester.pumpWidget(_app(sdk: sdk));
+      await tester.pump();
+
+      expect(find.text(profile.gameName), findsOneWidget);
+      expect(find.text('Bolts'), findsOneWidget);
+      expect(find.text('Unavailable'), findsOneWidget);
+      expect(find.text('0'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets('Class LudavaApp displays SDK connection errors', (
       tester,
     ) async {

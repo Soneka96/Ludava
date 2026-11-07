@@ -5,6 +5,7 @@ import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/ludava_window_title_bar.dart';
 import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
 import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
+import 'package:ludava_app/features/trainer/presentation/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/constants/layout_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -84,10 +85,14 @@ class _LudavaAppState extends State<LudavaApp> {
                     ),
                     Expanded(
                       child: SafeArea(
-                        child: SessionConnectionBody(
-                          session: _session,
-                          onSelectProcess: _selectProcess,
-                        ),
+                        child:
+                            _session.detection?.status ==
+                                GameDetectionStatus.supportedGame
+                            ? TrainerFieldsPanel(session: _session)
+                            : SessionConnectionBody(
+                                session: _session,
+                                onSelectProcess: _selectProcess,
+                              ),
                       ),
                     ),
                   ],
