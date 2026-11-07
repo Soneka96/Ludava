@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ludava_app/features/trainer/presentation/trainer_value_formatter.dart';
 import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
@@ -42,6 +43,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   late final FocusNode _inputFocusNode;
   String? _feedback;
   bool _feedbackIsSuccess = false;
+  bool _enterActionPending = false;
 
   /// Populates the draft from the current SDK value without writing.
   @override
@@ -68,8 +70,11 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
       }
       return;
     }
-    if (oldWidget.field.id != widget.field.id ||
-        oldWidget.currentValue != widget.currentValue) {
+    final fieldChanged = oldWidget.field.id != widget.field.id;
+    final valueChanged = oldWidget.currentValue != widget.currentValue;
+    final draftWasUntouched =
+        _textController.text == oldWidget.currentValue?.toString();
+    if (fieldChanged || (valueChanged && draftWasUntouched)) {
       _textController.text = widget.currentValue?.toString() ?? '';
       _feedback = null;
       _feedbackIsSuccess = false;
@@ -112,7 +117,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
             ),
             const SizedBox(height: LudavaSpacing.xs),
             Text(
-              'Current value: ${_formatValue(widget.currentValue)}',
+              'Current value: ${TrainerValueFormatter.format(widget.currentValue)}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: tokens.textMuted,
               ),
@@ -140,7 +145,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
                 _feedback = null;
                 _feedbackIsSuccess = false;
               }),
-              onSubmitted: (_) => _apply(),
+              onSubmitted: (_) => _submitFromEnter(),
             ),
             if (validationMessage != null) ...[
               const SizedBox(height: LudavaSpacing.xs),
@@ -198,7 +203,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final value = int.tryParse(draft);
     if (value == null) return 'Enter a whole number.';
     if (value < minimum || value > maximum) {
-      return 'Enter a value from ${_formatValue(minimum)} to ${_formatValue(maximum)}.';
+      return 'Enter a value from ${TrainerValueFormatter.format(minimum)} to ${TrainerValueFormatter.format(maximum)}.';
     }
     return null;
   }
@@ -210,7 +215,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     if (minimum == null || maximum == null) {
       return 'No approved value range is available.';
     }
-    return 'Allowed: ${_formatValue(minimum)}–${_formatValue(maximum)}';
+    return 'Allowed: ${TrainerValueFormatter.format(minimum)}–${TrainerValueFormatter.format(maximum)}';
   }
 
   /// Applies a valid draft only after the user selects Apply or presses Enter.
@@ -241,7 +246,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   /// Returns a user-facing explanation of the typed SDK write result.
   String _writeMessage(GameWriteResult result) {
     if (result.succeeded) {
-      return 'Applied and verified: ${_formatValue(result.readBackValue)}';
+      return 'Applied and verified: ${TrainerValueFormatter.format(result.readBackValue)}';
     }
     return switch (result.status) {
       GameWriteStatus.none => 'No value was written.',
@@ -267,7 +272,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     };
   }
 
-  /// Applies on Enter and cancels the inline edit on Escape.
+  /// Submits Enter once while leaving Escape cancellation on the editor focus.
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -276,11 +281,21 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
       }
       if (event.logicalKey == LogicalKeyboardKey.enter &&
           _inputFocusNode.hasFocus) {
-        _apply();
+        _submitFromEnter();
         return KeyEventResult.handled;
       }
     }
     return KeyEventResult.ignored;
+  }
+
+  /// Coalesces key-event and text-input submission for one Enter action.
+  void _submitFromEnter() {
+    if (_enterActionPending) return;
+    _enterActionPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _enterActionPending = false;
+    });
+    _apply();
   }
 
   /// Reports whether [first] and [second] describe the same write result.
@@ -293,18 +308,4 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
           first.requestedValue == second.requestedValue &&
           first.readBackValue == second.readBackValue &&
           first.errorCode == second.errorCode);
-
-  /// Formats a verified or bounded value without converting it to a double.
-  String _formatValue(int? value) {
-    if (value == null) return 'Unavailable';
-    final digits = value.toString();
-    final formatted = StringBuffer();
-    for (var index = 0; index < digits.length; index++) {
-      if (index > 0 && (digits.length - index) % 3 == 0) {
-        formatted.write(',');
-      }
-      formatted.write(digits[index]);
-    }
-    return formatted.toString();
-  }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
+import 'package:ludava_app/features/trainer/presentation/trainer_field_availability.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
@@ -109,7 +110,7 @@ class _LudavaAppState extends State<LudavaApp> {
 
   /// Opens the inline editor only for a currently approved field and target.
   void _editField(GameField field) {
-    if (!_canEditField(_session, field.id)) return;
+    if (!TrainerFieldAvailability.canEdit(_session, field)) return;
     setState(() => _editingFieldId = field.id);
   }
 
@@ -123,35 +124,24 @@ class _LudavaAppState extends State<LudavaApp> {
   /// Applies state updates while the root widget remains mounted.
   void _handleStateChanged(TrainerSessionState state) {
     if (_shuttingDown || !mounted) return;
-    var editingFieldId = _editingFieldId;
-    if (editingFieldId != null &&
-        (!_sameSession(_session, state) ||
-            !_hasWriteTarget(state, editingFieldId) ||
-            (state.readResults[editingFieldId]?.succeeded != true &&
-                state.lastWriteResult?.fieldId != editingFieldId))) {
-      editingFieldId = null;
+    final editingFieldId = _editingFieldId;
+    var nextEditingFieldId = editingFieldId;
+    if (editingFieldId != null) {
+      final field = state.profile?.findField(editingFieldId);
+      final readResult = state.readResults[editingFieldId];
+      if (!_sameSession(_session, state) ||
+          field == null ||
+          !TrainerFieldAvailability.hasWriteTarget(state, field) ||
+          (readResult != null &&
+              !readResult.succeeded &&
+              state.lastWriteResult?.fieldId != editingFieldId)) {
+        nextEditingFieldId = null;
+      }
     }
     setState(() {
       _session = state;
-      _editingFieldId = editingFieldId;
+      _editingFieldId = nextEditingFieldId;
     });
-  }
-
-  /// Checks confirmed identity, profile/field permissions, and field bounds.
-  bool _hasWriteTarget(TrainerSessionState state, String fieldId) {
-    final profile = state.profile;
-    final field = profile?.findField(fieldId);
-    return profile != null &&
-        profile.canRead &&
-        profile.canWrite &&
-        field != null &&
-        field.canRead &&
-        field.canWrite &&
-        field.minimumValue != null &&
-        field.maximumValue != null &&
-        state.selectedProcessId != null &&
-        state.memoryBase != null &&
-        state.detection?.confidence == GameIdentityConfidence.confirmed;
   }
 
   /// Checks that [first] and [second] describe the same SDK write target.
@@ -164,11 +154,6 @@ class _LudavaAppState extends State<LudavaApp> {
       first.profile?.id == second.profile?.id &&
       first.detection?.executableHash == second.detection?.executableHash &&
       first.memoryBase == second.memoryBase;
-
-  /// Checks the currently displayed read result before opening an editor.
-  bool _canEditField(TrainerSessionState state, String fieldId) =>
-      _hasWriteTarget(state, fieldId) &&
-      state.readResults[fieldId]?.succeeded == true;
 
   /// Stops the subscription before awaiting SDK resource disposal.
   Future<void> _disposeResources() async {

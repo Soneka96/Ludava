@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ludava_app/features/trainer/presentation/trainer_field_availability.dart';
 import 'package:ludava_app/features/trainer/presentation/inline_value_editor.dart';
+import 'package:ludava_app/features/trainer/presentation/trainer_value_formatter.dart';
 import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
 import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
@@ -73,15 +75,14 @@ class TrainerFieldsPanel extends StatelessWidget {
     final tokens = theme.extension<LudavaThemeTokens>()!;
     final readResult = session.readResults[field.id];
     final canRead = profile.canRead && field.canRead;
-    final canWrite = _canWrite(profile, field, readResult);
+    final canWrite = TrainerFieldAvailability.canEdit(session, field);
     final accessColor = canWrite ? tokens.success : tokens.textMuted;
     final writeResult = session.lastWriteResult?.fieldId == field.id
         ? session.lastWriteResult
         : null;
     final isEditing =
         editingFieldId == field.id &&
-        _hasWriteTarget(profile, field) &&
-        (readResult?.succeeded == true || writeResult != null);
+        TrainerFieldAvailability.hasWriteTarget(session, field);
     return Container(
       key: ValueKey('trainer-field-${field.id}'),
       padding: compact
@@ -294,7 +295,7 @@ class TrainerFieldsPanel extends StatelessWidget {
       fit: BoxFit.scaleDown,
       alignment: Alignment.centerRight,
       child: Text(
-        _formatValue(value),
+        TrainerValueFormatter.format(value),
         style:
             (card ? theme.textTheme.headlineSmall : theme.textTheme.titleLarge)
                 ?.copyWith(
@@ -305,41 +306,9 @@ class TrainerFieldsPanel extends StatelessWidget {
     );
   }
 
-  /// Reports write access only for an approved current session and valid value.
-  bool _canWrite(
-    GameProfile profile,
-    GameField field,
-    GameReadResult? readResult,
-  ) => _hasWriteTarget(profile, field) && readResult?.succeeded == true;
-
-  /// Reports the SDK's current profile, field, range, and session permissions.
-  bool _hasWriteTarget(GameProfile profile, GameField field) =>
-      profile.canWrite &&
-      field.canWrite &&
-      profile.canRead &&
-      field.canRead &&
-      field.minimumValue != null &&
-      field.maximumValue != null &&
-      session.selectedProcessId != null &&
-      session.memoryBase != null &&
-      session.detection?.confidence == GameIdentityConfidence.confirmed;
-
   /// Returns the profile-derived read/write availability label.
   String _accessLabel(bool canRead, bool canWrite) {
     if (!canRead) return 'Not readable';
     return canWrite ? 'Writable' : 'Read-only';
-  }
-
-  /// Groups [value] for display without changing its integer value.
-  String _formatValue(int value) {
-    final digits = value.toString();
-    final formatted = StringBuffer();
-    for (var index = 0; index < digits.length; index++) {
-      if (index > 0 && (digits.length - index) % 3 == 0) {
-        formatted.write(',');
-      }
-      formatted.write(digits[index]);
-    }
-    return formatted.toString();
   }
 }

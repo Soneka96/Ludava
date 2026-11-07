@@ -195,6 +195,47 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Class TrainerFieldsPanel preserves a draft while a refresh has no read result',
+      (tester) async {
+        tester.view.physicalSize = const Size(720, 560);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          _wrap(_session(value: 17), editingFieldId: 'bolts'),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+        await tester.pump();
+
+        await tester.pumpWidget(
+          _wrap(
+            _session(value: null, includeBoltsRead: false),
+            editingFieldId: 'bolts',
+          ),
+        );
+
+        expect(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<TextField>(
+                find.byKey(const ValueKey('inline-editor-input-bolts')),
+              )
+              .controller!
+              .text,
+          '42',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('Class TrainerFieldsPanel switches at the shared breakpoint', (
       tester,
     ) async {

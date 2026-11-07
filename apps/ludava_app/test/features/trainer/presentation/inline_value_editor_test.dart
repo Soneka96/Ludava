@@ -287,6 +287,67 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Class InlineValueEditor applies once from a text input Enter action',
+      (tester) async {
+        var writeCalls = 0;
+
+        await tester.pumpWidget(
+          _wrap(
+            InlineValueEditor(
+              field: _field(maximumValue: 100),
+              currentValue: 4,
+              writeResult: null,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onCancel: () {},
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '24');
+        await tester.pump();
+
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+
+        expect(writeCalls, 1);
+        expect(find.text('Applied and verified: 24'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor coalesces both Enter submission callbacks',
+      (tester) async {
+        var writeCalls = 0;
+
+        await tester.pumpWidget(
+          _wrap(
+            InlineValueEditor(
+              field: _field(maximumValue: 100),
+              currentValue: 4,
+              writeResult: null,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onCancel: () {},
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '24');
+        await tester.pump();
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+
+        expect(writeCalls, 1);
+        expect(find.text('Applied and verified: 24'), findsOneWidget);
+      },
+    );
+
     testWidgets('Class InlineValueEditor keeps Tab navigation on its actions', (
       tester,
     ) async {
@@ -444,6 +505,42 @@ void main() {
         );
 
         expect(_editorText(tester), '29');
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor preserves an edited draft across a value update',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        await tester.pumpWidget(
+          _wrap(
+            InlineValueEditor(
+              key: editorKey,
+              field: _field(maximumValue: 100),
+              currentValue: 17,
+              writeResult: null,
+              onApply: _success,
+              onCancel: () {},
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '42');
+        await tester.pump();
+
+        await tester.pumpWidget(
+          _wrap(
+            InlineValueEditor(
+              key: editorKey,
+              field: _field(maximumValue: 100),
+              currentValue: 18,
+              writeResult: null,
+              onApply: _success,
+              onCancel: () {},
+            ),
+          ),
+        );
+
+        expect(_editorText(tester), '42');
       },
     );
 

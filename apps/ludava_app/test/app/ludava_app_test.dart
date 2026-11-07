@@ -446,6 +446,67 @@ void main() {
       },
     );
 
+    testWidgets('Class LudavaApp preserves the draft after a routine refresh', (
+      tester,
+    ) async {
+      final memory = _FakeMemoryApi(writeSucceeds: true);
+      final sdk = _createWritableSdk(memory);
+
+      await tester.pumpWidget(_app(sdk: sdk));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('inline-editor-input-bolts')),
+        '42',
+      );
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+      await tester.pump();
+
+      expect(_editorText(tester), '42');
+      expect(memory.writeCalls, 0);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('Class LudavaApp discards a draft after its field read fails', (
+      tester,
+    ) async {
+      var readSucceeds = true;
+      final memory = _FakeMemoryApi(
+        writeSucceeds: true,
+        readSucceeds: () => readSucceeds,
+      );
+      final sdk = _createWritableSdk(memory);
+
+      await tester.pumpWidget(_app(sdk: sdk));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, 'Edit'));
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('inline-editor-input-bolts')),
+        '42',
+      );
+
+      readSucceeds = false;
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('inline-editor-input-bolts')),
+        findsNothing,
+      );
+      expect(memory.writeCalls, 0);
+
+      readSucceeds = true;
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('inline-editor-input-bolts')),
+        findsNothing,
+      );
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets(
       'Class LudavaApp applies a value through the SDK and read-back',
       (tester) async {
@@ -755,6 +816,9 @@ class _FakeMemoryApi {
   /// Whether fake native writes succeed completely.
   final bool writeSucceeds;
 
+  /// Whether fake native reads succeed completely.
+  final bool Function() readSucceeds;
+
   /// Current fake field bytes, represented as a big-endian unsigned integer.
   final List<int> bytes = [0, 0, 0, 17];
 
@@ -762,12 +826,17 @@ class _FakeMemoryApi {
   int writeCalls = 0;
 
   /// Creates a fake memory API with the chosen write result.
-  _FakeMemoryApi({required this.writeSucceeds});
+  _FakeMemoryApi({required this.writeSucceeds, bool Function()? readSucceeds})
+    : readSucceeds = readSucceeds ?? (() => true);
 
   /// Exposes native process functions through the SDK's supported adapter.
   WindowsMemoryApi get api => WindowsMemoryApi(
     openProcess: (_, _, _) => ffi.Pointer<ffi.Void>.fromAddress(0x1234),
     readProcessMemory: (handle, address, buffer, byteCount, transferred) {
+      if (!readSucceeds()) {
+        transferred.value = 0;
+        return 0;
+      }
       for (var index = 0; index < byteCount; index++) {
         buffer[index] = bytes[index];
       }
