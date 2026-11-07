@@ -93,7 +93,8 @@ The `deadlocked-ps3` catalog profile records one observed `NPUA80646` RPCS3 iden
 - [x] Inspect the RatchetHax address reference and derive candidate guest offset `0x009C32E8`.
 - [x] Observe one RPCS3 session's context and identity: build `0.0.43-20567-6a59542f`, game version `01.00/01.01`, title ID `NPUA80646`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`. Automatic matching uses only title ID, executable, and PPU hash.
 - [x] Run the SDK (403), TUI (185), and root compatibility (5) test suites, analysis for all three packages, changed-file formatting, and workspace boundary checks.
-- [ ] Run `tool/build_windows.ps1`; LLVM Clang is unavailable. A manually compiled Windows AOT executable and native discovery shim passed help and discovery checks.
+- [x] Pass GitHub Actions Windows x64 verification (run 15), including the project Windows build, all suites, and packaged help.
+- [ ] Run `tool/build_windows.ps1` locally; LLVM Clang is unavailable. A manually compiled Windows AOT executable and native discovery shim passed help and discovery checks.
 - [ ] Match a second distinct live Bolts value with a Ludava read and verify automatic trainer session/restart behavior.
 - [ ] Obtain explicit owner approval for a deliberate write validation after read verification; record matching read-back and HUD outcome before enabling writes.
 
