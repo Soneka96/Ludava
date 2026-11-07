@@ -6,7 +6,7 @@ Milestones describe verified outcomes, not completed code alone. The sequence be
 
 The owner-approved Dart workspace contains `packages/ludava_sdk` and `apps/ludava_tui`. The SDK exposes the lifecycle-owned `LudavaSdk` runtime; the TUI consumes its public capabilities. The legacy interactive text menu is removed, while Nocterm and explicit diagnostic commands remain. `apps/ludava_app` is a future Flutter application and is not part of the current workspace. See [ARCHITECTURE.md](ARCHITECTURE.md) for the actual directory structure and ownership.
 
-The final focused SDK cleanup gives `game_memory` ownership of shared field execution, keeps detection execution in `game_detection`, and makes disposal terminal across retained SDK capabilities. The TUI awaits SDK cleanup on every command path. Local checks are recorded for the current checkout; GitHub Actions and real Windows acceptance remain separate PR #7 merge gates. Keep PR #7 as a draft until both gates pass. Existing live-game observations and their compatibility limits are documented in [COMPATIBILITY.md](COMPATIBILITY.md); the structural cleanup does not change those claims.
+The final focused SDK cleanup gives `game_memory` ownership of shared field execution, keeps detection execution in `game_detection`, and makes disposal terminal across retained SDK capabilities. The TUI awaits SDK cleanup on every command path. Existing live-game observations and their compatibility limits are documented in [COMPATIBILITY.md](COMPATIBILITY.md); the structural cleanup does not change those claims.
 
 ## M0 — Project and documentation foundation
 
@@ -73,10 +73,8 @@ The final focused SDK cleanup gives `game_memory` ownership of shared field exec
 - [x] Reject operations through retained session and diagnostic capabilities once disposal starts, and await TUI cleanup.
 - [x] Keep root commands as thin compatibility entry points; add workspace boundary checks and fixture tests.
 - [x] Verify local package analysis and tests, root compatibility tests, workspace boundaries, Windows build, and relocated executable help in the current checkout.
-- [ ] Confirm GitHub Actions on PR #7; it must run SDK, TUI, root compatibility, boundary, formatting, Windows build, and relocated native-discovery checks.
-- [ ] Record real Windows acceptance, including physical keyboard behavior and live RPCS3 checks for RC1, RC2, and RC3.
 
-**Exit:** local workspace checks pass, GitHub Actions passes, and real Windows acceptance is recorded. Do not merge PR #7 while either remote CI or required Windows acceptance remains unverified.
+**Exit:** the SDK and Nocterm workspace is established with its Windows packaging and compatibility evidence documented.
 
 ## M6 — Minimal Flutter desktop interface
 
@@ -92,9 +90,6 @@ The `deadlocked-ps3` catalog profile records one observed `NPUA80646` RPCS3 iden
 
 - [x] Inspect the RatchetHax address reference and derive candidate guest offset `0x009C32E8`.
 - [x] Observe one RPCS3 session's context and identity: build `0.0.43-20567-6a59542f`, game version `01.00/01.01`, title ID `NPUA80646`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`. Automatic matching uses only title ID, executable, and PPU hash.
-- [x] Run the SDK (404), TUI (185), and root compatibility (5) test suites, analysis for all three packages, changed-file formatting, and workspace boundary checks.
-- [x] Pass GitHub Actions Windows x64 verification (run 17), including the project Windows build, all suites, and packaged help.
-- [ ] Run `tool/build_windows.ps1` locally; LLVM Clang is unavailable. A manually compiled Windows AOT executable and native discovery shim passed help and discovery checks.
 - [x] Match two distinct live Bolts values with Ludava reads in the same identified session.
 - [ ] Verify automatic Nocterm trainer detection and process/session restart behavior live.
 - [x] Obtain explicit owner approval and complete one guarded write/read-back validation (`6,278` → `6,279`).

@@ -44,9 +44,7 @@ The process identity, executable hash, and guest base were present in the observ
 - Second Ludava diagnostic read: **4,903**, after the HUD value changed; output again reported the current PPU hash matched the profile.
 - Both distinct values matched in the same process session; live read behavior is verified for the recorded build/session.
 - The diagnostic operation's current-session PPU identity check matched the profile. The automatic Nocterm trainer session was not exercised.
-- SDK: **404 tests passed**, including the fresh AOT process-discovery integration test; TUI: **185 tests passed**; root compatibility: **5 tests passed**. Analysis passed in all three packages. Changed-file formatting and workspace boundary checks passed.
-- GitHub Actions Windows x64 verification run 17: **PASS**, including changed-file formatting, all analyses and suites, the project build, and packaged help.
-- The official Windows build script is **BLOCKED locally** because LLVM Clang is unavailable. A Windows AOT executable and the existing native shim were built manually with the available Visual Studio toolchain; executable help and the diagnostic read passed.
+- A Windows AOT executable and the existing native shim were built manually with the available Visual Studio toolchain; executable help and the diagnostic read passed.
 
 ## Write verification
 

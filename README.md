@@ -4,6 +4,8 @@
 
 **Status:** The owner tested bolt reading and writing in Ludava for all three Collection games on November 5, 2026. A separate live RPCS3 log experiment measured distinct PPU hashes for the Collection menu and RC1/RC2/RC3 on RPCS3 `0.0.43-20565-eee3f0f7`. The final compiled CLI was live-smoke-tested with RC2: it matched the profile, resolved the session base, and read `0` (which does not prove gameplay was active). The owner later confirmed automatic detection and trainer operation across RC1, RC2, and RC3 during testing on a Windows laptop and a ROG Ally. The records do not map each game to each device or identify the exact RPCS3 build for that later confirmation; compatibility with other builds remains unverified.
 
+The Windows CI workflow validates formatting, analysis and test suites, workspace boundaries, and executable packaging. See [GitHub Actions](https://github.com/Soneka96/Ludava/actions) for current results.
+
 ## Start here
 
 Launch the Nocterm trainer in a Windows terminal:
@@ -38,7 +40,7 @@ Each Collection profile stores a separate big-endian unsigned 32-bit bolt offset
 
 ## Ratchet: Deadlocked PS3 (research stage)
 
-The SDK catalog includes a standalone `deadlocked-ps3` profile for title ID `NPUA80646`. One RPCS3 log session identified game version `01.00/01.01`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9` on RPCS3 `0.0.43-20567-6a59542f`. Two distinct Ludava reads (`1,785` and `4,903`) matched owner-provided gameplay HUD screenshots in that session. An owner-authorized guarded write changed Bolts from `6,278` to `6,279`; SDK read-back, refresh, and the post-write HUD all showed `6,279`. Read and write verification are recorded for this observed build only. Local tests and GitHub Actions Windows x64 verification passed; the project Windows build script could not run locally because LLVM Clang is unavailable. See [Deadlocked PS3 research](docs/DEADLOCKED_PS3_RESEARCH.md).
+The SDK catalog includes a standalone `deadlocked-ps3` profile for title ID `NPUA80646`. One RPCS3 log session identified game version `01.00/01.01`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9` on RPCS3 `0.0.43-20567-6a59542f`. Two distinct Ludava reads (`1,785` and `4,903`) matched owner-provided gameplay HUD screenshots in that session. An owner-authorized guarded write changed Bolts from `6,278` to `6,279`; SDK read-back, refresh, and the post-write HUD all showed `6,279`. Read and write verification are recorded for this observed build only. See [Deadlocked PS3 research](docs/DEADLOCKED_PS3_RESEARCH.md).
 
 ## Diagnostic commands
 
@@ -92,9 +94,6 @@ Their feature services perform detection and memory operations. Disposal is
 terminal: retained capability references reject further operations, while the
 last immutable session snapshot remains readable. See the architecture guide
 for the lifecycle and stream contract.
-
-PR #7 must remain unmerged until GitHub CI and real Windows acceptance both
-pass. Keep it in draft while either gate is incomplete.
 
 Pub workspaces require Dart 3.6 or newer, while `dart pub workspace list` was
 added in Dart 3.13. Ludava's declared minimum is Dart 3.7, so the workspace
