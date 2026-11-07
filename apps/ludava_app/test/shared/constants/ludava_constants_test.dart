@@ -16,10 +16,10 @@ void main() {
 
   group('Property LudavaDimensions behaves correctly', () {
     test('Property LudavaDimensions exposes window and control sizes', () {
-      expect(LudavaDimensions.initialWindowSize, const Size(1180, 760));
-      expect(LudavaDimensions.minimumWindowSize, const Size(720, 560));
+      expect(LudavaDimensions.initialWindowSize, const Size(520, 360));
+      expect(LudavaDimensions.minimumWindowSize, const Size(480, 340));
       expect(LudavaDimensions.minimumInteractiveTarget, 48);
-      expect(LudavaDimensions.maximumContentWidth, 1440);
+      expect(LudavaDimensions.maximumContentWidth, 720);
       expect(LudavaDimensions.titleBarHeight, 48);
       expect(LudavaDimensions.windowControlWidth, 48);
       expect(LudavaDimensions.windowResizeHandleSize, 8);
@@ -30,8 +30,7 @@ void main() {
 
   group('Property LudavaBreakpoints behaves correctly', () {
     test('Property LudavaBreakpoints exposes current layout thresholds', () {
-      expect(LudavaBreakpoints.fieldCards, 920);
-      expect(LudavaBreakpoints.trainerHeaderWide, 960);
+      expect(LudavaBreakpoints.trainerHeaderWide, 640);
     });
   });
 

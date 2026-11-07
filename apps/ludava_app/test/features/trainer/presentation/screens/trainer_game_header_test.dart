@@ -11,6 +11,10 @@ void main() {
     testWidgets('Class TrainerGameHeader shows game readiness from the SDK', (
       tester,
     ) async {
+      tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final profile = GameProfileCatalog.profiles.first;
       final state = _state(
         status: GameDetectionStatus.supportedGame,
@@ -249,7 +253,7 @@ void main() {
       (tester) async {
         const longTitle =
             'A Very Long Unsupported Game Title That Must Not Push Window Actions Off Screen';
-        tester.view.physicalSize = const Size(720, 560);
+        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);

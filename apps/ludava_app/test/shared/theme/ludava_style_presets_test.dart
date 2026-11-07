@@ -18,6 +18,11 @@ void main() {
         preset.textTheme.headlineMedium?.fontFeatures,
         contains(const FontFeature.tabularFigures()),
       );
+      expect(preset.textTheme.titleLarge?.fontSize, 18);
+      expect(
+        preset.textTheme.titleLarge?.fontFeatures,
+        contains(const FontFeature.tabularFigures()),
+      );
       expect(preset.controlRadius, 8);
       expect(preset.surfaceRadius, 10);
       expect(preset.buttonMinimumSize, const Size(0, 48));

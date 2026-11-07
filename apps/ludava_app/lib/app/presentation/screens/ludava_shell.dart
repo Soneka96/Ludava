@@ -63,7 +63,7 @@ class LudavaShell extends StatelessWidget {
     super.key,
   });
 
-  /// Renders the integrated window chrome and width-constrained content.
+  /// Renders the integrated window chrome and compact utility content.
   @override
   Widget build(BuildContext context) => DragToResizeArea(
     resizeEdgeSize: LudavaDimensions.windowResizeHandleSize,

@@ -8,6 +8,36 @@ import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 void main() {
   group('Class Rpcs3ProcessPicker selection behavior', () {
+    testWidgets(
+      'Class Rpcs3ProcessPicker scrolls process choices at minimum size',
+      (tester) async {
+        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        int? selectedProcess;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: LudavaTheme.graphiteAndTeal,
+            home: Scaffold(
+              body: Rpcs3ProcessPicker(
+                processIds: List.generate(12, (index) => 120 + index),
+                onSelectProcess: (processId) => selectedProcess = processId,
+              ),
+            ),
+          ),
+        );
+        await tester.drag(find.byType(ListView), const Offset(0, -800));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Process ID 131'), findsOneWidget);
+        await tester.tap(find.text('Process ID 131'));
+        expect(selectedProcess, 131);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('Class Rpcs3ProcessPicker selects the tapped process', (
       tester,
     ) async {

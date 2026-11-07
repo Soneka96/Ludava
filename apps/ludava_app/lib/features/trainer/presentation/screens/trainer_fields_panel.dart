@@ -1,22 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_field_availability.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
-import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_card.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Renders the current profile's fields as adaptive cards or compact rows.
+/// Renders the current profile's fields as a scrollable vertical list.
 class TrainerFieldsPanel extends StatelessWidget {
-  /// Minimum width that keeps the card hierarchy comfortably readable.
-  static const double _minimumCardWidth = 320;
-
-  /// Maximum width that prevents a single card from stretching across the app.
-  static const double _maximumCardWidth = 420;
-
-  /// Caps the panel at four columns even when embedded in a wider surface.
-  static const int _maximumCardsPerRow = 4;
-
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
 
@@ -42,7 +32,7 @@ class TrainerFieldsPanel extends StatelessWidget {
     super.key,
   });
 
-  /// Switches the field arrangement at the shared desktop breakpoint.
+  /// Displays each SDK field in its own vertically arranged row.
   @override
   Widget build(BuildContext context) {
     final profile = session.profile;
@@ -56,82 +46,38 @@ class TrainerFieldsPanel extends StatelessWidget {
       );
     }
     final fields = profile.fields.values.toList(growable: false);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < LudavaBreakpoints.fieldCards;
-        final availableWidth = constraints.maxWidth - 2 * LudavaSpacing.xl;
-        final cardCount =
-            ((availableWidth + LudavaSpacing.md) /
-                    (_minimumCardWidth + LudavaSpacing.md))
-                .floor()
-                .clamp(1, _maximumCardsPerRow);
-        final cardWidth =
-            ((availableWidth - LudavaSpacing.md * (cardCount - 1)) / cardCount)
-                .clamp(_minimumCardWidth, _maximumCardWidth)
-                .toDouble();
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(LudavaSpacing.xl),
-          child: Wrap(
-            spacing: LudavaSpacing.md,
-            runSpacing: LudavaSpacing.md,
-            children: [
-              for (final field in fields)
-                SizedBox(
-                  width: compact ? availableWidth : cardWidth,
-                  child: _buildField(context, profile, field, compact: compact),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(
+        horizontal: LudavaSpacing.lg,
+        vertical: LudavaSpacing.md,
+      ),
+      itemCount: fields.length,
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: LudavaSpacing.sm),
+      itemBuilder: (context, index) {
+        final field = fields[index];
+        final readResult = session.readResults[field.id];
+        final canWrite = TrainerFieldAvailability.canEdit(session, field);
+        final writeResult = session.lastWriteResult?.fieldId == field.id
+            ? session.lastWriteResult
+            : null;
+        final isEditing =
+            editingFieldId == field.id &&
+            TrainerFieldAvailability.hasWriteTarget(session, field);
 
-  /// Composes one profile field with its current read and editing state.
-  Widget _buildField(
-    BuildContext context,
-    GameProfile profile,
-    GameField field, {
-    required bool compact,
-  }) {
-    final readResult = session.readResults[field.id];
-    final canRead = profile.canRead && field.canRead;
-    final canWrite = TrainerFieldAvailability.canEdit(session, field);
-    final writeResult = session.lastWriteResult?.fieldId == field.id
-        ? session.lastWriteResult
-        : null;
-    final isEditing =
-        editingFieldId == field.id &&
-        TrainerFieldAvailability.hasWriteTarget(session, field);
-
-    return Card(
-      key: ValueKey('trainer-field-${field.id}'),
-      child: Padding(
-        padding: compact
-            ? const EdgeInsets.symmetric(vertical: LudavaSpacing.md)
-            : const EdgeInsets.all(LudavaSpacing.lg),
-        child: Column(
+        return Column(
+          key: ValueKey('trainer-field-${field.id}'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (compact)
-              TrainerFieldRow(
-                field: field,
-                readResult: readResult,
-                canRead: canRead,
-                canWrite: canWrite,
-                isEditing: isEditing,
-                onEdit: () => onEditField(field),
-              )
-            else
-              TrainerFieldCard(
-                field: field,
-                readResult: readResult,
-                canRead: canRead,
-                canWrite: canWrite,
-                isEditing: isEditing,
-                onEdit: () => onEditField(field),
-              ),
+            TrainerFieldRow(
+              field: field,
+              readResult: readResult,
+              canRead: profile.canRead && field.canRead,
+              canWrite: canWrite,
+              isEditing: isEditing,
+              onEdit: () => onEditField(field),
+            ),
             if (isEditing)
               InlineValueEditor(
                 field: field,
@@ -143,8 +89,8 @@ class TrainerFieldsPanel extends StatelessWidget {
                 onCancel: onCancelEditing,
               ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -18,14 +18,13 @@ void main() {
               value: 4294967295,
             ),
             canRead: true,
-            prominent: true,
           ),
         ),
       );
 
       expect(find.text('4,294,967,295'), findsOneWidget);
       final value = tester.widget<Text>(find.text('4,294,967,295'));
-      expect(value.style?.fontSize, 24);
+      expect(value.style?.fontSize, 18);
       expect(
         value.style?.fontFeatures,
         contains(const FontFeature.tabularFigures()),
@@ -37,13 +36,7 @@ void main() {
       'Class TrainerFieldValue distinguishes unavailable and failed reads',
       (tester) async {
         await tester.pumpWidget(
-          _wrap(
-            const TrainerFieldValue(
-              readResult: null,
-              canRead: true,
-              prominent: false,
-            ),
-          ),
+          _wrap(const TrainerFieldValue(readResult: null, canRead: true)),
         );
         expect(find.text('Unavailable'), findsOneWidget);
 
@@ -55,7 +48,6 @@ void main() {
                 fieldId: 'bolts',
               ),
               canRead: true,
-              prominent: false,
             ),
           ),
         );
@@ -70,7 +62,6 @@ void main() {
                 value: 17,
               ),
               canRead: false,
-              prominent: false,
             ),
           ),
         );

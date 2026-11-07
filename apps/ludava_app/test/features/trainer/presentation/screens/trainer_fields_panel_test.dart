@@ -3,520 +3,257 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
-  group('Class TrainerFieldsPanel adaptive presentation behavior', () {
-    testWidgets('Class TrainerFieldsPanel renders cards at desktop width', (
+  group('Class TrainerFieldsPanel vertical field behavior', () {
+    testWidgets('Class TrainerFieldsPanel renders profile fields vertically', (
       tester,
     ) async {
-      tester.view.physicalSize = const Size(1180, 720);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(_wrap(_session(value: 0)));
-
-      expect(
-        find.byKey(const ValueKey('trainer-field-card-bolts')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('trainer-field-row-bolts')),
-        findsNothing,
-      );
-      expect(find.text('Bolts'), findsOneWidget);
-      expect(find.text('0'), findsOneWidget);
-      expect(find.text('Writable'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets(
-      'Class TrainerFieldsPanel places multiple bounded cards in a wide row',
-      (tester) async {
-        tester.view.physicalSize = const Size(1180, 720);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        await tester.pumpWidget(
-          _wrap(_session(value: 17, includeSecondField: true)),
-        );
-        final bolts = find.byKey(const ValueKey('trainer-field-bolts'));
-        final scrap = find.byKey(const ValueKey('trainer-field-scrap'));
-        final boltsPosition = tester.getTopLeft(bolts);
-        final scrapPosition = tester.getTopLeft(scrap);
-
-        expect(boltsPosition.dy, scrapPosition.dy);
-        expect(scrapPosition.dx, greaterThan(boltsPosition.dx));
-        expect(tester.getSize(bolts).width, inInclusiveRange(320, 420));
-        expect(tester.getSize(scrap).width, inInclusiveRange(320, 420));
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets('Class TrainerFieldsPanel bounds a single wide card', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1800, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(_wrap(_session(value: 17)));
-
-      expect(
-        tester.getSize(find.byKey(const ValueKey('trainer-field-bolts'))).width,
-        inInclusiveRange(320, 420),
-      );
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('Class TrainerFieldsPanel scrolls multiple card rows', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1180, 560);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+      _setMinimumView(tester);
 
       await tester.pumpWidget(
-        _wrap(_session(value: 17, includeManyFields: true)),
+        _wrap(_session(value: 0, includeSecondField: true)),
       );
-      final laterField = find.text('Part 11');
 
-      expect(laterField, findsOneWidget);
-      await tester.ensureVisible(laterField);
+      final bolts = find.byKey(const ValueKey('trainer-field-row-bolts'));
+      final scrap = find.byKey(const ValueKey('trainer-field-row-scrap'));
+      expect(find.byType(ListView), findsOneWidget);
+      expect(find.text('Bolts'), findsOneWidget);
+      expect(find.text('Scrap'), findsOneWidget);
+      expect(find.text('0'), findsOneWidget);
+      expect(find.text('7'), findsOneWidget);
+      expect(
+        tester.getTopLeft(scrap).dy,
+        greaterThan(tester.getTopLeft(bolts).dy),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Class TrainerFieldsPanel scrolls a dynamic field list', (
+      tester,
+    ) async {
+      _setMinimumView(tester);
+
+      await tester.pumpWidget(_wrap(_session(includeManyFields: true)));
+      final lastField = find.text('Part 11');
+
+      await tester.drag(find.byType(ListView), const Offset(0, -1200));
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(laterField).dy, lessThan(560));
+      expect(lastField, findsOneWidget);
+      await tester.ensureVisible(lastField);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(lastField).bottom, lessThanOrEqualTo(340));
       expect(tester.takeException(), isNull);
     });
 
     testWidgets(
-      'Class TrainerFieldsPanel uses semantic surface roles in cards',
+      'Class TrainerFieldsPanel keeps the maximum unsigned value readable at minimum size',
       (tester) async {
-        tester.view.physicalSize = const Size(1180, 720);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+        _setMinimumView(tester);
+        await tester.pumpWidget(_wrap(_session(value: 4294967295)));
 
-        await tester.pumpWidget(_wrap(_session(value: 0)));
-        final tokens = LudavaTheme.graphiteAndTeal
-            .extension<LudavaThemeTokens>()!;
-        final field = tester.widget<Card>(
-          find.byKey(const ValueKey('trainer-field-bolts')),
-        );
-        final cardTheme = LudavaTheme.graphiteAndTeal.cardTheme;
-
-        expect(field.color, isNull);
-        expect(field.child, isA<Padding>());
-        expect(cardTheme.color, tokens.surfaceElevated);
-        expect(
-          (cardTheme.shape! as RoundedRectangleBorder).side.color,
-          tokens.borderSubtle,
-        );
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel renders compact rows at narrow width',
-      (tester) async {
-        tester.view.physicalSize = const Size(720, 560);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        await tester.pumpWidget(_wrap(_session(value: 0)));
-
-        expect(
-          find.byKey(const ValueKey('trainer-field-row-bolts')),
-          findsOneWidget,
-        );
-        expect(
-          find.byKey(const ValueKey('trainer-field-card-bolts')),
-          findsNothing,
-        );
-        expect(find.text('Bolts'), findsOneWidget);
-        expect(find.text('0'), findsOneWidget);
-        expect(find.text('Writable'), findsOneWidget);
+        final value = find.text('4,294,967,295');
+        expect(value, findsOneWidget);
+        expect(tester.getRect(value).left, greaterThanOrEqualTo(0));
+        expect(tester.getRect(value).right, lessThanOrEqualTo(480));
         expect(tester.takeException(), isNull);
       },
     );
 
-    testWidgets('Class TrainerFieldsPanel exposes Edit in both layouts', (
+    testWidgets('Class TrainerFieldsPanel routes Edit to the selected field', (
       tester,
     ) async {
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+      _setMinimumView(tester);
       String? editedFieldId;
 
-      for (final width in const [720.0, 1180.0]) {
-        tester.view.physicalSize = Size(width, 560);
-        await tester.pumpWidget(
-          _wrap(
-            _session(value: 17),
-            onEditField: (field) => editedFieldId = field.id,
-          ),
-        );
+      await tester.pumpWidget(
+        _wrap(
+          _session(value: 17, includeSecondField: true),
+          onEditField: (field) => editedFieldId = field.id,
+        ),
+      );
 
-        await tester.tap(find.widgetWithText(TextButton, 'Edit'));
-        expect(editedFieldId, 'bolts');
-      }
+      await tester.tap(find.widgetWithText(TextButton, 'Edit').first);
+
+      expect(editedFieldId, 'bolts');
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets(
-      'Class TrainerFieldsPanel expands the same editor in both layouts',
-      (tester) async {
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('Class TrainerFieldsPanel applies an explicit editor request', (
+      tester,
+    ) async {
+      _setMinimumView(tester);
+      var writeCalls = 0;
+      int? requestedValue;
 
-        for (final width in const [720.0, 1180.0]) {
-          tester.view.physicalSize = Size(width, 560);
-          await tester.pumpWidget(
-            _wrap(_session(value: 17), editingFieldId: 'bolts'),
-          );
-
-          expect(
-            find.byKey(const ValueKey('inline-editor-input-bolts')),
-            findsOneWidget,
-          );
-        }
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel keeps wide validation content visible',
-      (tester) async {
-        tester.view.physicalSize = const Size(1180, 560);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        await tester.pumpWidget(
-          _wrap(_session(value: 17), editingFieldId: 'bolts'),
-        );
-        await tester.enterText(
-          find.byKey(const ValueKey('inline-editor-input-bolts')),
-          '4294967296',
-        );
-        await tester.pump();
-
-        expect(
-          find.text('Enter a value from 0 to 4,294,967,295.'),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel hides an editor when permission is lost',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(_session(value: 17), editingFieldId: 'bolts'),
-        );
-        expect(
-          find.byKey(const ValueKey('inline-editor-input-bolts')),
-          findsOneWidget,
-        );
-
-        await tester.pumpWidget(
-          _wrap(
-            _session(value: 17, profileWriteStatus: VerificationStatus.none),
-            editingFieldId: 'bolts',
-          ),
-        );
-
-        expect(
-          find.byKey(const ValueKey('inline-editor-input-bolts')),
-          findsNothing,
-        );
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel preserves a draft when layout changes',
-      (tester) async {
-        tester.view.physicalSize = const Size(720, 560);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        var writeCalls = 0;
-        final state = _session(value: 17);
-
-        Widget panel() => _wrap(
-          state,
+      await tester.pumpWidget(
+        _wrap(
+          _session(value: 17),
           editingFieldId: 'bolts',
           onApplyField: (fieldId, value) {
             writeCalls++;
-            return GameWriteResult(
-              status: GameWriteStatus.success,
-              fieldId: fieldId,
-              requestedValue: value,
-              readBackValue: value,
-            );
+            requestedValue = value;
+            return _success(fieldId, value);
           },
-        );
+        ),
+      );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('inline-editor-input-bolts')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('inline-editor-input-bolts')),
+        '42',
+      );
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.pumpAndSettle();
+      expect(writeCalls, 0);
 
-        await tester.pumpWidget(panel());
-        await tester.enterText(
-          find.byKey(const ValueKey('inline-editor-input-bolts')),
-          '42',
-        );
-        await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.pump();
 
-        tester.view.physicalSize = const Size(1180, 560);
-        await tester.pumpWidget(panel());
+      expect(writeCalls, 1);
+      expect(requestedValue, 42);
+      expect(find.text('Applied and verified: 42'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
 
-        expect(
-          tester
-              .widget<TextField>(
-                find.byKey(const ValueKey('inline-editor-input-bolts')),
-              )
-              .controller!
-              .text,
-          '42',
-        );
-        expect(writeCalls, 0);
-      },
-    );
+    testWidgets('Class TrainerFieldsPanel cancels editing without writing', (
+      tester,
+    ) async {
+      _setMinimumView(tester);
+      var writeCalls = 0;
+      var cancelCalls = 0;
+
+      await tester.pumpWidget(
+        _wrap(
+          _session(value: 17),
+          editingFieldId: 'bolts',
+          onApplyField: (fieldId, value) {
+            writeCalls++;
+            return _success(fieldId, value);
+          },
+          onCancelEditing: () => cancelCalls++,
+        ),
+      );
+      await tester.ensureVisible(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pump();
+
+      expect(cancelCalls, 1);
+      expect(writeCalls, 0);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets(
-      'Class TrainerFieldsPanel preserves a draft while a refresh has no read result',
+      'Class TrainerFieldsPanel hides editing when permission is lost',
       (tester) async {
-        tester.view.physicalSize = const Size(720, 560);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
+        _setMinimumView(tester);
         await tester.pumpWidget(
           _wrap(_session(value: 17), editingFieldId: 'bolts'),
         );
-        await tester.enterText(
+        expect(
           find.byKey(const ValueKey('inline-editor-input-bolts')),
-          '42',
+          findsOneWidget,
         );
-        await tester.pump();
 
         await tester.pumpWidget(
           _wrap(
-            _session(value: null, includeBoltsRead: false),
+            _session(value: 17, fieldWriteStatus: VerificationStatus.none),
             editingFieldId: 'bolts',
           ),
         );
 
         expect(
           find.byKey(const ValueKey('inline-editor-input-bolts')),
-          findsOneWidget,
+          findsNothing,
         );
-        expect(
-          tester
-              .widget<TextField>(
-                find.byKey(const ValueKey('inline-editor-input-bolts')),
-              )
-              .controller!
-              .text,
-          '42',
-        );
+        expect(find.text('Read-only'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
 
-    testWidgets('Class TrainerFieldsPanel switches at the shared breakpoint', (
-      tester,
-    ) async {
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      tester.view.physicalSize = Size(LudavaBreakpoints.fieldCards, 560);
-      await tester.pumpWidget(_wrap(_session(value: 0)));
-      expect(
-        find.byKey(const ValueKey('trainer-field-card-bolts')),
-        findsOneWidget,
-      );
-
-      tester.view.physicalSize = Size(LudavaBreakpoints.fieldCards - 1, 560);
-      await tester.pumpWidget(_wrap(_session(value: 0)));
-      expect(
-        find.byKey(const ValueKey('trainer-field-row-bolts')),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
-    });
-
     testWidgets(
-      'Class TrainerFieldsPanel preserves the maximum unsigned value',
+      'Class TrainerFieldsPanel keeps a failed read distinct from zero',
       (tester) async {
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        for (final width in const [720.0, 1180.0]) {
-          tester.view.physicalSize = Size(width, 560);
-          await tester.pumpWidget(_wrap(_session(value: 4294967295)));
-
-          expect(find.text('4,294,967,295'), findsOneWidget);
-          expect(tester.takeException(), isNull);
-        }
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel distinguishes a failed read from zero',
-      (tester) async {
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        for (final width in const [720.0, 1180.0]) {
-          tester.view.physicalSize = Size(width, 560);
-          await tester.pumpWidget(
-            _wrap(
-              _session(
-                readResult: const GameReadResult(
-                  status: GameReadStatus.readFailed,
-                  fieldId: 'bolts',
-                ),
-              ),
-            ),
-          );
-
-          expect(find.text('Read failed'), findsOneWidget);
-          expect(find.text('0'), findsNothing);
-          expect(find.text('Writable'), findsNothing);
-
-          await tester.pumpWidget(
-            _wrap(
-              _session(
-                fieldReadStatus: VerificationStatus.none,
-                readResult: const GameReadResult(
-                  status: GameReadStatus.none,
-                  fieldId: 'bolts',
-                ),
-              ),
-            ),
-          );
-          expect(find.text('Unavailable'), findsOneWidget);
-          expect(find.text('0'), findsNothing);
-          expect(tester.takeException(), isNull);
-        }
-      },
-    );
-
-    testWidgets('Class TrainerFieldsPanel handles a missing read result', (
-      tester,
-    ) async {
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      for (final width in const [720.0, 1180.0]) {
-        tester.view.physicalSize = Size(width, 560);
+        _setMinimumView(tester);
         await tester.pumpWidget(
-          _wrap(_session(value: null, includeBoltsRead: false)),
+          _wrap(
+            _session(
+              readResult: const GameReadResult(
+                status: GameReadStatus.readFailed,
+                fieldId: 'bolts',
+              ),
+            ),
+          ),
         );
 
+        expect(find.text('Read failed'), findsOneWidget);
+        expect(find.text('0'), findsNothing);
+        expect(find.text('Writable'), findsNothing);
+
+        await tester.pumpWidget(
+          _wrap(
+            _session(
+              fieldReadStatus: VerificationStatus.none,
+              readResult: const GameReadResult(
+                status: GameReadStatus.none,
+                fieldId: 'bolts',
+              ),
+            ),
+          ),
+        );
         expect(find.text('Unavailable'), findsOneWidget);
         expect(find.text('0'), findsNothing);
         expect(tester.takeException(), isNull);
-      }
-    });
-
-    testWidgets(
-      'Class TrainerFieldsPanel requires profile and field write approval',
-      (tester) async {
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        for (final width in const [720.0, 1180.0]) {
-          tester.view.physicalSize = Size(width, 560);
-          final deniedWriteStates = [
-            _session(
-              value: 25,
-              profileWriteStatus: VerificationStatus.none,
-              fieldWriteStatus: VerificationStatus.verified,
-            ),
-            _session(
-              value: 25,
-              profileWriteStatus: VerificationStatus.verified,
-              fieldWriteStatus: VerificationStatus.none,
-            ),
-            _session(
-              value: 25,
-              profileWriteStatus: VerificationStatus.verified,
-              fieldWriteStatus: VerificationStatus.verified,
-              confidence: GameIdentityConfidence.manuallySelected,
-            ),
-            _session(value: 25, hasProcess: false),
-            _session(value: 25, hasMemoryBase: false),
-            _session(value: 25, omitMinimum: true),
-            _session(value: 25, omitMaximum: true),
-          ];
-          for (final state in deniedWriteStates) {
-            await tester.pumpWidget(_wrap(state));
-            expect(find.text('Read-only'), findsOneWidget);
-          }
-
-          for (final state in [
-            _session(value: 25, profileReadStatus: VerificationStatus.none),
-            _session(value: 25, fieldReadStatus: VerificationStatus.none),
-          ]) {
-            await tester.pumpWidget(_wrap(state));
-            expect(find.text('Unavailable'), findsOneWidget);
-            expect(find.text('Not readable'), findsOneWidget);
-            expect(find.text('25'), findsNothing);
-            expect(find.text('Read-only'), findsNothing);
-          }
-        }
       },
     );
 
-    testWidgets(
-      'Class TrainerFieldsPanel renders each profile field in both layouts',
-      (tester) async {
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        for (final width in const [720.0, 1180.0]) {
-          tester.view.physicalSize = Size(width, 560);
-          await tester.pumpWidget(
-            _wrap(_session(value: 25, includeSecondField: true)),
-          );
-
-          expect(find.text('Bolts'), findsOneWidget);
-          expect(find.text('Scrap'), findsOneWidget);
-          expect(find.text('25'), findsOneWidget);
-          expect(find.text('7'), findsOneWidget);
-        }
-      },
-    );
-
-    testWidgets('Class TrainerFieldsPanel handles profiles without fields', (
+    testWidgets('Class TrainerFieldsPanel keeps denied fields read-only', (
       tester,
     ) async {
-      await tester.pumpWidget(_wrap(_session(value: null, emptyProfile: true)));
+      _setMinimumView(tester);
+      final deniedStates = [
+        _session(profileWriteStatus: VerificationStatus.none),
+        _session(fieldWriteStatus: VerificationStatus.none),
+        _session(confidence: GameIdentityConfidence.manuallySelected),
+        _session(hasProcess: false),
+        _session(hasMemoryBase: false),
+        _session(omitMinimum: true),
+        _session(omitMaximum: true),
+      ];
 
+      for (final state in deniedStates) {
+        await tester.pumpWidget(_wrap(state));
+        expect(find.text('Read-only'), findsOneWidget);
+        expect(find.widgetWithText(TextButton, 'Edit'), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Class TrainerFieldsPanel shows empty and missing profiles', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(_session(emptyProfile: true)));
       expect(
         find.text('No trainer fields are available for this profile.'),
         findsOneWidget,
       );
-    });
 
-    testWidgets('Class TrainerFieldsPanel renders nothing without a profile', (
-      tester,
-    ) async {
       await tester.pumpWidget(_wrap(TrainerSessionState()));
-
       expect(find.text('Bolts'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+void _setMinimumView(WidgetTester tester) {
+  tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
 }
 
 Widget _wrap(
@@ -545,7 +282,7 @@ Widget _wrap(
 );
 
 TrainerSessionState _session({
-  int? value,
+  int? value = 17,
   GameReadResult? readResult,
   VerificationStatus profileReadStatus = VerificationStatus.verified,
   VerificationStatus profileWriteStatus = VerificationStatus.verified,
@@ -559,48 +296,49 @@ TrainerSessionState _session({
   bool includeSecondField = false,
   bool includeManyFields = false,
   bool emptyProfile = false,
-  bool includeBoltsRead = true,
 }) {
-  final field = GameField(
-    id: 'bolts',
-    name: 'Bolts',
-    guestOffset: 0,
-    valueType: MemoryValueType.unsigned32,
-    byteOrder: ByteOrder.big,
-    readStatus: fieldReadStatus,
-    writeStatus: fieldWriteStatus,
-    minimumValue: omitMinimum ? null : 0,
-    maximumValue: omitMaximum ? null : 4294967295,
-  );
-  final fields = <String, GameField>{if (!emptyProfile) 'bolts': field};
-  if (includeSecondField) {
-    fields['scrap'] = GameField(
-      id: 'scrap',
-      name: 'Scrap',
-      guestOffset: 4,
+  final fields = <String, GameField>{};
+  final reads = <String, GameReadResult>{};
+  if (!emptyProfile) {
+    fields['bolts'] = GameField(
+      id: 'bolts',
+      name: 'Bolts',
+      guestOffset: 0,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.verified,
-      minimumValue: 0,
-      maximumValue: 100,
+      readStatus: fieldReadStatus,
+      writeStatus: fieldWriteStatus,
+      minimumValue: omitMinimum ? null : 0,
+      maximumValue: omitMaximum ? null : 4294967295,
+    );
+    reads['bolts'] =
+        readResult ??
+        GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: 'bolts',
+          value: value,
+        );
+  }
+  if (includeSecondField) {
+    fields['scrap'] = _field(id: 'scrap', name: 'Scrap', offset: 4, max: 100);
+    reads['scrap'] = const GameReadResult(
+      status: GameReadStatus.success,
+      fieldId: 'scrap',
+      value: 7,
     );
   }
   if (includeManyFields) {
     for (var index = 0; index < 12; index++) {
       final id = 'part-$index';
-      fields[id] = GameField(
-        id: id,
-        name: 'Part $index',
-        guestOffset: 8 + index * 4,
-        valueType: MemoryValueType.unsigned32,
-        byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-        writeStatus: VerificationStatus.verified,
-        minimumValue: 0,
-        maximumValue: 100,
+      fields[id] = _field(id: id, name: 'Part $index', offset: 8 + index * 4);
+      reads[id] = GameReadResult(
+        status: GameReadStatus.success,
+        fieldId: id,
+        value: index,
       );
     }
   }
+
   final profile = GameProfile(
     id: 'test-game',
     gameName: 'Test game',
@@ -610,33 +348,6 @@ TrainerSessionState _session({
     writeStatus: profileWriteStatus,
     fields: fields,
   );
-  final readResults = <String, GameReadResult>{};
-  if (includeBoltsRead && !emptyProfile) {
-    readResults['bolts'] =
-        readResult ??
-        GameReadResult(
-          status: GameReadStatus.success,
-          fieldId: 'bolts',
-          value: value,
-        );
-  }
-  if (includeSecondField) {
-    readResults['scrap'] = const GameReadResult(
-      status: GameReadStatus.success,
-      fieldId: 'scrap',
-      value: 7,
-    );
-  }
-  if (includeManyFields) {
-    for (var index = 0; index < 12; index++) {
-      final id = 'part-$index';
-      readResults[id] = GameReadResult(
-        status: GameReadStatus.success,
-        fieldId: id,
-        value: index,
-      );
-    }
-  }
   return TrainerSessionState(
     processIds: hasProcess ? const [123] : const [],
     selectedProcessId: hasProcess ? 123 : null,
@@ -648,6 +359,30 @@ TrainerSessionState _session({
       evidenceDescription: 'Test identity evidence.',
     ),
     memoryBase: hasMemoryBase ? 0x1000 : null,
-    readResults: readResults,
+    readResults: reads,
   );
 }
+
+GameField _field({
+  required String id,
+  required String name,
+  required int offset,
+  int max = 100,
+}) => GameField(
+  id: id,
+  name: name,
+  guestOffset: offset,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.verified,
+  minimumValue: 0,
+  maximumValue: max,
+);
+
+GameWriteResult _success(String fieldId, int value) => GameWriteResult(
+  status: GameWriteStatus.success,
+  fieldId: fieldId,
+  requestedValue: value,
+  readBackValue: value,
+);

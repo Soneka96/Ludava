@@ -11,14 +11,10 @@ class TrainerFieldValue extends StatelessWidget {
   /// Whether the profile permits reading this field.
   final bool canRead;
 
-  /// Whether to emphasize the number for a card presentation.
-  final bool prominent;
-
-  /// Creates a current value label for a card or compact row.
+  /// Creates a current value label for one profile row.
   const TrainerFieldValue({
     required this.readResult,
     required this.canRead,
-    required this.prominent,
     super.key,
   });
 
@@ -33,13 +29,9 @@ class TrainerFieldValue extends StatelessWidget {
       return Text(
         failed ? 'Read failed' : 'Unavailable',
         textAlign: TextAlign.right,
-        style:
-            (prominent
-                    ? theme.textTheme.titleMedium
-                    : theme.textTheme.bodyMedium)
-                ?.copyWith(
-                  color: failed ? theme.colorScheme.error : tokens.textMuted,
-                ),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: failed ? theme.colorScheme.error : tokens.textMuted,
+        ),
       );
     }
 
@@ -48,11 +40,9 @@ class TrainerFieldValue extends StatelessWidget {
       alignment: Alignment.centerRight,
       child: Text(
         TrainerValueFormatter.format(value),
-        style:
-            (prominent
-                    ? theme.textTheme.headlineMedium
-                    : theme.textTheme.titleLarge)
-                ?.copyWith(color: theme.colorScheme.onSurface),
+        style: theme.textTheme.titleLarge?.copyWith(
+          color: theme.colorScheme.onSurface,
+        ),
       ),
     );
   }

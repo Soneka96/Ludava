@@ -4,7 +4,7 @@ import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_v
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Presents the same field facts as a compact, single-line row.
+/// Presents one profile field's name, access, value, and action in a row.
 class TrainerFieldRow extends StatelessWidget {
   /// Profile metadata for the current field.
   final GameField field;
@@ -24,7 +24,7 @@ class TrainerFieldRow extends StatelessWidget {
   /// Opens the inline editor after presentation eligibility is checked.
   final VoidCallback onEdit;
 
-  /// Creates the compact row presentation of one trainer field.
+  /// Creates the single-row presentation of one trainer field.
   const TrainerFieldRow({
     required this.field,
     required this.readResult,
@@ -35,7 +35,7 @@ class TrainerFieldRow extends StatelessWidget {
     super.key,
   });
 
-  /// Renders the field name, permission, value, and action at narrow widths.
+  /// Keeps field identity separate from its value and edit action.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -43,7 +43,6 @@ class TrainerFieldRow extends StatelessWidget {
       key: ValueKey('trainer-field-row-${field.id}'),
       children: [
         Expanded(
-          flex: 3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -60,16 +59,15 @@ class TrainerFieldRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: LudavaSpacing.md),
-        Expanded(
-          flex: 2,
+        Flexible(
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Flexible(
                 child: TrainerFieldValue(
                   readResult: readResult,
                   canRead: canRead,
-                  prominent: false,
                 ),
               ),
               if (canWrite && !isEditing) ...[

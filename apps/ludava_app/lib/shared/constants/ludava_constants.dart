@@ -24,16 +24,16 @@ abstract final class LudavaSpacing {
 /// Shared desktop-window, content, and control dimensions in logical pixels.
 abstract final class LudavaDimensions {
   /// Initial desktop window width.
-  static const double initialWindowWidth = 1180;
+  static const double initialWindowWidth = 520;
 
   /// Initial desktop window height.
-  static const double initialWindowHeight = 760;
+  static const double initialWindowHeight = 360;
 
   /// Minimum resizable window width.
-  static const double minimumWindowWidth = 720;
+  static const double minimumWindowWidth = 480;
 
   /// Minimum resizable window height.
-  static const double minimumWindowHeight = 560;
+  static const double minimumWindowHeight = 340;
 
   /// Initial native window size.
   static const Size initialWindowSize = Size(
@@ -51,7 +51,7 @@ abstract final class LudavaDimensions {
   static const double minimumInteractiveTarget = 48;
 
   /// Maximum width for the centered application content.
-  static const double maximumContentWidth = 1440;
+  static const double maximumContentWidth = 720;
 
   /// Height of the integrated window title bar.
   static const double titleBarHeight = 48;
@@ -71,11 +71,8 @@ abstract final class LudavaDimensions {
 
 /// Responsive thresholds selected from available logical width.
 abstract final class LudavaBreakpoints {
-  /// Width at which trainer fields switch between rows and card layout.
-  static const double fieldCards = 920;
-
   /// Width at which the trainer game header moves its actions to a second row.
-  static const double trainerHeaderWide = 960;
+  static const double trainerHeaderWide = 640;
 }
 
 /// Shared dimensions for RPCS3 connection guidance and process choices.
