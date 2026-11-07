@@ -11,9 +11,6 @@ class TrainerGameStatus extends StatelessWidget {
   /// Outline opacity separates the badge from its surrounding surface.
   static const double _outlineOpacity = 0.35;
 
-  /// Corner radius keeps the compact readiness badge pill-shaped.
-  static const double _cornerRadius = 20;
-
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
 
@@ -26,19 +23,22 @@ class TrainerGameStatus extends StatelessWidget {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
     final color = _statusColor(theme, tokens);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: LudavaSpacing.sm,
-        vertical: LudavaSpacing.xs,
-      ),
-      decoration: BoxDecoration(
+    return DecoratedBox(
+      decoration: ShapeDecoration(
         color: color.withValues(alpha: _fillOpacity),
-        borderRadius: BorderRadius.circular(_cornerRadius),
-        border: Border.all(color: color.withValues(alpha: _outlineOpacity)),
+        shape: StadiumBorder(
+          side: BorderSide(color: color.withValues(alpha: _outlineOpacity)),
+        ),
       ),
-      child: Text(
-        _statusLabel,
-        style: theme.textTheme.labelMedium?.copyWith(color: color),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: LudavaSpacing.sm,
+          vertical: LudavaSpacing.xs,
+        ),
+        child: Text(
+          _statusLabel,
+          style: theme.textTheme.labelMedium?.copyWith(color: color),
+        ),
       ),
     );
   }

@@ -318,7 +318,7 @@ void main() {
     ) async {
       final sdk = _createSdk(() => const []);
       final alternateTheme = ThemeData.light().copyWith(
-        extensions: [GraphiteTealTheme.tokens.copyWith(surface: Colors.amber)],
+        extensions: [GraphiteTealTheme.colors.copyWith(surface: Colors.amber)],
         textTheme: const TextTheme(
           titleMedium: TextStyle(color: Colors.purple),
         ),

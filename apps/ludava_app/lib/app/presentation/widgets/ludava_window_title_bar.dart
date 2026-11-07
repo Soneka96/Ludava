@@ -71,7 +71,6 @@ class LudavaWindowTitleBar extends StatelessWidget {
                         'Ludava',
                         style: theme.textTheme.titleSmall?.copyWith(
                           color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const Spacer(),

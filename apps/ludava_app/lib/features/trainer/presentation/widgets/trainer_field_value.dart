@@ -50,12 +50,9 @@ class TrainerFieldValue extends StatelessWidget {
         TrainerValueFormatter.format(value),
         style:
             (prominent
-                    ? theme.textTheme.headlineSmall
+                    ? theme.textTheme.headlineMedium
                     : theme.textTheme.titleLarge)
-                ?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+                ?.copyWith(color: theme.colorScheme.onSurface),
       ),
     );
   }

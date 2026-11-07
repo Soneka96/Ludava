@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
@@ -34,7 +33,7 @@ void main() {
     });
 
     testWidgets(
-      'Class InlineValueEditor uses semantic focus and border roles',
+      'Class InlineValueEditor leaves outline styling to the shared theme',
       (tester) async {
         await tester.pumpWidget(
           _wrap(
@@ -47,20 +46,10 @@ void main() {
             ),
           ),
         );
-        final tokens = LudavaTheme.graphiteAndTeal
-            .extension<LudavaThemeTokens>()!;
         final input = tester.widget<TextField>(_inputFinder);
 
-        expect(
-          (input.decoration!.border! as OutlineInputBorder).borderSide.color,
-          tokens.borderSubtle,
-        );
-        expect(
-          (input.decoration!.focusedBorder! as OutlineInputBorder)
-              .borderSide
-              .color,
-          tokens.focus,
-        );
+        expect(input.decoration!.border, isNull);
+        expect(input.decoration!.focusedBorder, isNull);
         expect(tester.takeException(), isNull);
       },
     );

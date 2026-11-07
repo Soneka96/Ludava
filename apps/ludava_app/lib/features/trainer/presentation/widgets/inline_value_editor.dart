@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_value_formatter.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -97,92 +96,82 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final validationMessage = _validationMessage;
     return Focus(
       onKeyEvent: _handleKeyEvent,
-      child: Container(
+      child: Card(
         margin: const EdgeInsets.only(top: LudavaSpacing.md),
-        padding: const EdgeInsets.all(LudavaSpacing.lg),
-        decoration: BoxDecoration(
-          color: tokens.surface,
-          border: Border.all(color: tokens.borderSubtle),
-          borderRadius: BorderRadius.circular(
-            LudavaDimensions.smallCornerRadius,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Edit ${widget.field.name}',
-              style: theme.textTheme.titleSmall,
-            ),
-            const SizedBox(height: LudavaSpacing.xs),
-            Text(
-              'Current value: ${TrainerValueFormatter.format(widget.currentValue)}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: tokens.textMuted,
+        color: tokens.surface,
+        child: Padding(
+          padding: const EdgeInsets.all(LudavaSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Edit ${widget.field.name}',
+                style: theme.textTheme.titleSmall,
               ),
-            ),
-            const SizedBox(height: LudavaSpacing.md),
-            TextField(
-              key: ValueKey('inline-editor-input-${widget.field.id}'),
-              controller: _textController,
-              focusNode: _inputFocusNode,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: 'New ${widget.field.name}',
-                helperText: _rangeDescription,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(color: tokens.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: tokens.focus),
-                ),
-              ),
-              onChanged: (_) => setState(() {
-                _feedback = null;
-                _feedbackIsSuccess = false;
-              }),
-              onSubmitted: (_) => _submitFromEnter(),
-            ),
-            if (validationMessage != null) ...[
               const SizedBox(height: LudavaSpacing.xs),
               Text(
-                validationMessage,
+                'Current value: ${TrainerValueFormatter.format(widget.currentValue)}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
+                  color: tokens.textMuted,
                 ),
               ),
-            ],
-            if (_feedback case final message?) ...[
-              const SizedBox(height: LudavaSpacing.xs),
-              Text(
-                message,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: _feedbackIsSuccess
-                      ? tokens.success
-                      : theme.colorScheme.error,
+              const SizedBox(height: LudavaSpacing.md),
+              TextField(
+                key: ValueKey('inline-editor-input-${widget.field.id}'),
+                controller: _textController,
+                focusNode: _inputFocusNode,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'New ${widget.field.name}',
+                  helperText: _rangeDescription,
                 ),
+                onChanged: (_) => setState(() {
+                  _feedback = null;
+                  _feedbackIsSuccess = false;
+                }),
+                onSubmitted: (_) => _submitFromEnter(),
               ),
-            ],
-            const SizedBox(height: LudavaSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: widget.onCancel,
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: LudavaSpacing.md),
-                FilledButton(
-                  onPressed: validationMessage == null ? _apply : null,
-                  child: const Text('Apply'),
+              if (validationMessage != null) ...[
+                const SizedBox(height: LudavaSpacing.xs),
+                Text(
+                  validationMessage,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
                 ),
               ],
-            ),
-          ],
+              if (_feedback case final message?) ...[
+                const SizedBox(height: LudavaSpacing.xs),
+                Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _feedbackIsSuccess
+                        ? tokens.success
+                        : theme.colorScheme.error,
+                  ),
+                ),
+              ],
+              const SizedBox(height: LudavaSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: widget.onCancel,
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: LudavaSpacing.md),
+                  FilledButton(
+                    onPressed: validationMessage == null ? _apply : null,
+                    child: const Text('Apply'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

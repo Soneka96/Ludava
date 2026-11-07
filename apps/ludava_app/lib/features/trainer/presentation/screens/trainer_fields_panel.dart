@@ -4,9 +4,7 @@ import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_ed
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_card.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Renders the current profile's fields as adaptive cards or compact rows.
@@ -97,7 +95,6 @@ class TrainerFieldsPanel extends StatelessWidget {
     GameField field, {
     required bool compact,
   }) {
-    final tokens = Theme.of(context).extension<LudavaThemeTokens>()!;
     final readResult = session.readResults[field.id];
     final canRead = profile.canRead && field.canRead;
     final canWrite = TrainerFieldAvailability.canEdit(session, field);
@@ -108,49 +105,46 @@ class TrainerFieldsPanel extends StatelessWidget {
         editingFieldId == field.id &&
         TrainerFieldAvailability.hasWriteTarget(session, field);
 
-    return Container(
+    return Card(
       key: ValueKey('trainer-field-${field.id}'),
-      padding: compact
-          ? const EdgeInsets.symmetric(vertical: LudavaSpacing.md)
-          : const EdgeInsets.all(LudavaSpacing.lg),
-      decoration: BoxDecoration(
-        color: compact ? null : tokens.surfaceElevated,
-        border: Border.all(color: tokens.borderSubtle),
-        borderRadius: BorderRadius.circular(LudavaDimensions.smallCornerRadius),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (compact)
-            TrainerFieldRow(
-              field: field,
-              readResult: readResult,
-              canRead: canRead,
-              canWrite: canWrite,
-              isEditing: isEditing,
-              onEdit: () => onEditField(field),
-            )
-          else
-            TrainerFieldCard(
-              field: field,
-              readResult: readResult,
-              canRead: canRead,
-              canWrite: canWrite,
-              isEditing: isEditing,
-              onEdit: () => onEditField(field),
-            ),
-          if (isEditing)
-            InlineValueEditor(
-              field: field,
-              currentValue: readResult?.succeeded == true
-                  ? readResult?.value
-                  : null,
-              writeResult: writeResult,
-              onApply: (value) => onApplyField(field.id, value),
-              onCancel: onCancelEditing,
-            ),
-        ],
+      child: Padding(
+        padding: compact
+            ? const EdgeInsets.symmetric(vertical: LudavaSpacing.md)
+            : const EdgeInsets.all(LudavaSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (compact)
+              TrainerFieldRow(
+                field: field,
+                readResult: readResult,
+                canRead: canRead,
+                canWrite: canWrite,
+                isEditing: isEditing,
+                onEdit: () => onEditField(field),
+              )
+            else
+              TrainerFieldCard(
+                field: field,
+                readResult: readResult,
+                canRead: canRead,
+                canWrite: canWrite,
+                isEditing: isEditing,
+                onEdit: () => onEditField(field),
+              ),
+            if (isEditing)
+              InlineValueEditor(
+                field: field,
+                currentValue: readResult?.succeeded == true
+                    ? readResult?.value
+                    : null,
+                writeResult: writeResult,
+                onApply: (value) => onApplyField(field.id, value),
+                onCancel: onCancelEditing,
+              ),
+          ],
+        ),
       ),
     );
   }

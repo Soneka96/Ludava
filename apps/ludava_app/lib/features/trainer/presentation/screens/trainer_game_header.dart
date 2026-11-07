@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_game_identity.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_game_status.dart';
 import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -42,23 +41,11 @@ class TrainerGameHeader extends StatelessWidget {
             onPressed: onRefresh,
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Refresh'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(
-                0,
-                LudavaDimensions.minimumInteractiveTarget,
-              ),
-            ),
           ),
           OutlinedButton.icon(
             onPressed: onRedetect,
             icon: const Icon(Icons.manage_search_rounded),
             label: const Text('Re-detect'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(
-                0,
-                LudavaDimensions.minimumInteractiveTarget,
-              ),
-            ),
           ),
         ],
       );

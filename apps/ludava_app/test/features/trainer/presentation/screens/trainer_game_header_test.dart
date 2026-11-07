@@ -70,6 +70,14 @@ void main() {
         tester.getSize(find.widgetWithText(OutlinedButton, 'Re-detect')).height,
         greaterThanOrEqualTo(LudavaDimensions.minimumInteractiveTarget),
       );
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Refresh'),
+            )
+            .style,
+        isNull,
+      );
     });
 
     testWidgets(

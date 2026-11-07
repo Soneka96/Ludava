@@ -14,7 +14,7 @@ void main() {
     ) async {
       final maximizeState = ValueNotifier(false);
       addTearDown(maximizeState.dispose);
-      final tokens = GraphiteTealTheme.tokens.copyWith(
+      final tokens = GraphiteTealTheme.colors.copyWith(
         surface: const Color(0xFF112233),
         borderSubtle: const Color(0xFF334455),
       );
@@ -51,6 +51,10 @@ void main() {
         theme.colorScheme.secondary,
       );
       expect(find.text('Ludava'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.text('Ludava')).style?.fontWeight,
+        theme.textTheme.titleSmall?.fontWeight,
+      );
       expect(find.text('RPCS3 Disconnected'), findsOneWidget);
       expect(find.byType(DragToMoveArea), findsOneWidget);
       expect(find.byTooltip('Minimize window'), findsOneWidget);

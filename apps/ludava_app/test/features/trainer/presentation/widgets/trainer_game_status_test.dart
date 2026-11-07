@@ -27,6 +27,15 @@ void main() {
         tester.widget<Text>(find.text('Ready')).style?.color,
         LudavaTheme.graphiteAndTeal.extension<LudavaThemeTokens>()!.success,
       );
+      final badge = tester.widget<DecoratedBox>(
+        find
+            .ancestor(
+              of: find.text('Ready'),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect((badge.decoration as ShapeDecoration).shape, isA<StadiumBorder>());
     });
 
     testWidgets('Class TrainerGameStatus separates unsupported from failure', (

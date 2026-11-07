@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -105,14 +104,18 @@ void main() {
         await tester.pumpWidget(_wrap(_session(value: 0)));
         final tokens = LudavaTheme.graphiteAndTeal
             .extension<LudavaThemeTokens>()!;
-        final field = tester.widget<Container>(
+        final field = tester.widget<Card>(
           find.byKey(const ValueKey('trainer-field-bolts')),
         );
-        final decoration = field.decoration! as BoxDecoration;
+        final cardTheme = LudavaTheme.graphiteAndTeal.cardTheme;
 
-        expect(field.padding, const EdgeInsets.all(LudavaSpacing.lg));
-        expect(decoration.color, tokens.surfaceElevated);
-        expect((decoration.border! as Border).top.color, tokens.borderSubtle);
+        expect(field.color, isNull);
+        expect(field.child, isA<Padding>());
+        expect(cardTheme.color, tokens.surfaceElevated);
+        expect(
+          (cardTheme.shape! as RoundedRectangleBorder).side.color,
+          tokens.borderSubtle,
+        );
       },
     );
 

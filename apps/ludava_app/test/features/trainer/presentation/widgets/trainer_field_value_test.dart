@@ -24,6 +24,12 @@ void main() {
       );
 
       expect(find.text('4,294,967,295'), findsOneWidget);
+      final value = tester.widget<Text>(find.text('4,294,967,295'));
+      expect(value.style?.fontSize, 24);
+      expect(
+        value.style?.fontFeatures,
+        contains(const FontFeature.tabularFigures()),
+      );
       expect(tester.takeException(), isNull);
     });
 
