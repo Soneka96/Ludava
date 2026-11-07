@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
+import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
 import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
@@ -33,7 +34,10 @@ void main() {
       );
 
       expect(find.text(profile.gameName), findsOneWidget);
-      expect(find.text('RPCS3 process · PID 321'), findsOneWidget);
+      expect(
+        find.text('${profile.buildId} · RPCS3 process · PID 321'),
+        findsOneWidget,
+      );
       expect(find.text('Ready'), findsOneWidget);
       expect(
         tester.widget<Text>(find.text('Ready')).style?.color,
@@ -134,7 +138,7 @@ void main() {
       );
 
       expect(find.text('Connect to RPCS3'), findsOneWidget);
-      expect(find.text('Disconnected'), findsOneWidget);
+      expect(find.text('Not detected'), findsOneWidget);
 
       await tester.pumpWidget(
         _wrap(
@@ -185,7 +189,7 @@ void main() {
             ),
           ),
         );
-        expect(find.text('Disconnected'), findsOneWidget);
+        expect(find.text('Not detected'), findsOneWidget);
 
         final profile = GameProfileCatalog.profiles.first;
         await tester.pumpWidget(
@@ -235,11 +239,11 @@ void main() {
     );
 
     testWidgets(
-      'Class TrainerGameHeader truncates long game names at minimum width',
+      'Class TrainerGameHeader keeps long game names discoverable at minimum width',
       (tester) async {
         const longTitle =
             'A Very Long Unsupported Game Title That Must Not Push Window Actions Off Screen';
-        tester.view.physicalSize = const Size(720, 180);
+        tester.view.physicalSize = const Size(720, 560);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
@@ -259,13 +263,46 @@ void main() {
         );
 
         final title = tester.widget<Text>(find.text(longTitle));
-        expect(title.maxLines, 1);
-        expect(title.overflow, TextOverflow.ellipsis);
+        expect(title.maxLines, isNull);
+        expect(title.overflow, isNull);
         expect(find.text('Refresh'), findsOneWidget);
         expect(find.text('Re-detect'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
+
+    testWidgets('Class TrainerGameHeader adapts across its width threshold', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final width in [
+        LudavaBreakpoints.trainerHeaderWide - 1,
+        LudavaBreakpoints.trainerHeaderWide + 1,
+      ]) {
+        tester.view.physicalSize = Size(width, 320);
+        await tester.pumpWidget(
+          _wrap(
+            TrainerGameHeader(
+              session: _state(
+                status: GameDetectionStatus.unsupportedGame,
+                processId: 321,
+                gameTitle: 'An Unsupported Game With a Very Long Name',
+              ),
+              onRefresh: () {},
+              onRedetect: () {},
+            ),
+          ),
+        );
+
+        expect(find.text('Unsupported'), findsOneWidget);
+        expect(find.text('Refresh'), findsOneWidget);
+        expect(find.text('Re-detect'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    });
   });
 }
 
