@@ -56,11 +56,11 @@ class TrainerFieldsPanel extends StatelessWidget {
     final accessColor = canWrite ? tokens.success : tokens.textMuted;
     return Container(
       key: ValueKey('trainer-field-${compact ? 'row' : 'card'}-${field.id}'),
-      padding: EdgeInsets.all(
-        compact
-            ? AppLayoutConstants.fieldRowVerticalInset
-            : AppLayoutConstants.fieldCardInset,
-      ),
+      padding: compact
+          ? const EdgeInsets.symmetric(
+              vertical: AppLayoutConstants.fieldRowVerticalInset,
+            )
+          : const EdgeInsets.all(AppLayoutConstants.fieldCardInset),
       decoration: BoxDecoration(
         color: compact ? null : tokens.surfaceRaised,
         border: Border.all(color: tokens.outlineSubtle),
