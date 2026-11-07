@@ -71,4 +71,10 @@ A process ID, selected profile, successful native API call, automated test, or p
 - The later owner confirmation does not include an exact game-to-device matrix or precise Windows/RPCS3 build details.
 - Repeatable evidence on another runtime/build is needed before making broader compatibility claims.
 
+## Ratchet: Deadlocked — standalone PS3 (NPUA80646)
+
+The current RPCS3 log provided fresh identity observations for one Deadlocked session on 2026-11-06: RPCS3 `0.0.43-20567-6a59542f`, game `APP_VER=01.00 VERSION=01.01`, executable `EBOOT.BIN`, PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`, and session guest base `0x300000000`. The title ID was `NPUA80646`. This establishes observed session identity metadata only; it does not validate the Bolts mapping.
+
+The external RatchetHax reference supplies a candidate big-endian unsigned 32-bit Bolts mapping at guest offset `0x009C32E8`. No Ludava Bolts read was performed, no HUD values were compared, and no write was attempted. Live Bolts reading and writing, restart handling, and compatibility beyond the observed build remain **UNVERIFIED**; writes must remain disabled. Full provenance and session-scoped evidence are recorded in [the Deadlocked research note](DEADLOCKED_PS3_RESEARCH.md).
+
 Avoid exposing personal local paths, save data, or incidental private information in public logs.

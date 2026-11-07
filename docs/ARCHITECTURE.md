@@ -18,6 +18,10 @@ Keep game-specific offsets, value types, endianness, write bounds, and evidence 
 
 The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU loads and process-finished events into identity evidence, then deciding whether that evidence selects a supported profile, belongs to `game_detection`.
 
+### Standalone PS3 game evidence
+
+A standalone PS3 release is represented by a profile in `game_catalog`, just like an embedded Collection game. Its title ID, executable name, PPU hash, and lifecycle must come from the actual RPCS3 build being supported; Collection menu identity and embedded-game transitions must not be assumed. Automatic matching continues to require the current title ID, executable name, and measured PPU hash. External memory-address research remains a candidate until Ludava reads are compared with distinct live gameplay values, and it does not enable writes. See [`GAME_DETECTION.md`](GAME_DETECTION.md) and [`COMPATIBILITY.md`](COMPATIBILITY.md) for the evidence distinctions and current measurements.
+
 `game_memory` owns the shared process-memory operation that opens a process handle, executes the generic field read or guarded write use case, records operation and cleanup failures separately, and closes the handle. Trainer-session and diagnostic services share this operation while keeping their distinct identity and authorization policies. `game_detection` owns the RPCS3 evidence workflow and profile decision; session and diagnostic services request detection through that feature capability.
 
 ## Directory ownership and composition rules
