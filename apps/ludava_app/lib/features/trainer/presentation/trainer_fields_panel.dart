@@ -82,7 +82,7 @@ class TrainerFieldsPanel extends StatelessWidget {
         _hasWriteTarget(profile, field) &&
         (readResult?.succeeded == true || writeResult != null);
     return Container(
-      key: ValueKey('trainer-field-${compact ? 'row' : 'card'}-${field.id}'),
+      key: ValueKey('trainer-field-${field.id}'),
       padding: compact
           ? const EdgeInsets.symmetric(
               vertical: AppLayoutConstants.fieldRowVerticalInset,
@@ -146,6 +146,7 @@ class TrainerFieldsPanel extends StatelessWidget {
     Color accessColor,
     bool isEditing,
   ) => Row(
+    key: ValueKey('trainer-field-row-${field.id}'),
     children: [
       Expanded(
         flex: 3,
@@ -198,6 +199,7 @@ class TrainerFieldsPanel extends StatelessWidget {
     Color accessColor,
     bool isEditing,
   ) => Column(
+    key: ValueKey('trainer-field-card-${field.id}'),
     crossAxisAlignment: CrossAxisAlignment.start,
     mainAxisSize: MainAxisSize.min,
     children: [

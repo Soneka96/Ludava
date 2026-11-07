@@ -123,6 +123,53 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Class TrainerFieldsPanel preserves a draft when layout changes',
+      (tester) async {
+        tester.view.physicalSize = const Size(720, 560);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        var writeCalls = 0;
+        final state = _session(value: 17);
+
+        Widget panel() => _wrap(
+          state,
+          editingFieldId: 'bolts',
+          onApplyField: (fieldId, value) {
+            writeCalls++;
+            return GameWriteResult(
+              status: GameWriteStatus.success,
+              fieldId: fieldId,
+              requestedValue: value,
+              readBackValue: value,
+            );
+          },
+        );
+
+        await tester.pumpWidget(panel());
+        await tester.enterText(
+          find.byKey(const ValueKey('inline-editor-input-bolts')),
+          '42',
+        );
+        await tester.pump();
+
+        tester.view.physicalSize = const Size(1180, 560);
+        await tester.pumpWidget(panel());
+
+        expect(
+          tester
+              .widget<TextField>(
+                find.byKey(const ValueKey('inline-editor-input-bolts')),
+              )
+              .controller!
+              .text,
+          '42',
+        );
+        expect(writeCalls, 0);
+      },
+    );
+
     testWidgets('Class TrainerFieldsPanel switches at the shared breakpoint', (
       tester,
     ) async {

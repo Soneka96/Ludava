@@ -98,12 +98,18 @@ jobs:
           Get-ChildItem -LiteralPath $bundleDirectory | Copy-Item -Destination $relocatedDirectory -Recurse -Force
           $applicationPath = Join-Path $relocatedDirectory 'ludava_app.exe'
           $application = Start-Process -FilePath $applicationPath -WorkingDirectory $relocatedDirectory -PassThru -WindowStyle Hidden
-          Start-Sleep -Seconds 3
-          $application.Refresh()
-          if ($application.HasExited) {
-            throw "Relocated Flutter app exited with code $($application.ExitCode)."
+          try {
+            Start-Sleep -Seconds 3
+            $application.Refresh()
+            if ($application.HasExited) {
+              throw "Relocated Flutter app exited with code $($application.ExitCode)."
+            }
+          } finally {
+            $application.Refresh()
+            if (-not $application.HasExited) {
+              Stop-Process -Id $application.Id -Force -ErrorAction SilentlyContinue
+            }
           }
-          Stop-Process -Id $application.Id -Force
 
       - name: Test SDK
         run: dart test

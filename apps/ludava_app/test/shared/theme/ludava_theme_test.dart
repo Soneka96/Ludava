@@ -21,6 +21,10 @@ void main() {
       expect(tokens.warning, LudavaTheme.attentionAmber);
       expect(LudavaTheme.statusBadgeFillOpacity, 0.12);
       expect(LudavaTheme.statusBadgeOutlineOpacity, 0.35);
+      expect(
+        identical(LudavaTheme.graphiteAndTeal, LudavaTheme.graphiteAndTeal),
+        isTrue,
+      );
       expect(theme.iconButtonTheme.style, isNotNull);
       expect(theme.tooltipTheme.decoration, isNotNull);
     });

@@ -34,8 +34,11 @@ abstract final class LudavaTheme {
   /// Opacity for the outline of a semantic status badge.
   static const double statusBadgeOutlineOpacity = 0.35;
 
-  /// Complete dark Material theme and semantic Ludava tokens.
-  static ThemeData get graphiteAndTeal {
+  /// Cached dark Material theme and semantic Ludava tokens.
+  static final ThemeData graphiteAndTeal = _buildGraphiteAndTeal();
+
+  /// Creates the Graphite & Teal theme once for the application lifetime.
+  static ThemeData _buildGraphiteAndTeal() {
     final scheme =
         ColorScheme.fromSeed(
           seedColor: teal400,
