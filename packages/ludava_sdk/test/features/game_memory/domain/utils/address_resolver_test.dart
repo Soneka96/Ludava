@@ -1,3 +1,4 @@
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_memory/domain/utils/address_resolver.dart';
 import 'package:test/test.dart';
 
@@ -27,6 +28,22 @@ void main() {
         0x100001234,
       );
     });
+
+    test(
+      'Method resolve() applies the Deadlocked Bolts offset to the supplied session base',
+      () {
+        final field = DeadlockedPs3Profile.profile.findField('bolts')!;
+
+        expect(
+          AddressResolver.resolve(
+            memoryBase: 0x310000000,
+            guestOffset: field.guestOffset,
+            byteLength: 4,
+          ),
+          0x3109c32e8,
+        );
+      },
+    );
 
     test(
       'Method resolve() accepts the maximum native address for one byte',

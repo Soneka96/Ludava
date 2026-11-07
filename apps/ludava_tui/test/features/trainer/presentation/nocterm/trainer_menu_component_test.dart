@@ -30,6 +30,106 @@ void main() {
     );
 
     test(
+      'Class TrainerMenuComponent displays and keeps Deadlocked Bolts read-only',
+      () async {
+        await testNocterm('standalone read-only game profile', (tester) async {
+          final openedFields = <GameField>[];
+          await tester.pumpComponent(
+            _menu(
+              _session(
+                profile: GameProfileCatalog.find('deadlocked-ps3')!,
+                reads: {
+                  'bolts': const GameReadResult(
+                    status: GameReadStatus.success,
+                    fieldId: 'bolts',
+                    value: 1234,
+                  ),
+                },
+              ),
+              onOpenField: openedFields.add,
+            ),
+          );
+
+          expect(
+            tester.terminalState,
+            containsText('Ratchet: Deadlocked · PS3 NPUA80646'),
+          );
+          expect(tester.terminalState, containsText('Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1,234'));
+          expect(
+            tester.terminalState,
+            containsText('Selected field is read-only'),
+          );
+
+          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendEnter();
+
+          expect(openedFields, isEmpty);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerMenuComponent changes edit behavior by field write status',
+      () async {
+        await testNocterm('mixed field write status', (tester) async {
+          final openedFields = <GameField>[];
+          final profile = GameProfile(
+            id: 'mixed-test',
+            gameName: 'Mixed test game',
+            buildId: 'MIXED',
+            executable: 'mixed.self',
+            readStatus: VerificationStatus.verified,
+            fields: {
+              'bolts': GameField(
+                id: 'bolts',
+                name: 'Bolts',
+                guestOffset: 0x1000,
+                valueType: MemoryValueType.unsigned32,
+                byteOrder: ByteOrder.big,
+                readStatus: VerificationStatus.verified,
+              ),
+              'weapons': GameField(
+                id: 'weapons',
+                name: 'Weapons',
+                guestOffset: 0x2000,
+                valueType: MemoryValueType.unsigned32,
+                byteOrder: ByteOrder.big,
+                readStatus: VerificationStatus.verified,
+                writeStatus: VerificationStatus.researchConfirmed,
+                minimumValue: 0,
+                maximumValue: 100,
+              ),
+            },
+          );
+
+          await tester.pumpComponent(
+            _menu(
+              _session(profile: profile),
+              onOpenField: openedFields.add,
+            ),
+          );
+
+          expect(
+            tester.terminalState,
+            containsText('Selected field is read-only'),
+          );
+          await tester.sendEnter();
+          await tester.sendKey(LogicalKey.digit1);
+          expect(openedFields, isEmpty);
+
+          await tester.sendArrowDown();
+          expect(tester.terminalState, containsText('1–9 Edit'));
+          await tester.sendEnter();
+          expect(openedFields.map((field) => field.id), ['weapons']);
+
+          await tester.sendKey(LogicalKey.digit1);
+          expect(openedFields.map((field) => field.id), ['weapons']);
+        });
+      },
+    );
+
+    test(
       'Class TrainerMenuComponent labels failed reads as unavailable',
       () async {
         await testNocterm('unavailable field value', (tester) async {

@@ -1,5 +1,6 @@
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_read_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_write_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/repositories/Igame_memory.repository.dart';
@@ -10,6 +11,26 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method execute() behaves correctly', () {
+    test(
+      'Method execute() rejects Deadlocked writes before reading or writing memory',
+      () {
+        final repository = _WriteGameFieldTestRepository();
+        final result = WriteGameFieldUseCase(repository).execute(
+          WriteGameFieldParams(
+            profile: DeadlockedPs3Profile.profile,
+            fieldId: 'bolts',
+            memoryBase: 0x310000000,
+            value: 123,
+            confirmed: true,
+          ),
+        );
+
+        expect(result.status, GameWriteStatus.unsupportedProfile);
+        expect(repository.readCalls, 0);
+        expect(repository.writeCalls, 0);
+      },
+    );
+
     test('Method execute() requires explicit confirmation before writing', () {
       final repository = _WriteGameFieldTestRepository();
 

@@ -131,7 +131,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
       GameDetectionStatus.rpcs3NotRunning =>
         'RPCS3 was not found. Start RPCS3 and press R to refresh.',
       GameDetectionStatus.noActiveGame =>
-        'Start a supported Collection game, then press R to refresh.',
+        'Start a supported game in RPCS3, then press R to refresh.',
       GameDetectionStatus.unsupportedGame => 'This game is not supported.',
       GameDetectionStatus.ambiguous =>
         'Could not verify the active game. Press G to re-detect.',

@@ -80,6 +80,15 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     final fields = _readableFields(component.session.profile);
     final selectedIndex =
         fields.isEmpty ? 0 : _selectedIndex.clamp(0, fields.length - 1);
+    final selectedField = fields.isEmpty ? null : fields[selectedIndex];
+    final String actionHint;
+    if (selectedField == null) {
+      actionHint = 'No readable fields';
+    } else if (selectedField.canWrite) {
+      actionHint = '1–9 Edit   Enter Edit';
+    } else {
+      actionHint = 'Selected field is read-only';
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final requiredHeight =
@@ -138,7 +147,9 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
                 ),
                 const SizedBox(height: 1),
                 _separator(),
-                const Text('↑↓ Navigate   1–9 Edit     Enter Edit'),
+                Text(
+                  '↑↓ Navigate   $actionHint',
+                ),
                 const Text('R Refresh     G Re-detect  Q Quit'),
               ],
             ),
@@ -163,11 +174,13 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     final digit = _digitFor(key);
     if (digit != null && digit > 0 && digit <= fields.length && digit <= 9) {
       _setSelection(digit - 1);
-      component.onOpenField(fields[digit - 1]);
+      final field = fields[digit - 1];
+      if (field.canWrite) component.onOpenField(field);
       return true;
     }
     if (key == LogicalKey.enter && fields.isNotEmpty) {
-      component.onOpenField(fields[_selectedIndex.clamp(0, fields.length - 1)]);
+      final field = fields[_selectedIndex.clamp(0, fields.length - 1)];
+      if (field.canWrite) component.onOpenField(field);
       return true;
     }
     if (_matchesLetter(event, 'r', LogicalKey.keyR)) {
@@ -213,7 +226,11 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
   /// Returns a display title for the currently detected profile.
   String _gameTitle(TrainerSessionState session) {
     final profile = session.profile;
-    if (profile != null) return '${profile.gameName} · PS3 Collection';
+    if (profile != null) {
+      final edition =
+          profile.buildId == 'BCUS98282' ? 'Collection' : profile.buildId;
+      return '${profile.gameName} · PS3 $edition';
+    }
     return session.detection?.gameTitle ?? 'No active game detected';
   }
 

@@ -1,5 +1,6 @@
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_read_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_write_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/repositories/Igame_memory.repository.dart';
@@ -10,6 +11,33 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method execute() behaves correctly', () {
+    test(
+      'Method execute() reads four big-endian bytes at the Deadlocked session-relative address',
+      () {
+        final repository = _ReadGameFieldTestData(
+          MemoryReadResult(
+            status: MemoryReadStatus.complete,
+            bytes: [0, 1, 0x23, 0x45],
+            bytesRead: 4,
+            requestedBytes: 4,
+          ),
+        );
+        final result = ReadGameFieldUseCase(repository).execute(
+          ReadGameFieldParams(
+            profile: DeadlockedPs3Profile.profile,
+            fieldId: 'bolts',
+            memoryBase: 0x310000000,
+          ),
+        );
+
+        expect(result.status, GameReadStatus.success);
+        expect(result.value, 0x00012345);
+        expect(repository.readCalls, 1);
+        expect(repository.lastAddress, 0x3109c32e8);
+        expect(repository.lastByteCount, 4);
+      },
+    );
+
     test('Method execute() reads and decodes an eligible field', () {
       final repository = _ReadGameFieldTestData.repository(
         readResult: MemoryReadResult(

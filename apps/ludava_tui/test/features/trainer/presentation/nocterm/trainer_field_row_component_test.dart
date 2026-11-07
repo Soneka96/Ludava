@@ -30,6 +30,29 @@ void main() {
     );
 
     test(
+      'Class TrainerFieldRowComponent labels a non-writable field read-only',
+      () async {
+        await testNocterm('read-only field row', (tester) async {
+          await tester.pumpComponent(
+            TrainerFieldRowComponent(
+              index: 0,
+              field: _field,
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'bolts',
+                value: 1234,
+              ),
+              selected: false,
+            ),
+          );
+
+          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1,234'));
+        });
+      },
+    );
+
+    test(
       'Class TrainerFieldRowComponent shows unavailable when a read did not succeed',
       () async {
         await testNocterm('unavailable field row', (tester) async {

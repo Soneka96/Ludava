@@ -284,7 +284,7 @@ void main() {
           await tester.pumpComponent(_app(fixture));
           expect(
             tester.terminalState,
-            containsText('Start a supported Collection game'),
+            containsText('Start a supported game in RPCS3'),
           );
 
           fixture.detectionStatus = GameDetectionStatus.unsupportedGame;

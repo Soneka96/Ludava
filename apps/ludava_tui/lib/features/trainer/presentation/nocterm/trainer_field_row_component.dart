@@ -32,10 +32,11 @@ class TrainerFieldRowComponent extends StatelessComponent {
         result?.succeeded == true && result?.value != null
             ? _formatNumber(result!.value!)
             : 'Unavailable';
+    final writeLabel = field.canWrite ? '' : ' (read-only)';
     return Row(
       children: [
         Text(selected ? '❯ ' : '  '),
-        Text('${index + 1}. ${field.name}'),
+        Text('${index + 1}. ${field.name}$writeLabel'),
         const Spacer(),
         Text(
           value,
