@@ -68,7 +68,38 @@ For a stateful or rendering Nocterm component whose behavior is exercised by pum
 
 The Flutter app consumes the public `ludava_sdk` API. Widgets do not import SDK implementation files, open native process handles, duplicate game detection or field decoding, or decide write authorization. Use `ThemeData`, `ColorScheme`, `TextTheme`, and typed `ThemeExtension` tokens for semantic styling. Keep reusable visual tokens separate from layout dimensions; own breakpoints, spacing, sizing, and minimum content dimensions in Flutter-local layout constants. A widget should be styleable through its supplied theme, including a test-only alternate theme, without changing its implementation.
 
-Organize widgets by feature and compose focused pieces. Keep shared UI in the Flutter app only when multiple features use it. Read game fields and capabilities from the SDK profile; do not hardcode per-game field UI. Use responsive components for alternate layouts instead of separate business logic for cards and compact rows. Avoid fixed card heights that can clip dynamic names, values, errors, or editor controls. Keep keyboard focus, mouse actions, touch targets, and Windows touch-keyboard input usable.
+### Flutter presentation hierarchy
+
+Organize UI-owning features by responsibility. When a feature has major compositions and supporting widgets, use:
+
+```text
+features/<feature>/
+└── presentation/
+    ├── screens/
+    │   └── <major_composition>.dart
+    └── widgets/
+        └── <supporting_widget>.dart
+```
+
+`presentation/screens/` owns substantial compositions: a whole interface, panel, header, page section, group of components, or another major widget embedded in a larger interface. A widget in this folder does not have to be a route or full-window screen. Folder responsibility does not require a `Screen` suffix: `trainer_fields_panel.dart` may define `TrainerFieldsPanel`, and `trainer_game_header.dart` may define `TrainerGameHeader`.
+
+Put smaller, meaningful supporting components in `presentation/widgets/`, such as a field card, compact row, field value, process picker, or inline editor. Give each meaningful visual component a focused class and file. Keep the parent responsible for composition and orchestration. Avoid collections of private widget classes or large rendering methods such as `_buildCard()` when the component has an independent visual responsibility. Do not extract every `Row`, `Padding`, or `Text`; extract meaningful boundaries. Ordinary private Flutter state classes such as `_InlineValueEditorState` remain private, and private helpers for calculations, formatting, or trivial one-off expressions are appropriate.
+
+Keep a component in its owning feature unless unrelated features genuinely reuse it. Use application-wide `shared/widgets/` only for UI that is shared across those features. Add folders only when they own a real responsibility; do not create empty or speculative structure.
+
+Read game fields and capabilities from the SDK profile; do not hardcode per-game field UI. Use responsive components for alternate layouts instead of separate business logic for cards and compact rows. Avoid fixed card heights that can clip dynamic names, values, errors, or editor controls. Keep keyboard focus, mouse actions, touch targets, and Windows touch-keyboard input usable.
+
+### Theme and layout ownership
+
+Keep these responsibilities distinct:
+
+1. **Raw color catalog:** Flutter `Color` values named for palette identity, such as `graphite900` or `teal400`. It contains no widget meanings or layout values.
+2. **Semantic theme contract:** typed roles such as `surface`, `textPrimary`, `borderSubtle`, `success`, and `warning`. Roles describe visual meaning, not a component that happens to use them. Keep one authoritative semantic color value: when a `ThemeExtension` is the contract, derive the matching Material `ColorScheme` values from it rather than maintaining conflicting copies.
+3. **Independent theme definitions:** each theme maps the raw catalog into the semantic contract and provides relevant typography or Material styling in its own file. Widgets consume the contract and do not import a theme-specific palette or depend on the selected theme's name.
+4. **Shared layout constants:** spacing scale, reusable dimensions, and responsive breakpoints have clear Flutter-local owners. Choose responsive layouts from available logical constraints, not device names. Reuse a shared spacing value for equivalent gaps and padding; do not create a new token for each occurrence.
+5. **Component-local details:** a genuinely independent component measurement may live beside its owner. Do not place every local measurement in a global constants class.
+
+For example, a field card should use `tokens.surface` and `LudavaSpacing.lg`. The palette maps `surface` to a raw color in that theme. Do not make the widget use `LudavaColors.graphite900` directly, add a `trainerCardBackground` theme token, or define another global padding constant for the same `16` logical pixels. This lets a test-only alternate theme change the card through the same semantic role without changing the widget. A small central `LudavaTheme` entry point should expose the selected theme's stable, cached `ThemeData` instead of reconstructing it on every application rebuild.
 
 Test important Flutter behavior with deterministic SDK dependencies and widget tests. Cover startup and connection states, SDK-driven field values and permission combinations, explicit inline edit/cancel behavior, failed and confirmed writes, and stale-session invalidation. Test token completeness, alternate-theme substitution, standard control styling, representative narrow and wide constraints, large values, semantics, and keyboard focus. Inject only native window actions that need a widget-test seam; verify real window dragging, resizing, minimize/maximize/restore, and DPI behavior on Windows separately. Prefer behavior assertions over pixel-perfect goldens unless a stable golden gives clear value.
 
