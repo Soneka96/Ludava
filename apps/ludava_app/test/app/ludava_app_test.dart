@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_app.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
@@ -265,7 +265,7 @@ void main() {
     testWidgets(
       'Class LudavaApp renders at the supported minimum window size',
       (tester) async {
-        tester.view.physicalSize = const Size(720, 560);
+        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);

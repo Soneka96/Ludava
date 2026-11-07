@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
-import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -288,6 +286,7 @@ void main() {
 
       for (final width in [
         LudavaBreakpoints.trainerHeaderWide - 1,
+        LudavaBreakpoints.trainerHeaderWide,
         LudavaBreakpoints.trainerHeaderWide + 1,
       ]) {
         tester.view.physicalSize = Size(width, 320);
@@ -308,6 +307,18 @@ void main() {
         expect(find.text('Unsupported'), findsOneWidget);
         expect(find.text('Refresh'), findsOneWidget);
         expect(find.text('Re-detect'), findsOneWidget);
+        final layout = tester.widget<Container>(
+          find.descendant(
+            of: find.byType(TrainerGameHeader),
+            matching: find.byType(Container),
+          ),
+        );
+        expect(
+          layout.child,
+          width < LudavaBreakpoints.trainerHeaderWide
+              ? isA<Column>()
+              : isA<Row>(),
+        );
         expect(tester.takeException(), isNull);
       }
     });

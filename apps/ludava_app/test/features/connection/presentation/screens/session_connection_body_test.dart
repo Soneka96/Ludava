@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ludava_app/features/connection/presentation/connection_dimensions.dart';
-import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_picker.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_picker.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 

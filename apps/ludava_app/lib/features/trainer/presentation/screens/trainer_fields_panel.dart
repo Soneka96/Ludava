@@ -3,8 +3,7 @@ import 'package:ludava_app/features/trainer/presentation/trainer_field_availabil
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_card.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
-import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Renders the current profile's fields as adaptive cards or compact rows.

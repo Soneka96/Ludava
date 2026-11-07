@@ -4,7 +4,7 @@ import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
 

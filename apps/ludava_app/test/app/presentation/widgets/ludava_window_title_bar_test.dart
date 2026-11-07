@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -46,10 +46,9 @@ void main() {
       final mark = tester.widget<DecoratedBox>(
         find.byKey(const ValueKey('ludava-titlebar-mark')),
       );
-      expect(
-        (mark.decoration as BoxDecoration).color,
-        theme.colorScheme.secondary,
-      );
+      final markDecoration = mark.decoration as BoxDecoration;
+      expect(markDecoration.color, theme.colorScheme.secondary);
+      expect(markDecoration.borderRadius, BorderRadius.circular(4));
       expect(find.text('Ludava'), findsOneWidget);
       expect(
         tester.widget<Text>(find.text('Ludava')).style?.fontWeight,

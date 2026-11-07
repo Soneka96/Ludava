@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_access_label.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_value.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Presents the same field facts as a compact, single-line row.

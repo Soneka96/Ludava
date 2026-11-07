@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() {
@@ -60,8 +61,8 @@ void main() {
 
         controller.configure();
 
-        expect(minimumSize, const Size(720, 560));
-        expect(initialSize, const Size(1180, 760));
+        expect(minimumSize, LudavaDimensions.minimumWindowSize);
+        expect(initialSize, LudavaDimensions.initialWindowSize);
       },
     );
 

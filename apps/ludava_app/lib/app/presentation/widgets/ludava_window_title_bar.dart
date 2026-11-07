@@ -2,14 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_control_button.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Renders the integrated Ludava title bar and accessible window controls.
 class LudavaWindowTitleBar extends StatelessWidget {
+  /// Keeps the small brand mark's radius local to this title bar.
+  static const double _controlHoverRadius = 4;
+
   /// Latest SDK snapshot used to show basic RPCS3 process availability.
   final TrainerSessionState session;
 
@@ -61,7 +63,7 @@ class LudavaWindowTitleBar extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: theme.colorScheme.secondary,
                           borderRadius: BorderRadius.circular(
-                            LudavaDimensions.smallCornerRadius,
+                            _controlHoverRadius,
                           ),
                         ),
                         child: const SizedBox(width: 3, height: 16),

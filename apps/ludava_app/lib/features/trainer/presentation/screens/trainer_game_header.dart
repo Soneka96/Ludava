@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_game_identity.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_game_status.dart';
-import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 

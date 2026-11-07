@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_access_label.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_value.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Presents one profile field with a clear name, value, capability, and action.

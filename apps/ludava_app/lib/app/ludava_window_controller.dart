@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Applies native desktop window settings and caption actions.

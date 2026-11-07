@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
-import 'package:ludava_app/shared/layout/ludava_spacing.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 /// Shows readable and writable field capability with text and an icon.

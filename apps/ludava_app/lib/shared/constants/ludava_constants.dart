@@ -1,6 +1,27 @@
 import 'dart:ui';
 
-/// Reusable desktop and interactive dimensions in logical pixels.
+/// Shared spacing values for Flutter presentation.
+abstract final class LudavaSpacing {
+  /// Smallest spacing step.
+  static const double xs = 4;
+
+  /// Small spacing step.
+  static const double sm = 8;
+
+  /// Medium spacing step.
+  static const double md = 12;
+
+  /// Large spacing step.
+  static const double lg = 16;
+
+  /// Extra-large spacing step.
+  static const double xl = 24;
+
+  /// Largest spacing step.
+  static const double xxl = 32;
+}
+
+/// Shared desktop-window, content, and control dimensions in logical pixels.
 abstract final class LudavaDimensions {
   /// Initial desktop window width.
   static const double initialWindowWidth = 1180;
@@ -46,7 +67,22 @@ abstract final class LudavaDimensions {
 
   /// Medium reusable icon dimension.
   static const double iconMedium = 24;
+}
 
-  /// Shared small corner radius.
-  static const double smallCornerRadius = 4;
+/// Responsive thresholds selected from available logical width.
+abstract final class LudavaBreakpoints {
+  /// Width at which trainer fields switch between rows and card layout.
+  static const double fieldCards = 920;
+
+  /// Width at which the trainer game header moves its actions to a second row.
+  static const double trainerHeaderWide = 960;
+}
+
+/// Shared dimensions for RPCS3 connection guidance and process choices.
+abstract final class ConnectionDimensions {
+  /// Maximum readable width for connection guidance and picker content.
+  static const double contentMaxWidth = 560;
+
+  /// Extent of the separator between RPCS3 process choices.
+  static const double processSeparatorExtent = 1;
 }

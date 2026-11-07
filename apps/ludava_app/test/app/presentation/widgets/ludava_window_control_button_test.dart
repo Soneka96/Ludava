@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_control_button.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 
 void main() {
   group('Class LudavaWindowControlButton interaction behavior', () {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 
 /// Provides a consistently sized, accessible native-window caption action.
 class LudavaWindowControlButton extends StatelessWidget {
