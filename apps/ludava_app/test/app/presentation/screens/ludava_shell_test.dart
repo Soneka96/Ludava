@@ -129,7 +129,11 @@ void main() {
       );
 
       expect(find.text('Available RPCS3 processes'), findsOneWidget);
-      await tester.tap(find.text('Process ID 10'));
+      final firstProcess = find.text('Process ID 10');
+      expect(firstProcess, findsOneWidget);
+      await tester.ensureVisible(firstProcess);
+      await tester.pumpAndSettle();
+      await tester.tap(firstProcess);
 
       expect(selectedProcessId, 10);
       expect(tester.takeException(), isNull);
