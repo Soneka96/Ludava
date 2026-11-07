@@ -28,6 +28,12 @@ abstract final class LudavaTheme {
   /// Semantic color for warnings that need attention.
   static const Color attentionAmber = Color(0xFFF0C875);
 
+  /// Opacity for the filled surface of a semantic status badge.
+  static const double statusBadgeFillOpacity = 0.12;
+
+  /// Opacity for the outline of a semantic status badge.
+  static const double statusBadgeOutlineOpacity = 0.35;
+
   /// Complete dark Material theme and semantic Ludava tokens.
   static ThemeData get graphiteAndTeal {
     final scheme =

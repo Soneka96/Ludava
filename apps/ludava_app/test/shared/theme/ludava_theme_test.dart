@@ -19,6 +19,8 @@ void main() {
       expect(tokens.textMuted, isNot(theme.colorScheme.onSurface));
       expect(tokens.success, LudavaTheme.successGreen);
       expect(tokens.warning, LudavaTheme.attentionAmber);
+      expect(LudavaTheme.statusBadgeFillOpacity, 0.12);
+      expect(LudavaTheme.statusBadgeOutlineOpacity, 0.35);
       expect(theme.iconButtonTheme.style, isNotNull);
       expect(theme.tooltipTheme.decoration, isNotNull);
     });

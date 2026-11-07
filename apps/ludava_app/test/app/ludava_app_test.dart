@@ -19,13 +19,10 @@ void main() {
 
       await tester.pumpWidget(_app(sdk: sdk));
 
-      expect(
-        find.byKey(const ValueKey('ludava-session-heading')),
-        findsOneWidget,
-      );
+      expect(find.text('Connect to RPCS3'), findsOneWidget);
       expect(find.byType(DragToResizeArea), findsOneWidget);
       expect(
-        find.text('RPCS3 was not found. Start RPCS3 to connect.'),
+        find.text('RPCS3 was not found. Start RPCS3, then select Refresh.'),
         findsOneWidget,
       );
       expect(discoveryCalls, 1);
@@ -42,7 +39,7 @@ void main() {
 
       await tester.pumpWidget(_app(sdk: sdk));
       expect(
-        find.text('RPCS3 was not found. Start RPCS3 to connect.'),
+        find.text('RPCS3 was not found. Start RPCS3, then select Refresh.'),
         findsOneWidget,
       );
 
@@ -50,10 +47,214 @@ void main() {
       sdk.session.connect();
       await tester.pump();
 
-      expect(find.text('Select an RPCS3 process to continue.'), findsOneWidget);
+      expect(find.text('Available RPCS3 processes'), findsOneWidget);
+      expect(find.text('Choose process'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await expectLater(sdk.session.stateChanges, emitsDone);
+    });
+
+    testWidgets(
+      'Class LudavaApp selects an RPCS3 process and refreshes state',
+      (tester) async {
+        var discoveryCalls = 0;
+        final metadata = Rpcs3ProcessMetadata(
+          executablePath: r'C:\Games\rpcs3.exe',
+          startedAtUtc: DateTime.utc(2026),
+        );
+        final sdk = LudavaSdk.create(
+          isWindows: false,
+          discoverProcessIds: () {
+            discoveryCalls++;
+            return const [120, 240];
+          },
+          readProcessMetadata: (_) => metadata,
+          resolveMemoryBaseCandidate: (_) => null,
+          detectGame: (processId, _) => GameDetectionResult(
+            status: GameDetectionStatus.noActiveGame,
+            processId: processId,
+            confidence: GameIdentityConfidence.none,
+            evidenceDescription: 'No game is active.',
+          ),
+        );
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        expect(find.text('Process ID 120'), findsOneWidget);
+        expect(find.text('Process ID 240'), findsOneWidget);
+
+        await tester.tap(find.text('Process ID 240'));
+        await tester.pump();
+        expect(find.text('RPCS3 process · PID 240'), findsOneWidget);
+        expect(find.text('No game'), findsOneWidget);
+
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+        expect(discoveryCalls, 2);
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Re-detect'));
+        await tester.pump();
+        expect(discoveryCalls, 3);
+
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp reports a process that disappears before selection',
+      (tester) async {
+        final sdk = LudavaSdk.create(
+          isWindows: false,
+          discoverProcessIds: () => const [120, 240],
+          readProcessMetadata: (_) =>
+              throw StateError('This RPCS3 process is no longer available.'),
+          resolveMemoryBaseCandidate: (_) => null,
+          detectGame: (_, _) => throw StateError('Detection is not reached.'),
+        );
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        await tester.tap(find.text('Process ID 240'));
+        await tester.pump();
+
+        expect(find.text('Attention'), findsOneWidget);
+        expect(
+          find.text('Bad state: This RPCS3 process is no longer available.'),
+          findsOneWidget,
+        );
+
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('Class LudavaApp clears the selected PID after it exits', (
+      tester,
+    ) async {
+      var processIsRunning = true;
+      final metadata = Rpcs3ProcessMetadata(
+        executablePath: r'C:\Games\rpcs3.exe',
+        startedAtUtc: DateTime.utc(2026),
+      );
+      final sdk = LudavaSdk.create(
+        isWindows: false,
+        discoverProcessIds: () => processIsRunning ? const [120] : const [],
+        readProcessMetadata: (_) => metadata,
+        resolveMemoryBaseCandidate: (_) => null,
+        detectGame: (processId, _) => GameDetectionResult(
+          status: GameDetectionStatus.noActiveGame,
+          processId: processId,
+          confidence: GameIdentityConfidence.none,
+          evidenceDescription: 'No game is active.',
+        ),
+      );
+
+      await tester.pumpWidget(_app(sdk: sdk));
+      await tester.pump();
+      expect(find.text('RPCS3 process · PID 120'), findsOneWidget);
+      processIsRunning = false;
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+      await tester.pump();
+
+      expect(find.text('Attention'), findsOneWidget);
+      expect(find.text('RPCS3 process · PID 120'), findsNothing);
+      expect(find.text('RPCS3 is no longer running.'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets(
+      'Class LudavaApp invalidates state when an RPCS3 PID is reused',
+      (tester) async {
+        var startedAt = DateTime.utc(2026);
+        final sdk = LudavaSdk.create(
+          isWindows: false,
+          discoverProcessIds: () => const [120],
+          readProcessMetadata: (_) => Rpcs3ProcessMetadata(
+            executablePath: r'C:\Games\rpcs3.exe',
+            startedAtUtc: startedAt,
+          ),
+          resolveMemoryBaseCandidate: (_) => null,
+          detectGame: (processId, _) => GameDetectionResult(
+            status: GameDetectionStatus.noActiveGame,
+            processId: processId,
+            confidence: GameIdentityConfidence.none,
+            evidenceDescription: 'No game is active.',
+          ),
+        );
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        expect(find.text('No game'), findsOneWidget);
+        startedAt = DateTime.utc(2026, 1, 2);
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+
+        expect(find.text('Attention'), findsOneWidget);
+        expect(
+          find.text('The RPCS3 session changed. Re-detect the game.'),
+          findsOneWidget,
+        );
+
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp clears detection after selected discovery fails',
+      (tester) async {
+        var discoveryFails = false;
+        final metadata = Rpcs3ProcessMetadata(
+          executablePath: r'C:\Games\rpcs3.exe',
+          startedAtUtc: DateTime.utc(2026),
+        );
+        final sdk = LudavaSdk.create(
+          isWindows: false,
+          discoverProcessIds: () {
+            if (discoveryFails) throw StateError('RPCS3 discovery failed.');
+            return const [120];
+          },
+          readProcessMetadata: (_) => metadata,
+          resolveMemoryBaseCandidate: (_) => null,
+          detectGame: (processId, _) => GameDetectionResult(
+            status: GameDetectionStatus.noActiveGame,
+            processId: processId,
+            confidence: GameIdentityConfidence.none,
+            evidenceDescription: 'No game is active.',
+          ),
+        );
+
+        await tester.pumpWidget(_app(sdk: sdk));
+        await tester.pump();
+        expect(find.text('No game'), findsOneWidget);
+        discoveryFails = true;
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+        await tester.pump();
+
+        expect(find.text('Attention'), findsOneWidget);
+        expect(find.text('Bad state: RPCS3 discovery failed.'), findsOneWidget);
+
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('Class LudavaApp reconnects for unselected refresh actions', (
+      tester,
+    ) async {
+      var discoveryCalls = 0;
+      final sdk = _createSdk(() {
+        discoveryCalls++;
+        return const [];
+      });
+
+      await tester.pumpWidget(_app(sdk: sdk));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Refresh'));
+      await tester.pump();
+      expect(discoveryCalls, 2);
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Re-detect'));
+      await tester.pump();
+
+      expect(discoveryCalls, 3);
+
+      await tester.pumpWidget(const SizedBox());
     });
 
     testWidgets(
@@ -67,12 +268,9 @@ void main() {
 
         await tester.pumpWidget(_app(sdk: sdk));
 
+        expect(find.text('Connect to RPCS3'), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('ludava-session-heading')),
-          findsOneWidget,
-        );
-        expect(
-          find.text('RPCS3 was not found. Start RPCS3 to connect.'),
+          find.text('RPCS3 was not found. Start RPCS3, then select Refresh.'),
           findsOneWidget,
         );
         expect(find.byTooltip('Minimize window'), findsOneWidget);
@@ -100,15 +298,13 @@ void main() {
           ),
         ],
         textTheme: const TextTheme(
-          headlineMedium: TextStyle(color: Colors.purple),
+          titleMedium: TextStyle(color: Colors.purple),
         ),
       );
 
       await tester.pumpWidget(_app(sdk: sdk, theme: alternateTheme));
 
-      final heading = tester.widget<Text>(
-        find.byKey(const ValueKey('ludava-session-heading')),
-      );
+      final heading = tester.widget<Text>(find.text('Connect to RPCS3'));
       expect(heading.style?.color, Colors.purple);
       final titleBar = tester.widget<DecoratedBox>(
         find.byKey(const ValueKey('ludava-titlebar-surface')),
@@ -159,7 +355,7 @@ void main() {
       await tester.pumpWidget(_app(sdk: sdk));
       await tester.pump();
 
-      expect(find.text('Connected to RPCS3 (PID 120).'), findsOneWidget);
+      expect(find.text('RPCS3 process · PID 120'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       expect(sdk.session.connect, throwsStateError);

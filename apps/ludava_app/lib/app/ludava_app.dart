@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/ludava_window_title_bar.dart';
+import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
+import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
 import 'package:ludava_app/shared/constants/layout_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -73,15 +75,22 @@ class _LudavaAppState extends State<LudavaApp> {
                 onClose: _closeWindow,
               ),
               Expanded(
-                child: SafeArea(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(
-                        AppLayoutConstants.contentInset,
-                      ),
-                      child: _buildSessionSummary(theme),
+                child: Column(
+                  children: [
+                    TrainerGameHeader(
+                      session: _session,
+                      onRefresh: _refreshSession,
+                      onRedetect: _redetectSession,
                     ),
-                  ),
+                    Expanded(
+                      child: SafeArea(
+                        child: SessionConnectionBody(
+                          session: _session,
+                          onSelectProcess: _selectProcess,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -100,31 +109,26 @@ class _LudavaAppState extends State<LudavaApp> {
   /// Closes the current native application window when it is available.
   void _closeWindow() => _windowController.close();
 
-  /// Shows a basic startup summary until the feature screens are added.
-  Widget _buildSessionSummary(ThemeData theme) {
-    final state = _session;
-    final message = switch (state) {
-      TrainerSessionState(:final errorMessage?) => errorMessage,
-      TrainerSessionState(selectedProcessId: null, processIds: []) =>
-        'RPCS3 was not found. Start RPCS3 to connect.',
-      TrainerSessionState(selectedProcessId: null) =>
-        'Select an RPCS3 process to continue.',
-      TrainerSessionState(selectedProcessId: final processId) =>
-        'Connected to RPCS3 (PID $processId).',
-    };
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Ludava',
-          key: const ValueKey('ludava-session-heading'),
-          style: theme.textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 12),
-        Text(message, textAlign: TextAlign.center),
-      ],
-    );
+  /// Requests SDK discovery again, or refreshes the selected session.
+  void _refreshSession() {
+    if (_session.selectedProcessId == null) {
+      _sdk.session.connect();
+    } else {
+      _sdk.session.refresh();
+    }
   }
+
+  /// Re-detects the selected session or retries discovery when unselected.
+  void _redetectSession() {
+    if (_session.selectedProcessId == null) {
+      _sdk.session.connect();
+    } else {
+      _sdk.session.redetect();
+    }
+  }
+
+  /// Selects an RPCS3 process through the SDK session capability.
+  void _selectProcess(int processId) => _sdk.session.selectProcess(processId);
 
   /// Applies state updates while the root widget remains mounted.
   void _handleStateChanged(TrainerSessionState state) {

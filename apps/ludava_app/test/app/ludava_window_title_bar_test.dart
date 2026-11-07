@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_window_title_bar.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() {
   group('Class LudavaWindowTitleBar interaction behavior', () {
@@ -48,6 +49,7 @@ void main() {
         theme.colorScheme.secondary,
       );
       expect(find.text('Ludava'), findsOneWidget);
+      expect(find.byType(DragToMoveArea), findsOneWidget);
       expect(find.byTooltip('Minimize window'), findsOneWidget);
       expect(find.byTooltip('Maximize or restore window'), findsOneWidget);
       expect(find.byTooltip('Close window'), findsOneWidget);
