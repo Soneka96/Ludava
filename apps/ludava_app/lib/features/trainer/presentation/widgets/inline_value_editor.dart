@@ -1,38 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_value_formatter.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Edits one unsigned field value inline and applies only an explicit request.
+/// Edits one unsigned field value in-place and applies only explicit requests.
 class InlineValueEditor extends StatefulWidget {
-  /// Field metadata used for validation and the user-visible field name.
+  /// Field metadata used for presentation-oriented range checking.
   final GameField field;
 
-  /// Latest valid value from the SDK, or `null` when the read failed.
+  /// Latest SDK value when available, or `null` if the read is unavailable.
   final int? currentValue;
 
-  /// Latest SDK write result for this field, when a write has been attempted.
+  /// Latest SDK write result for this field, when a write was attempted.
   final GameWriteResult? writeResult;
 
-  /// Performs the SDK's guarded write for a validated integer value.
+  /// Delegates the explicit write request to the SDK owner.
   final GameWriteResult Function(int value) onApply;
 
-  /// Discards the draft and closes the inline editor.
+  /// Leaves edit mode without submitting the draft.
   final VoidCallback onCancel;
 
-  /// Creates an inline editor for the current valid SDK value.
+  /// Leaves edit mode after the SDK confirms a matching read-back.
+  final VoidCallback onApplied;
+
+  /// Creates inline edit controls for the current field value.
   const InlineValueEditor({
     required this.field,
     required this.currentValue,
     required this.writeResult,
     required this.onApply,
     required this.onCancel,
+    required this.onApplied,
     super.key,
   });
 
-  /// Creates editor state for the local unsaved draft and feedback.
+  /// Creates state for the local draft and fixed-size validation feedback.
   @override
   State<InlineValueEditor> createState() => _InlineValueEditorState();
 }
@@ -41,10 +44,10 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   late final TextEditingController _textController;
   late final FocusNode _inputFocusNode;
   String? _feedback;
-  bool _feedbackIsSuccess = false;
-  bool _enterActionPending = false;
+  bool _submissionInProgress = false;
+  bool _actionPendingThisFrame = false;
 
-  /// Populates the draft from the current SDK value without writing.
+  /// Initializes the draft from the latest SDK value without writing.
   @override
   void initState() {
     super.initState();
@@ -54,33 +57,23 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     _inputFocusNode = FocusNode(debugLabel: 'Ludava numeric value');
   }
 
-  /// Resets drafts on new values and reports new SDK write outcomes.
+  /// Preserves changed drafts across reads and shows SDK write failures.
   @override
   void didUpdateWidget(covariant InlineValueEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final writeResultChanged = !_sameWriteResult(
-      oldWidget.writeResult,
-      widget.writeResult,
-    );
-    if (writeResultChanged) {
-      final result = widget.writeResult;
-      if (result?.fieldId == widget.field.id) {
-        _showWriteResult(result!);
-      }
-      return;
-    }
-    final fieldChanged = oldWidget.field.id != widget.field.id;
-    final valueChanged = oldWidget.currentValue != widget.currentValue;
-    final draftWasUntouched =
-        _textController.text == oldWidget.currentValue?.toString();
-    if (fieldChanged || (valueChanged && draftWasUntouched)) {
+    if (oldWidget.field.id != widget.field.id) {
       _textController.text = widget.currentValue?.toString() ?? '';
       _feedback = null;
-      _feedbackIsSuccess = false;
+    }
+    if (!_sameWriteResult(oldWidget.writeResult, widget.writeResult)) {
+      final result = widget.writeResult;
+      if (result?.fieldId == widget.field.id && !result!.succeeded) {
+        _feedback = _writeFailureMessage(result);
+      }
     }
   }
 
-  /// Releases the input controller owned by this editor.
+  /// Releases the input controller and focus node owned by this editor.
   @override
   void dispose() {
     _textController.dispose();
@@ -88,102 +81,92 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     super.dispose();
   }
 
-  /// Renders the current value, numeric draft, validation, and explicit actions.
+  /// Renders the draft and fixed-size Apply and Cancel icon controls.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
-    final validationMessage = _validationMessage;
+    final hasFeedback = _feedback != null;
+    final configuredBorder = theme.inputDecorationTheme.border;
+    final normalBorder =
+        (configuredBorder is OutlineInputBorder
+                ? configuredBorder
+                : const OutlineInputBorder())
+            .copyWith(borderSide: BorderSide(color: tokens.borderDefault));
+    final feedbackBorder = normalBorder.copyWith(
+      borderSide: BorderSide(color: theme.colorScheme.error),
+    );
+    final focusedBorder = normalBorder.copyWith(
+      borderSide: BorderSide(
+        color: hasFeedback ? theme.colorScheme.error : tokens.focus,
+        width: 1.5,
+      ),
+    );
+    final input = SizedBox(
+      height: LudavaDimensions.minimumInteractiveTarget,
+      child: TextField(
+        key: ValueKey('inline-editor-input-${widget.field.id}'),
+        controller: _textController,
+        focusNode: _inputFocusNode,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        textInputAction: TextInputAction.done,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        onChanged: _handleTextChanged,
+        onSubmitted: (_) => _submit(),
+        style: theme.textTheme.bodyMedium,
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'Value',
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: LudavaSpacing.sm,
+            vertical: LudavaSpacing.xs,
+          ),
+          border: normalBorder,
+          enabledBorder: hasFeedback ? feedbackBorder : normalBorder,
+          focusedBorder: focusedBorder,
+          errorBorder: feedbackBorder,
+          focusedErrorBorder: focusedBorder,
+        ),
+      ),
+    );
+
     return Focus(
       onKeyEvent: _handleKeyEvent,
-      child: Card(
-        margin: const EdgeInsets.only(top: LudavaSpacing.md),
-        color: tokens.surface,
-        child: Padding(
-          padding: const EdgeInsets.all(LudavaSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Edit ${widget.field.name}',
-                style: theme.textTheme.titleSmall,
-              ),
-              const SizedBox(height: LudavaSpacing.xs),
-              Text(
-                'Current value: ${TrainerValueFormatter.format(widget.currentValue)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: tokens.textMuted,
-                ),
-              ),
-              const SizedBox(height: LudavaSpacing.md),
-              TextField(
-                key: ValueKey('inline-editor-input-${widget.field.id}'),
-                controller: _textController,
-                focusNode: _inputFocusNode,
-                autofocus: true,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: 'New ${widget.field.name}',
-                  helperText: _rangeDescription,
-                ),
-                onChanged: (_) => setState(() {
-                  _feedback = null;
-                  _feedbackIsSuccess = false;
-                }),
-                onSubmitted: (_) => _submitFromEnter(),
-              ),
-              if (validationMessage != null) ...[
-                const SizedBox(height: LudavaSpacing.xs),
-                Text(
-                  validationMessage,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-              if (_feedback case final message?) ...[
-                const SizedBox(height: LudavaSpacing.xs),
-                Text(
-                  message,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _feedbackIsSuccess
-                        ? tokens.success
-                        : theme.colorScheme.error,
-                  ),
-                ),
-              ],
-              const SizedBox(height: LudavaSpacing.md),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: widget.onCancel,
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: LudavaSpacing.md),
-                  FilledButton(
-                    onPressed: validationMessage == null ? _apply : null,
-                    child: const Text('Apply'),
-                  ),
-                ],
-              ),
-            ],
+      child: Row(
+        children: [
+          Expanded(
+            child: Tooltip(message: _feedback ?? '', child: input),
           ),
-        ),
+          SizedBox(
+            width: LudavaDimensions.minimumInteractiveTarget,
+            height: LudavaDimensions.minimumInteractiveTarget,
+            child: IconButton(
+              tooltip: 'Apply ${widget.field.name}',
+              onPressed: _submit,
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.check_rounded),
+            ),
+          ),
+          SizedBox(
+            width: LudavaDimensions.minimumInteractiveTarget,
+            height: LudavaDimensions.minimumInteractiveTarget,
+            child: IconButton(
+              tooltip: 'Cancel editing ${widget.field.name}',
+              onPressed: widget.onCancel,
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// Returns the value draft error, if it is empty, malformed, or out of range.
+  /// Returns the current presentation-oriented input validation error.
   String? get _validationMessage {
     final minimum = widget.field.minimumValue;
     final maximum = widget.field.maximumValue;
-    if (widget.currentValue == null) {
-      return 'The current value is unavailable. Refresh before editing.';
-    }
     if (minimum == null || maximum == null) {
       return 'This field has no approved value range.';
     }
@@ -192,76 +175,83 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final value = int.tryParse(draft);
     if (value == null) return 'Enter a whole number.';
     if (value < minimum || value > maximum) {
-      return 'Enter a value from ${TrainerValueFormatter.format(minimum)} to ${TrainerValueFormatter.format(maximum)}.';
+      return 'Enter a value from $minimum to $maximum.';
     }
     return null;
   }
 
-  /// Describes the profile's inclusive range in the editor helper text.
-  String get _rangeDescription {
-    final minimum = widget.field.minimumValue;
-    final maximum = widget.field.maximumValue;
-    if (minimum == null || maximum == null) {
-      return 'No approved value range is available.';
-    }
-    return 'Allowed: ${TrainerValueFormatter.format(minimum)}–${TrainerValueFormatter.format(maximum)}';
+  /// Clears stale failure feedback when the draft changes.
+  void _handleTextChanged(String value) {
+    if (_feedback == null) return;
+    setState(() => _feedback = null);
   }
 
-  /// Applies a valid draft only after the user selects Apply or presses Enter.
+  /// Routes button and keyboard submissions through one same-frame guard.
+  void _submit() {
+    if (_actionPendingThisFrame || _submissionInProgress) return;
+    _actionPendingThisFrame = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _actionPendingThisFrame = false;
+    });
+    _apply();
+  }
+
+  /// Applies a valid draft or shows fixed-size error feedback through a tooltip.
   void _apply() {
+    if (_submissionInProgress) return;
     final validationMessage = _validationMessage;
     if (validationMessage != null) {
-      setState(() {
-        _feedback = validationMessage;
-        _feedbackIsSuccess = false;
-      });
+      setState(() => _feedback = validationMessage);
       return;
     }
     final value = int.tryParse(_textController.text);
     if (value == null) return;
-    final result = widget.onApply(value);
-    setState(() => _showWriteResult(result));
-  }
 
-  /// Updates feedback from an SDK result, using read-back data for success.
-  void _showWriteResult(GameWriteResult result) {
-    _feedback = _writeMessage(result);
-    _feedbackIsSuccess = result.succeeded;
-    if (result.succeeded) {
-      _textController.text = result.readBackValue!.toString();
+    _submissionInProgress = true;
+    late final GameWriteResult result;
+    try {
+      result = widget.onApply(value);
+    } catch (error) {
+      _submissionInProgress = false;
+      setState(() => _feedback = 'Write failed: $error');
+      return;
     }
-  }
-
-  /// Returns a user-facing explanation of the typed SDK write result.
-  String _writeMessage(GameWriteResult result) {
+    _submissionInProgress = false;
     if (result.succeeded) {
-      return 'Applied and verified: ${TrainerValueFormatter.format(result.readBackValue)}';
+      widget.onApplied();
+      return;
     }
-    return switch (result.status) {
-      GameWriteStatus.none => 'No value was written.',
-      GameWriteStatus.unsupportedProfile => 'This profile is read-only.',
-      GameWriteStatus.confirmationRequired => 'The write was not authorized.',
-      GameWriteStatus.unsupportedField => 'This field is read-only.',
-      GameWriteStatus.invalidValue => 'The value is outside the allowed range.',
-      GameWriteStatus.invalidMapping => 'The field mapping is unavailable.',
-      GameWriteStatus.preliminaryReadFailed =>
-        'The current value could not be checked. No write was made.',
-      GameWriteStatus.writeFailed =>
-        result.errorCode == null
-            ? 'The write failed.'
-            : 'The write failed with system error ${result.errorCode}.',
-      GameWriteStatus.incompleteWrite => 'The write was incomplete.',
-      GameWriteStatus.readBackFailed =>
-        'The written value could not be verified.',
-      GameWriteStatus.readBackMismatch =>
-        'The written value did not match the verified value.',
-      GameWriteStatus.invalidWriteResult =>
-        'The SDK returned an invalid write result.',
-      GameWriteStatus.success => 'The written value could not be verified.',
-    };
+    setState(() => _feedback = _writeFailureMessage(result));
   }
 
-  /// Submits Enter once while leaving Escape cancellation on the editor focus.
+  /// Converts a typed SDK failure into tooltip feedback without visible text.
+  String _writeFailureMessage(
+    GameWriteResult result,
+  ) => switch (result.status) {
+    GameWriteStatus.none => 'No value was written.',
+    GameWriteStatus.unsupportedProfile =>
+      'The current profile is not approved for writing.',
+    GameWriteStatus.confirmationRequired => 'The write was not authorized.',
+    GameWriteStatus.unsupportedField =>
+      'This field is not approved for writing.',
+    GameWriteStatus.invalidValue => 'The value is outside the allowed range.',
+    GameWriteStatus.invalidMapping => 'The field mapping is unavailable.',
+    GameWriteStatus.preliminaryReadFailed =>
+      'The current value could not be checked. No write was made.',
+    GameWriteStatus.writeFailed =>
+      result.errorCode == null
+          ? 'The write failed.'
+          : 'The write failed with system error ${result.errorCode}.',
+    GameWriteStatus.incompleteWrite => 'The write was incomplete.',
+    GameWriteStatus.readBackFailed =>
+      'The written value could not be verified.',
+    GameWriteStatus.readBackMismatch =>
+      'The written value did not match the verified value.',
+    GameWriteStatus.invalidWriteResult => 'The SDK returned an invalid result.',
+    GameWriteStatus.success => 'The written value could not be verified.',
+  };
+
+  /// Cancels on Escape and submits Enter only while the text field is focused.
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -270,24 +260,14 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
       }
       if (event.logicalKey == LogicalKeyboardKey.enter &&
           _inputFocusNode.hasFocus) {
-        _submitFromEnter();
+        _submit();
         return KeyEventResult.handled;
       }
     }
     return KeyEventResult.ignored;
   }
 
-  /// Coalesces key-event and text-input submission for one Enter action.
-  void _submitFromEnter() {
-    if (_enterActionPending) return;
-    _enterActionPending = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _enterActionPending = false;
-    });
-    _apply();
-  }
-
-  /// Reports whether [first] and [second] describe the same write result.
+  /// Reports whether [first] and [second] represent the same SDK result.
   bool _sameWriteResult(GameWriteResult? first, GameWriteResult? second) =>
       identical(first, second) ||
       (first != null &&

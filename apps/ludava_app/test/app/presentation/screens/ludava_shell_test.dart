@@ -259,7 +259,7 @@ void main() {
         final input = find.byKey(ValueKey('inline-editor-input-${field.id}'));
         expect(find.byType(TrainerFieldsPanel), findsOneWidget);
         expect(input, findsOneWidget);
-        await tester.ensureVisible(find.widgetWithText(FilledButton, 'Apply'));
+        await tester.ensureVisible(find.byTooltip('Apply Bolts'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
       },

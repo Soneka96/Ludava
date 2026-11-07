@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -67,30 +66,20 @@ class TrainerFieldsPanel extends StatelessWidget {
             editingFieldId == field.id &&
             TrainerWriteEligibility.hasValidTarget(session, field);
 
-        return Column(
-          key: ValueKey('trainer-field-${field.id}'),
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TrainerFieldRow(
-              field: field,
-              readResult: readResult,
-              canRead: profile.canRead && field.canRead,
-              canWrite: canWrite,
-              isEditing: isEditing,
-              onEdit: () => onEditField(field),
-            ),
-            if (isEditing)
-              InlineValueEditor(
-                field: field,
-                currentValue: readResult?.succeeded == true
-                    ? readResult?.value
-                    : null,
-                writeResult: writeResult,
-                onApply: (value) => onApplyField(field.id, value),
-                onCancel: onCancelEditing,
-              ),
-          ],
+        return TrainerFieldRow(
+          field: field,
+          readResult: readResult,
+          currentValue: readResult?.succeeded == true
+              ? readResult?.value
+              : null,
+          writeResult: writeResult,
+          canRead: profile.canRead && field.canRead,
+          canWrite: canWrite,
+          isEditing: isEditing,
+          onEdit: () => onEditField(field),
+          onApply: (value) => onApplyField(field.id, value),
+          onCancel: onCancelEditing,
+          onApplied: onCancelEditing,
         );
       },
     );

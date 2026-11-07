@@ -48,6 +48,88 @@ void main() {
     });
 
     testWidgets(
+      'Class TrainerFieldsPanel preserves row geometry in normal edit and error states',
+      (tester) async {
+        for (final size in const [Size(520, 360), Size(480, 340)]) {
+          _setViewSize(tester, size);
+          await tester.pumpWidget(
+            _wrap(_session(value: 17, includeSecondField: true)),
+          );
+          final boltsRow = find.byKey(
+            const ValueKey('trainer-field-row-bolts'),
+          );
+          final scrapRow = find.byKey(
+            const ValueKey('trainer-field-row-scrap'),
+          );
+          final normalBoltsRect = tester.getRect(boltsRow);
+          final normalScrapRect = tester.getRect(scrapRow);
+          expect(
+            normalBoltsRect.height,
+            LudavaDimensions.minimumInteractiveTarget,
+          );
+
+          var writeCalls = 0;
+          await tester.pumpWidget(
+            _wrap(
+              _session(value: 17, includeSecondField: true),
+              editingFieldId: 'bolts',
+              onApplyField: (fieldId, value) {
+                writeCalls++;
+                return GameWriteResult(
+                  status: GameWriteStatus.writeFailed,
+                  fieldId: fieldId,
+                  requestedValue: value,
+                );
+              },
+            ),
+          );
+          expect(tester.getRect(boltsRow), normalBoltsRect);
+          expect(tester.getRect(scrapRow), normalScrapRect);
+
+          await tester.enterText(
+            find.byKey(const ValueKey('inline-editor-input-bolts')),
+            '99999999999',
+          );
+          await tester.tap(find.byTooltip('Apply Bolts'));
+          await tester.pump();
+
+          expect(writeCalls, 0);
+          expect(
+            find.byTooltip('Enter a value from 0 to 4294967295.'),
+            findsOneWidget,
+          );
+          expect(tester.getRect(boltsRow), normalBoltsRect);
+          expect(tester.getRect(scrapRow), normalScrapRect);
+
+          await tester.enterText(
+            find.byKey(const ValueKey('inline-editor-input-bolts')),
+            '42',
+          );
+          await tester.pump();
+          await tester.tap(find.byTooltip('Apply Bolts'));
+          await tester.pump();
+
+          expect(writeCalls, 1);
+          expect(find.byTooltip('The write failed.'), findsOneWidget);
+          expect(tester.getRect(boltsRow), normalBoltsRect);
+          expect(tester.getRect(scrapRow), normalScrapRect);
+
+          await tester.pumpWidget(
+            _wrap(_session(value: 42, includeSecondField: true)),
+          );
+          expect(
+            find.byKey(const ValueKey('inline-editor-input-bolts')),
+            findsNothing,
+          );
+          expect(find.text('42'), findsOneWidget);
+          expect(tester.getRect(boltsRow), normalBoltsRect);
+          expect(tester.getRect(scrapRow), normalScrapRect);
+          expect(tester.takeException(), isNull);
+        }
+      },
+    );
+
+    testWidgets(
       'Class TrainerFieldsPanel keeps the maximum unsigned value readable at minimum size',
       (tester) async {
         _setMinimumView(tester);
@@ -106,16 +188,16 @@ void main() {
         find.byKey(const ValueKey('inline-editor-input-bolts')),
         '42',
       );
-      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.ensureVisible(find.byTooltip('Apply Bolts'));
       await tester.pumpAndSettle();
       expect(writeCalls, 0);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.tap(find.byTooltip('Apply Bolts'));
       await tester.pump();
 
       expect(writeCalls, 1);
       expect(requestedValue, 42);
-      expect(find.text('Applied and verified: 42'), findsOneWidget);
+      expect(find.text('Applied and verified: 42'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -137,9 +219,9 @@ void main() {
           onCancelEditing: () => cancelCalls++,
         ),
       );
-      await tester.ensureVisible(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.ensureVisible(find.byTooltip('Cancel editing Bolts'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.tap(find.byTooltip('Cancel editing Bolts'));
       await tester.pump();
 
       expect(cancelCalls, 1);
@@ -254,7 +336,12 @@ void main() {
 }
 
 void _setMinimumView(WidgetTester tester) {
-  tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+  _setViewSize(tester, LudavaDimensions.minimumWindowSize);
+}
+
+/// Sets a logical-size test surface at device scale one.
+void _setViewSize(WidgetTester tester, Size size) {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
