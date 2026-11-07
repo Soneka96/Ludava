@@ -43,6 +43,8 @@ The process identity, executable hash, and guest base were present in the observ
 - Second distinct HUD value and Ludava read: **NOT PERFORMED**.
 - Whether the mapping changes with gameplay: **UNVERIFIED**.
 - Automatic detection through Ludava: **NOT TESTED** against this live session.
+- Deterministic profile, detection, address-resolution, read, write-safety, and TUI tests: **AUTHORED, NOT RUN** because Dart is unavailable in the current environment.
+- Workspace analysis, formatting, boundary checks, and Windows build: **UNVERIFIED**; see the PR check results and current environment limitations.
 
 ## Write verification
 

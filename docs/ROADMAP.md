@@ -85,3 +85,15 @@ The final focused SDK cleanup gives `game_memory` ownership of shared field exec
 - [ ] Test the Windows build and the real-game scenario.
 
 **Exit:** a usable first release with accurate compatibility status.
+
+## M7 — Ratchet: Deadlocked standalone PS3 (research stage)
+
+The `deadlocked-ps3` catalog profile records one observed `NPUA80646` RPCS3 identity and the external candidate Bolts mapping. Profile, detection, memory, and read-only TUI tests have been authored but not run because Dart is unavailable. Its write status remains disabled. This is preparatory implementation, not verified game support.
+
+- [x] Inspect the RatchetHax address reference and derive candidate guest offset `0x009C32E8`.
+- [x] Observe one RPCS3 session's context and identity: build `0.0.43-20567-6a59542f`, game version `01.00/01.01`, title ID `NPUA80646`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`. Automatic matching uses only title ID, executable, and PPU hash.
+- [ ] Run the authored profile, detection, memory, and TUI coverage, plus SDK/TUI/root analysis, boundary, format, and Windows build checks; Dart is unavailable in the current environment.
+- [ ] Match two distinct live Bolts values with Ludava reads and verify fresh-session detection/restart behavior.
+- [ ] Obtain explicit owner approval for a deliberate write validation after read verification; record matching read-back and HUD outcome before enabling writes.
+
+See [COMPATIBILITY.md](COMPATIBILITY.md) and [DEADLOCKED_PS3_RESEARCH.md](DEADLOCKED_PS3_RESEARCH.md). No support claim is made for other game versions, regions, RPCS3 builds, or devices.
