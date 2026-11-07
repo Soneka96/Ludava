@@ -6,7 +6,7 @@ Standalone PS3 releases use the same profile-driven resolver as the Collection g
 
 ### Deadlocked identity observation
 
-One fresh RPCS3 `0.0.43-20567-6a59542f` session logged Deadlocked `NPUA80646`, game version `APP_VER=01.00 VERSION=01.01`, `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`. The profile resolver matches only title ID, executable name, and PPU hash; the observed game and RPCS3 versions are session context, not additional match guards. The Deadlocked hash is distinct from the Collection menu's `EBOOT.BIN` hash. This is identity evidence from one session, not live Ludava detection verification. The generic detection tests were added but could not be run because Dart is unavailable in the current environment.
+One fresh RPCS3 `0.0.43-20567-6a59542f` session logged Deadlocked `NPUA80646`, game version `APP_VER=01.00 VERSION=01.01`, `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`. The profile resolver matches only title ID, executable name, and PPU hash; the observed game and RPCS3 versions are session context, not additional match guards. The Deadlocked hash is distinct from the Collection menu's `EBOOT.BIN` hash. A live diagnostic read matched the session hash, but the automatic trainer UI was not exercised. Generic detection tests passed in the SDK suite on Dart 3.13.7.
 
 ## Current behavior
 

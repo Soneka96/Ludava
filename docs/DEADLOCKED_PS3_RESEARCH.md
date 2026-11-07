@@ -1,7 +1,7 @@
 # Ratchet: Deadlocked PS3 (NPUA80646) research
 
 **Research reviewed:** 2026-11-06  
-**Evidence status:** runtime identity observed in one RPCS3 session; Bolts mapping is an external candidate and remains unverified in Ludava.
+**Evidence status:** runtime identity observed in one RPCS3 session; one live Bolts value matches a supplied HUD screenshot, with a second distinct value still required for read verification.
 
 ## External candidate
 
@@ -38,13 +38,14 @@ The process identity, executable hash, and guest base were present in the observ
 
 ## Ludava read verification
 
-- First HUD Bolts value: **UNKNOWN**.
-- First Ludava read: **NOT PERFORMED**; Dart was unavailable in the inspection shell.
+- First HUD Bolts value: **1,785**, visible in the owner-provided gameplay screenshot on 2026-11-07.
+- First Ludava read: **1,785**, from a diagnostic read against the current `NPUA80646` RPCS3 session; the output reported the current PPU hash matched the profile.
+- A second invocation of the diagnostic read also returned **1,785** while the HUD screenshot still showed that count. These are repeated reads of one value, not two distinct gameplay values.
 - Second distinct HUD value and Ludava read: **NOT PERFORMED**.
-- Whether the mapping changes with gameplay: **UNVERIFIED**.
-- Automatic detection through Ludava: **NOT TESTED** against this live session.
-- Deterministic profile, detection, address-resolution, read, write-safety, and TUI tests: **AUTHORED, NOT RUN** because Dart is unavailable in the current environment.
-- Workspace analysis, formatting, boundary checks, and Windows build: **UNVERIFIED**; see the PR check results and current environment limitations.
+- Whether the mapping tracks a natural gameplay change: **UNVERIFIED**.
+- The diagnostic operation's current-session PPU identity check matched the profile. The automatic Nocterm trainer session was not exercised.
+- SDK: **403 tests passed**, including the fresh AOT process-discovery integration test; TUI: **185 tests passed**; root compatibility: **5 tests passed**. Analysis passed in all three packages. Changed-file formatting and workspace boundary checks passed.
+- The official Windows build script is **BLOCKED** because LLVM Clang is unavailable. A Windows AOT executable and the existing native shim were built manually with the available Visual Studio toolchain; executable help and the diagnostic read passed.
 
 ## Write verification
 
@@ -55,4 +56,4 @@ The process identity, executable hash, and guest base were present in the observ
 
 ## Limitations
 
-Only one RPCS3 build and one game version have observed identity evidence. The external address remains a candidate until at least two distinct in-game Bolts values match Ludava reads. No live write is permitted until identity, read verification, and explicit owner approval for a deliberate write-validation test are established. No compatibility claim is made for other regions, updates, RPCS3 builds, or devices.
+Only one RPCS3 build and one game version have observed identity evidence. The HUD screenshot and two reads agree at `1,785`, but the same value was observed each time. The external address remains a candidate until a second distinct in-game Bolts value matches a Ludava read. No live write is permitted until read verification and explicit owner approval for a deliberate write-validation test are established. No compatibility claim is made for other regions, updates, RPCS3 builds, or devices.

@@ -38,7 +38,7 @@ Each Collection profile stores a separate big-endian unsigned 32-bit bolt offset
 
 ## Ratchet: Deadlocked PS3 (research stage)
 
-The SDK catalog includes a standalone `deadlocked-ps3` profile for title ID `NPUA80646`. One RPCS3 log session identified game version `01.00/01.01`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9` on RPCS3 `0.0.43-20567-6a59542f`. The external Bolts mapping at guest offset `0x009C32E8` remains a candidate: Ludava has not yet matched it against live gameplay values. Profile writes are disabled. Diagnostic reads, automatic runtime detection, Dart test suites, and the Windows build remain unverified in this checkout. See [Deadlocked PS3 research](docs/DEADLOCKED_PS3_RESEARCH.md).
+The SDK catalog includes a standalone `deadlocked-ps3` profile for title ID `NPUA80646`. One RPCS3 log session identified game version `01.00/01.01`, executable `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9` on RPCS3 `0.0.43-20567-6a59542f`. One Ludava read returned `1,785`, matching the Bolts HUD value in an owner-provided gameplay screenshot; a second distinct value has not been checked. The external Bolts mapping at guest offset `0x009C32E8` remains a candidate pending that second comparison. Profile writes are disabled. Local SDK/TUI/root tests and analysis passed, but the project Windows build script remains blocked because LLVM Clang is unavailable. See [Deadlocked PS3 research](docs/DEADLOCKED_PS3_RESEARCH.md).
 
 ## Diagnostic commands
 
