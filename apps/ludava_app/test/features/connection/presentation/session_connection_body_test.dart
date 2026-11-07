@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ludava_app/features/connection/presentation/connection_dimensions.dart';
 import 'package:ludava_app/features/connection/presentation/rpcs3_process_picker.dart';
 import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
@@ -22,6 +23,33 @@ void main() {
       expect(
         find.text('RPCS3 was not found. Start RPCS3, then select Refresh.'),
         findsOneWidget,
+      );
+    });
+
+    testWidgets('Class SessionConnectionBody keeps guidance readable', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _wrap(
+          SessionConnectionBody(
+            session: TrainerSessionState(),
+            onSelectProcess: (_) {},
+          ),
+        ),
+      );
+
+      final guidance = find.descendant(
+        of: find.byType(SessionConnectionBody),
+        matching: find.byType(Row),
+      );
+      expect(
+        tester.getSize(guidance.first).width,
+        ConnectionDimensions.contentMaxWidth,
       );
     });
 

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Applies native desktop window settings and caption actions.
@@ -9,31 +9,38 @@ class LudavaWindowController {
   LudavaWindowController({
     Window? Function()? currentWindow,
     bool Function()? isWindows,
+
+    /// Replaces native configuration in deterministic controller tests.
+    void Function(Window window, Size minimumSize, Size initialSize)?
+    onConfigureWindow,
   }) : _currentWindow = currentWindow ?? _findCurrentWindow,
-       _isWindows = isWindows ?? _isWindowsPlatform;
+       _isWindows = isWindows ?? _isWindowsPlatform,
+       _configureWindow = onConfigureWindow;
 
   final Window? Function() _currentWindow;
   final bool Function() _isWindows;
+  final void Function(Window window, Size minimumSize, Size initialSize)?
+  _configureWindow;
 
   /// Configures the hidden title bar and size limits on Windows.
   void configure() {
     if (!_isWindows()) return;
     final window = _currentWindow();
     if (window == null) return;
+    final configureWindow = _configureWindow;
+    if (configureWindow != null) {
+      configureWindow(
+        window,
+        LudavaDimensions.minimumWindowSize,
+        LudavaDimensions.initialWindowSize,
+      );
+      return;
+    }
     window
       ..title = 'Ludava'
       ..titleBarStyle = TitleBarStyle.hidden
-      ..minimumSize = const Size(
-        AppLayoutConstants.minimumWindowWidth,
-        AppLayoutConstants.minimumWindowHeight,
-      ).toNative();
-    window.setSize(
-      const Size(
-        AppLayoutConstants.initialWindowWidth,
-        AppLayoutConstants.initialWindowHeight,
-      ).toNative(),
-      false,
-    );
+      ..minimumSize = LudavaDimensions.minimumWindowSize.toNative();
+    window.setSize(LudavaDimensions.initialWindowSize.toNative(), false);
     window.center();
   }
 

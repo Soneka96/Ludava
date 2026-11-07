@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ludava_app/features/trainer/presentation/inline_value_editor.dart';
-import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
@@ -47,13 +49,12 @@ class TrainerFieldsPanel extends StatelessWidget {
     final fields = profile.fields.values.toList(growable: false);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact =
-            constraints.maxWidth < AppLayoutConstants.fieldCardBreakpoint;
+        final compact = constraints.maxWidth < LudavaBreakpoints.fieldCards;
         return ListView.separated(
-          padding: const EdgeInsets.all(AppLayoutConstants.contentInset),
+          padding: const EdgeInsets.all(LudavaSpacing.xl),
           itemCount: fields.length,
           separatorBuilder: (context, index) =>
-              SizedBox(height: AppLayoutConstants.fieldListGap),
+              const SizedBox(height: LudavaSpacing.md),
           itemBuilder: (context, index) =>
               _buildField(context, profile, fields[index], compact: compact),
         );
@@ -84,16 +85,12 @@ class TrainerFieldsPanel extends StatelessWidget {
     return Container(
       key: ValueKey('trainer-field-${field.id}'),
       padding: compact
-          ? const EdgeInsets.symmetric(
-              vertical: AppLayoutConstants.fieldRowVerticalInset,
-            )
-          : const EdgeInsets.all(AppLayoutConstants.fieldCardInset),
+          ? const EdgeInsets.symmetric(vertical: LudavaSpacing.md)
+          : const EdgeInsets.all(LudavaSpacing.lg),
       decoration: BoxDecoration(
         color: compact ? null : tokens.surfaceElevated,
         border: Border.all(color: tokens.borderSubtle),
-        borderRadius: BorderRadius.circular(
-          AppLayoutConstants.smallCornerRadius,
-        ),
+        borderRadius: BorderRadius.circular(LudavaDimensions.smallCornerRadius),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -160,7 +157,7 @@ class TrainerFieldsPanel extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleSmall,
             ),
-            const SizedBox(height: AppLayoutConstants.headerTitleGap),
+            const SizedBox(height: LudavaSpacing.xs),
             Text(
               _accessLabel(canRead, canWrite),
               style: theme.textTheme.bodySmall?.copyWith(color: accessColor),
@@ -168,7 +165,7 @@ class TrainerFieldsPanel extends StatelessWidget {
           ],
         ),
       ),
-      const SizedBox(width: AppLayoutConstants.headerItemGap),
+      const SizedBox(width: LudavaSpacing.md),
       Expanded(
         flex: 2,
         child: Row(
@@ -176,7 +173,7 @@ class TrainerFieldsPanel extends StatelessWidget {
           children: [
             Flexible(child: _buildValue(theme, tokens, readResult, canRead)),
             if (canWrite && !isEditing) ...[
-              const SizedBox(width: AppLayoutConstants.headerTitleGap),
+              const SizedBox(width: LudavaSpacing.xs),
               TextButton(
                 onPressed: () => onEditField(field),
                 child: const Text('Edit'),
@@ -207,10 +204,10 @@ class TrainerFieldsPanel extends StatelessWidget {
         children: [
           Icon(
             Icons.tune_rounded,
-            size: AppLayoutConstants.fieldIconSize,
+            size: LudavaDimensions.iconMedium,
             color: theme.colorScheme.secondary,
           ),
-          const SizedBox(width: AppLayoutConstants.headerItemGap),
+          const SizedBox(width: LudavaSpacing.md),
           Expanded(
             child: Text(
               field.name,
@@ -219,14 +216,14 @@ class TrainerFieldsPanel extends StatelessWidget {
               style: theme.textTheme.titleMedium,
             ),
           ),
-          const SizedBox(width: AppLayoutConstants.headerItemGap),
+          const SizedBox(width: LudavaSpacing.md),
           Text(
             _accessLabel(canRead, canWrite),
             style: theme.textTheme.labelMedium?.copyWith(color: accessColor),
           ),
         ],
       ),
-      const SizedBox(height: AppLayoutConstants.fieldListGap),
+      const SizedBox(height: LudavaSpacing.md),
       Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -240,10 +237,10 @@ class TrainerFieldsPanel extends StatelessWidget {
                   color: tokens.textMuted,
                 ),
               ),
-              const SizedBox(height: AppLayoutConstants.headerTitleGap),
+              const SizedBox(height: LudavaSpacing.xs),
             ],
           ),
-          const SizedBox(width: AppLayoutConstants.headerItemGap),
+          const SizedBox(width: LudavaSpacing.md),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -258,7 +255,7 @@ class TrainerFieldsPanel extends StatelessWidget {
                   ),
                 ),
                 if (canWrite && !isEditing) ...[
-                  const SizedBox(width: AppLayoutConstants.headerTitleGap),
+                  const SizedBox(width: LudavaSpacing.xs),
                   TextButton.icon(
                     onPressed: () => onEditField(field),
                     icon: const Icon(Icons.edit_outlined),

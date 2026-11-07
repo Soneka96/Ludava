@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ludava_app/features/connection/presentation/connection_dimensions.dart';
 import 'package:ludava_app/features/connection/presentation/rpcs3_process_picker.dart';
-import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
@@ -39,11 +40,11 @@ class SessionConnectionBody extends StatelessWidget {
         session.detection?.status == GameDetectionStatus.failed;
     final message = session.errorMessage ?? _messageForState;
     return Padding(
-      padding: const EdgeInsets.all(AppLayoutConstants.contentInset),
+      padding: const EdgeInsets.all(LudavaSpacing.xl),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(
-            maxWidth: AppLayoutConstants.connectionMessageMaxWidth,
+            maxWidth: ConnectionDimensions.contentMaxWidth,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -57,7 +58,7 @@ class SessionConnectionBody extends StatelessWidget {
                     ? theme.colorScheme.error
                     : theme.extension<LudavaThemeTokens>()!.textMuted,
               ),
-              const SizedBox(width: AppLayoutConstants.headerItemGap),
+              const SizedBox(width: LudavaSpacing.md),
               Expanded(child: Text(message, style: theme.textTheme.bodyLarge)),
             ],
           ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -39,6 +41,13 @@ void main() {
       );
       final header = tester.widget<Container>(find.byType(Container).first);
       expect(
+        header.padding,
+        const EdgeInsets.symmetric(
+          horizontal: LudavaSpacing.xl,
+          vertical: LudavaSpacing.lg,
+        ),
+      );
+      expect(
         ((header.decoration! as BoxDecoration).border! as Border).bottom.color,
         LudavaTheme.graphiteAndTeal
             .extension<LudavaThemeTokens>()!
@@ -49,6 +58,14 @@ void main() {
 
       expect(refreshCount, 1);
       expect(redetectCount, 1);
+      expect(
+        tester.getSize(find.widgetWithText(OutlinedButton, 'Refresh')).height,
+        greaterThanOrEqualTo(LudavaDimensions.minimumInteractiveTarget),
+      );
+      expect(
+        tester.getSize(find.widgetWithText(OutlinedButton, 'Re-detect')).height,
+        greaterThanOrEqualTo(LudavaDimensions.minimumInteractiveTarget),
+      );
     });
 
     testWidgets(

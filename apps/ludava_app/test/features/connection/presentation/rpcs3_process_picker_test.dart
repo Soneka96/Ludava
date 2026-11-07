@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/connection/presentation/rpcs3_process_picker.dart';
+import 'package:ludava_app/features/connection/presentation/connection_dimensions.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
@@ -34,6 +35,11 @@ void main() {
     testWidgets('Class Rpcs3ProcessPicker uses the semantic border role', (
       tester,
     ) async {
+      tester.view.physicalSize = const Size(1200, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(
         MaterialApp(
           theme: LudavaTheme.graphiteAndTeal,
@@ -52,6 +58,14 @@ void main() {
         LudavaTheme.graphiteAndTeal
             .extension<LudavaThemeTokens>()!
             .borderSubtle,
+      );
+      expect(
+        tester.getSize(find.byType(Divider).first).height,
+        ConnectionDimensions.processSeparatorExtent,
+      );
+      expect(
+        tester.getSize(find.byType(ListView)).width,
+        ConnectionDimensions.contentMaxWidth,
       );
     });
 

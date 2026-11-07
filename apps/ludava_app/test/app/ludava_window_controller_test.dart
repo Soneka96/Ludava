@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() {
   group('Method LudavaWindowController.configure() behaves correctly', () {
@@ -36,6 +38,29 @@ void main() {
         controller.configure();
 
         expect(lookups, 1);
+      },
+    );
+
+    test(
+      'Method LudavaWindowController.configure() applies shared window sizes',
+      () {
+        final window = Window.borrowed(0);
+        Size? minimumSize;
+        Size? initialSize;
+        final controller = LudavaWindowController(
+          currentWindow: () => window,
+          isWindows: () => true,
+          onConfigureWindow: (configuredWindow, minimum, initial) {
+            expect(configuredWindow, same(window));
+            minimumSize = minimum;
+            initialSize = initial;
+          },
+        );
+
+        controller.configure();
+
+        expect(minimumSize, const Size(720, 560));
+        expect(initialSize, const Size(1180, 760));
       },
     );
   });

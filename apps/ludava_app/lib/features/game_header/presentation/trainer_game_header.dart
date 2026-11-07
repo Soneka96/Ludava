@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
@@ -10,6 +11,9 @@ class TrainerGameHeader extends StatelessWidget {
 
   /// Outline opacity separates the badge from its surrounding surface.
   static const double _badgeOutlineOpacity = 0.35;
+
+  /// Corner radius keeps the compact status badge pill-shaped.
+  static const double _statusBadgeRadius = 20;
 
   /// Latest immutable state published by the trainer SDK.
   final TrainerSessionState session;
@@ -36,8 +40,8 @@ class TrainerGameHeader extends StatelessWidget {
     final statusColor = _statusColor(theme, tokens);
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppLayoutConstants.contentInset,
-        vertical: AppLayoutConstants.headerVerticalInset,
+        horizontal: LudavaSpacing.xl,
+        vertical: LudavaSpacing.lg,
       ),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
@@ -55,7 +59,7 @@ class TrainerGameHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium,
                 ),
-                const SizedBox(height: AppLayoutConstants.headerTitleGap),
+                const SizedBox(height: LudavaSpacing.xs),
                 Text(
                   _processDescription,
                   maxLines: 1,
@@ -67,24 +71,30 @@ class TrainerGameHeader extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: AppLayoutConstants.headerItemGap),
+          const SizedBox(width: LudavaSpacing.md),
           _buildStatus(context, statusColor),
-          const SizedBox(width: AppLayoutConstants.headerItemGap),
+          const SizedBox(width: LudavaSpacing.md),
           OutlinedButton.icon(
             onPressed: onRefresh,
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Refresh'),
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, AppLayoutConstants.headerActionHeight),
+              minimumSize: const Size(
+                0,
+                LudavaDimensions.minimumInteractiveTarget,
+              ),
             ),
           ),
-          const SizedBox(width: AppLayoutConstants.headerItemGap),
+          const SizedBox(width: LudavaSpacing.md),
           OutlinedButton.icon(
             onPressed: onRedetect,
             icon: const Icon(Icons.manage_search_rounded),
             label: const Text('Re-detect'),
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, AppLayoutConstants.headerActionHeight),
+              minimumSize: const Size(
+                0,
+                LudavaDimensions.minimumInteractiveTarget,
+              ),
             ),
           ),
         ],
@@ -117,14 +127,12 @@ class TrainerGameHeader extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppLayoutConstants.statusBadgeHorizontalInset,
-        vertical: AppLayoutConstants.statusBadgeVerticalInset,
+        horizontal: LudavaSpacing.sm,
+        vertical: LudavaSpacing.xs,
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: _badgeFillOpacity),
-        borderRadius: BorderRadius.circular(
-          AppLayoutConstants.statusBadgeRadius,
-        ),
+        borderRadius: BorderRadius.circular(_statusBadgeRadius),
         border: Border.all(
           color: color.withValues(alpha: _badgeOutlineOpacity),
         ),

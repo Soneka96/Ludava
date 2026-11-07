@@ -6,7 +6,7 @@ import 'package:ludava_app/app/ludava_window_title_bar.dart';
 import 'package:ludava_app/features/connection/presentation/session_connection_body.dart';
 import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_fields_panel.dart';
-import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
@@ -67,7 +67,7 @@ class _LudavaAppState extends State<LudavaApp> {
       debugShowCheckedModeBanner: false,
       theme: theme,
       home: DragToResizeArea(
-        resizeEdgeSize: AppLayoutConstants.resizeHandleSize,
+        resizeEdgeSize: LudavaDimensions.windowResizeHandleSize,
         child: Scaffold(
           body: Column(
             children: [
@@ -77,32 +77,41 @@ class _LudavaAppState extends State<LudavaApp> {
                 onClose: _closeWindow,
               ),
               Expanded(
-                child: Column(
-                  children: [
-                    TrainerGameHeader(
-                      session: _session,
-                      onRefresh: _refreshSession,
-                      onRedetect: _redetectSession,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: LudavaDimensions.maximumContentWidth,
                     ),
-                    Expanded(
-                      child: SafeArea(
-                        child:
-                            _session.detection?.status ==
-                                GameDetectionStatus.supportedGame
-                            ? TrainerFieldsPanel(
-                                session: _session,
-                                editingFieldId: _editingFieldId,
-                                onEditField: _editField,
-                                onApplyField: _applyField,
-                                onCancelEditing: _cancelFieldEdit,
-                              )
-                            : SessionConnectionBody(
-                                session: _session,
-                                onSelectProcess: _selectProcess,
-                              ),
+                    child: SizedBox.expand(
+                      child: Column(
+                        children: [
+                          TrainerGameHeader(
+                            session: _session,
+                            onRefresh: _refreshSession,
+                            onRedetect: _redetectSession,
+                          ),
+                          Expanded(
+                            child: SafeArea(
+                              child:
+                                  _session.detection?.status ==
+                                      GameDetectionStatus.supportedGame
+                                  ? TrainerFieldsPanel(
+                                      session: _session,
+                                      editingFieldId: _editingFieldId,
+                                      onEditField: _editField,
+                                      onApplyField: _applyField,
+                                      onCancelEditing: _cancelFieldEdit,
+                                    )
+                                  : SessionConnectionBody(
+                                      session: _session,
+                                      onSelectProcess: _selectProcess,
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],

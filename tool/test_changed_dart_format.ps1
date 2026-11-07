@@ -251,6 +251,51 @@ try {
         throw 'The formatting check modified an unformatted Dart file.'
     }
 
+    $originalProcessInvoker = (Get-Command Invoke-CapturedProcess -CommandType Function).ScriptBlock
+    $script:worktreeStatus = "D`0deleted.dart`0"
+    $script:formatCallCount = 0
+    Set-Item Function:\Invoke-CapturedProcess -Value {
+        param($FileName, $Arguments, $WorkingDirectory)
+        if ($Arguments[0] -eq 'diff') {
+            return [pscustomobject]@{
+                ExitCode = 0
+                StandardOutput = $script:worktreeStatus
+                StandardError = ''
+            }
+        }
+        if ($Arguments[0] -eq 'format') {
+            $script:formatCallCount++
+        }
+        return [pscustomobject]@{
+            ExitCode = 0
+            StandardOutput = ''
+            StandardError = ''
+        }
+    }
+    try {
+        Invoke-DartFormatCheck $testDirectory @('deleted.dart')
+        if ($script:formatCallCount -ne 0) {
+            throw 'A deleted worktree file must not be passed to Dart format.'
+        }
+
+        $script:worktreeStatus = "M`0missing.dart`0"
+        $missingMessage = $null
+        try {
+            Invoke-DartFormatCheck $testDirectory @('missing.dart')
+        }
+        catch {
+            $missingMessage = $_.Exception.Message
+        }
+        if ([string]::IsNullOrWhiteSpace($missingMessage) -or
+            -not $missingMessage.Contains('is missing from the checkout')) {
+            throw 'A missing changed file without a deletion status must still fail.'
+        }
+    }
+    finally {
+        Set-Item Function:\Invoke-CapturedProcess -Value $originalProcessInvoker
+        Remove-Variable -Name @('worktreeStatus', 'formatCallCount') -Scope Script -ErrorAction SilentlyContinue
+    }
+
     Write-Host 'Changed-file formatter tests passed (spaces, useful failure, no rewrites).'
 }
 finally {

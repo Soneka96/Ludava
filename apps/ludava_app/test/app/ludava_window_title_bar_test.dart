@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_window_title_bar.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:window_manager/window_manager.dart';
@@ -53,14 +54,20 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('ludava-titlebar-surface')))
             .height,
-        44,
+        LudavaDimensions.titleBarHeight,
       );
-      expect(tester.getSize(find.byTooltip('Minimize window')).width, 46);
+      expect(
+        tester.getSize(find.byTooltip('Minimize window')).width,
+        LudavaDimensions.minimumInteractiveTarget,
+      );
       expect(
         tester.getSize(find.byTooltip('Maximize or restore window')).width,
-        46,
+        LudavaDimensions.minimumInteractiveTarget,
       );
-      expect(tester.getSize(find.byTooltip('Close window')).width, 46);
+      expect(
+        tester.getSize(find.byTooltip('Close window')).width,
+        LudavaDimensions.minimumInteractiveTarget,
+      );
 
       final controls = tester.widgetList<IconButton>(find.byType(IconButton));
       expect(

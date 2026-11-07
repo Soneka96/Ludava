@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_app.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
+import 'package:ludava_app/features/game_header/presentation/trainer_game_header.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
@@ -284,6 +286,32 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       },
     );
+
+    testWidgets('Class LudavaApp caps content width on a wide viewport', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1800, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final sdk = _createSdk(() => const []);
+
+      await tester.pumpWidget(_app(sdk: sdk));
+
+      expect(
+        tester.getSize(find.byType(TrainerGameHeader)).width,
+        LudavaDimensions.maximumContentWidth,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('ludava-titlebar-surface')))
+            .width,
+        1800,
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox());
+    });
 
     testWidgets('Class LudavaApp accepts an alternate test theme', (
       tester,

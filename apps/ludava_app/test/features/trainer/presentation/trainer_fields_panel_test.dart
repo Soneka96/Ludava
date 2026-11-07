@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_fields_panel.dart';
+import 'package:ludava_app/shared/layout/ludava_breakpoints.dart';
+import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -47,6 +49,7 @@ void main() {
         );
         final decoration = field.decoration! as BoxDecoration;
 
+        expect(field.padding, const EdgeInsets.all(LudavaSpacing.lg));
         expect(decoration.color, tokens.surfaceElevated);
         expect((decoration.border! as Border).top.color, tokens.borderSubtle);
       },
@@ -199,14 +202,14 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      tester.view.physicalSize = const Size(920, 560);
+      tester.view.physicalSize = Size(LudavaBreakpoints.fieldCards, 560);
       await tester.pumpWidget(_wrap(_session(value: 0)));
       expect(
         find.byKey(const ValueKey('trainer-field-card-bolts')),
         findsOneWidget,
       );
 
-      tester.view.physicalSize = const Size(919, 560);
+      tester.view.physicalSize = Size(LudavaBreakpoints.fieldCards - 1, 560);
       await tester.pumpWidget(_wrap(_session(value: 0)));
       expect(
         find.byKey(const ValueKey('trainer-field-row-bolts')),

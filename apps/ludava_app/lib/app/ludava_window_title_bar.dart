@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -28,8 +29,8 @@ class LudavaWindowTitleBar extends StatelessWidget {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
     final maximizeButton = SizedBox(
-      width: AppLayoutConstants.windowControlWidth,
-      height: AppLayoutConstants.titleBarHeight,
+      width: LudavaDimensions.windowControlWidth,
+      height: LudavaDimensions.titleBarHeight,
       child: IconButton(
         tooltip: 'Maximize or restore window',
         onPressed: onToggleMaximize,
@@ -43,15 +44,13 @@ class LudavaWindowTitleBar extends StatelessWidget {
         border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
       ),
       child: SizedBox(
-        height: AppLayoutConstants.titleBarHeight,
+        height: LudavaDimensions.titleBarHeight,
         child: Row(
           children: [
             Expanded(
               child: DragToMoveArea(
                 child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: AppLayoutConstants.titleBarInset,
-                  ),
+                  padding: const EdgeInsets.only(left: LudavaSpacing.xl),
                   child: Row(
                     children: [
                       DecoratedBox(
@@ -59,12 +58,12 @@ class LudavaWindowTitleBar extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: theme.colorScheme.secondary,
                           borderRadius: BorderRadius.circular(
-                            AppLayoutConstants.smallCornerRadius,
+                            LudavaDimensions.smallCornerRadius,
                           ),
                         ),
                         child: const SizedBox(width: 3, height: 16),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: LudavaSpacing.sm),
                       Text(
                         'Ludava',
                         style: theme.textTheme.titleSmall?.copyWith(
@@ -100,12 +99,12 @@ class LudavaWindowTitleBar extends StatelessWidget {
     required IconData icon,
     required VoidCallback onPressed,
   }) => SizedBox(
-    width: AppLayoutConstants.windowControlWidth,
-    height: AppLayoutConstants.titleBarHeight,
+    width: LudavaDimensions.windowControlWidth,
+    height: LudavaDimensions.titleBarHeight,
     child: IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
-      icon: Icon(icon, size: AppLayoutConstants.windowIconSize),
+      icon: Icon(icon, size: LudavaDimensions.iconSmall),
     ),
   );
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ludava_app/shared/constants/layout_constants.dart';
+import 'package:ludava_app/shared/layout/ludava_dimensions.dart';
+import 'package:ludava_app/shared/layout/ludava_spacing.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
@@ -92,13 +93,13 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     return Focus(
       onKeyEvent: _handleKeyEvent,
       child: Container(
-        margin: const EdgeInsets.only(top: AppLayoutConstants.fieldListGap),
-        padding: const EdgeInsets.all(AppLayoutConstants.fieldCardInset),
+        margin: const EdgeInsets.only(top: LudavaSpacing.md),
+        padding: const EdgeInsets.all(LudavaSpacing.lg),
         decoration: BoxDecoration(
           color: tokens.surface,
           border: Border.all(color: tokens.borderSubtle),
           borderRadius: BorderRadius.circular(
-            AppLayoutConstants.smallCornerRadius,
+            LudavaDimensions.smallCornerRadius,
           ),
         ),
         child: Column(
@@ -109,14 +110,14 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
               'Edit ${widget.field.name}',
               style: theme.textTheme.titleSmall,
             ),
-            const SizedBox(height: AppLayoutConstants.headerTitleGap),
+            const SizedBox(height: LudavaSpacing.xs),
             Text(
               'Current value: ${_formatValue(widget.currentValue)}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: tokens.textMuted,
               ),
             ),
-            const SizedBox(height: AppLayoutConstants.headerItemGap),
+            const SizedBox(height: LudavaSpacing.md),
             TextField(
               key: ValueKey('inline-editor-input-${widget.field.id}'),
               controller: _textController,
@@ -142,7 +143,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
               onSubmitted: (_) => _apply(),
             ),
             if (validationMessage != null) ...[
-              const SizedBox(height: AppLayoutConstants.headerTitleGap),
+              const SizedBox(height: LudavaSpacing.xs),
               Text(
                 validationMessage,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -151,7 +152,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
               ),
             ],
             if (_feedback case final message?) ...[
-              const SizedBox(height: AppLayoutConstants.headerTitleGap),
+              const SizedBox(height: LudavaSpacing.xs),
               Text(
                 message,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -161,7 +162,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
                 ),
               ),
             ],
-            const SizedBox(height: AppLayoutConstants.headerItemGap),
+            const SizedBox(height: LudavaSpacing.md),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -169,7 +170,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
                   onPressed: widget.onCancel,
                   child: const Text('Cancel'),
                 ),
-                const SizedBox(width: AppLayoutConstants.headerItemGap),
+                const SizedBox(width: LudavaSpacing.md),
                 FilledButton(
                   onPressed: validationMessage == null ? _apply : null,
                   child: const Text('Apply'),
