@@ -54,6 +54,48 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Class InlineValueEditor blocks Apply when either approved bound is missing',
+      (tester) async {
+        var writeCalls = 0;
+        final fields = [
+          _field(maximumValue: 100, minimumValue: null),
+          _field(maximumValue: null),
+        ];
+
+        for (final field in fields) {
+          await tester.pumpWidget(
+            _wrap(
+              InlineValueEditor(
+                field: field,
+                currentValue: 17,
+                writeResult: null,
+                onApply: (value) {
+                  writeCalls++;
+                  return _success(value);
+                },
+                onCancel: () {},
+              ),
+            ),
+          );
+
+          expect(
+            find.text('This field has no approved value range.'),
+            findsOneWidget,
+          );
+          expect(
+            tester
+                .widget<FilledButton>(
+                  find.widgetWithText(FilledButton, 'Apply'),
+                )
+                .onPressed,
+            isNull,
+          );
+          expect(writeCalls, 0);
+        }
+      },
+    );
+
     testWidgets('Class InlineValueEditor applies only after explicit Apply', (
       tester,
     ) async {
@@ -602,7 +644,7 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: SingleChildScrollView(child: child)),
 );
 
-GameField _field({required int maximumValue, int minimumValue = 0}) =>
+GameField _field({required int? maximumValue, int? minimumValue = 0}) =>
     GameField(
       id: 'bolts',
       name: 'Bolts',
