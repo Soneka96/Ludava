@@ -3,12 +3,47 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
   group('Class LudavaShell composition behavior', () {
+    testWidgets('Class LudavaShell caps centered content on wide windows', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final maximizeState = ValueNotifier(false);
+      addTearDown(maximizeState.dispose);
+
+      await tester.pumpWidget(
+        _wrap(
+          LudavaShell(
+            session: TrainerSessionState(),
+            editingFieldId: null,
+            onEditField: (_) {},
+            onApplyField: _failedWrite,
+            onCancelEditing: () {},
+            onMinimize: () {},
+            onToggleMaximize: () {},
+            isMaximized: maximizeState,
+            onClose: () {},
+            onRefresh: () {},
+            onRedetect: () {},
+            onSelectProcess: (_) {},
+          ),
+        ),
+      );
+
+      final header = tester.getRect(find.byType(TrainerGameHeader));
+      expect(header.width, LudavaDimensions.maximumContentWidth);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
       'Class LudavaShell composes connection guidance and window actions',
       (tester) async {

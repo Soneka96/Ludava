@@ -3,12 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
+import 'package:ludava_app/features/trainer/presentation/trainer_controller.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Root Flutter presentation for one owned [LudavaSdk] runtime.
+/// Root Flutter composition for the trainer controller and desktop window.
 class LudavaApp extends StatefulWidget {
-  /// Optional SDK instance, primarily used to provide deterministic test state.
+  /// Optional controller injected for deterministic composition tests.
+  final TrainerController? controller;
+
+  /// Optional SDK input used when the app creates its trainer controller.
   final LudavaSdk? sdk;
 
   /// Optional native window controller for tests and desktop composition.
@@ -17,44 +21,43 @@ class LudavaApp extends StatefulWidget {
   /// Optional theme override for deterministic presentation tests.
   final ThemeData? theme;
 
-  /// Creates the application and optionally accepts owned runtime seams.
-  const LudavaApp({this.sdk, this.windowController, this.theme, super.key});
+  /// Creates the app, accepting either an owned controller or an SDK seam.
+  const LudavaApp({
+    this.controller,
+    this.sdk,
+    this.windowController,
+    this.theme,
+    super.key,
+  }) : assert(controller == null || sdk == null);
 
-  /// Creates state that owns the SDK runtime and its state subscription.
+  /// Creates state that owns the trainer controller and window controller.
   @override
   State<LudavaApp> createState() => _LudavaAppState();
 }
 
 class _LudavaAppState extends State<LudavaApp> {
-  late final LudavaSdk _sdk;
+  late final TrainerController _controller;
   late final LudavaWindowController _windowController;
-  late TrainerSessionState _session;
-  String? _editingFieldId;
-  StreamSubscription<TrainerSessionState>? _stateSubscription;
-  bool _shuttingDown = false;
+  Future<void>? _closeFuture;
 
-  /// Creates the SDK once, observes its snapshot, then requests connection.
+  /// Creates the controller and registers the awaited native close sequence.
   @override
   void initState() {
     super.initState();
+    _controller = widget.controller ?? TrainerController(sdk: widget.sdk);
     _windowController = widget.windowController ?? LudavaWindowController();
-    _windowController.configure();
-    _sdk = widget.sdk ?? LudavaSdk.create();
-    _session = _sdk.session.state;
-    _stateSubscription = _sdk.session.stateChanges.listen(_handleStateChanged);
-    _sdk.session.connect();
+    _windowController.configure(onCloseRequested: _closeAfterDisposal);
   }
 
-  /// Cancels observation and asynchronously releases the owned SDK runtime.
+  /// Releases window observation and starts fallback cleanup for tree removal.
   @override
   void dispose() {
-    _shuttingDown = true;
     _windowController.dispose();
-    unawaited(_disposeResources());
+    if (_closeFuture == null) unawaited(_reportControllerDisposal());
     super.dispose();
   }
 
-  /// Renders the current connection summary from the latest SDK snapshot.
+  /// Renders the latest controller snapshot inside the desktop app shell.
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme ?? LudavaTheme.graphiteAndTeal;
@@ -62,19 +65,22 @@ class _LudavaAppState extends State<LudavaApp> {
       title: 'Ludava',
       debugShowCheckedModeBanner: false,
       theme: theme,
-      home: LudavaShell(
-        session: _session,
-        editingFieldId: _editingFieldId,
-        onEditField: _editField,
-        onApplyField: _applyField,
-        onCancelEditing: _cancelFieldEdit,
-        onMinimize: _minimizeWindow,
-        onToggleMaximize: _toggleMaximizeWindow,
-        isMaximized: _windowController.isMaximized,
-        onClose: _closeWindow,
-        onRefresh: _refreshSession,
-        onRedetect: _redetectSession,
-        onSelectProcess: _selectProcess,
+      home: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) => LudavaShell(
+          session: _controller.session,
+          editingFieldId: _controller.editingFieldId,
+          onEditField: (field) => _controller.editField(field),
+          onApplyField: _controller.writeField,
+          onCancelEditing: _controller.cancelEditing,
+          onMinimize: _minimizeWindow,
+          onToggleMaximize: _toggleMaximizeWindow,
+          isMaximized: _windowController.isMaximized,
+          onClose: _requestWindowClose,
+          onRefresh: _controller.refresh,
+          onRedetect: _controller.redetect,
+          onSelectProcess: (processId) => _controller.selectProcess(processId),
+        ),
       ),
     );
   }
@@ -85,94 +91,43 @@ class _LudavaAppState extends State<LudavaApp> {
   /// Toggles the current native window between maximized and restored sizes.
   void _toggleMaximizeWindow() => _windowController.toggleMaximize();
 
-  /// Closes the current native application window when it is available.
-  void _closeWindow() => _windowController.close();
-
-  /// Requests SDK discovery again, or refreshes the selected session.
-  void _refreshSession() {
-    if (_session.selectedProcessId == null) {
-      _sdk.session.connect();
-    } else {
-      _sdk.session.refresh();
-    }
+  /// Starts the same awaited cleanup path for title-bar close requests.
+  void _requestWindowClose() {
+    unawaited(_closeAfterDisposal());
   }
 
-  /// Re-detects the selected session or retries discovery when unselected.
-  void _redetectSession() {
-    if (_session.selectedProcessId == null) {
-      _sdk.session.connect();
-    } else {
-      _sdk.session.redetect();
-    }
-  }
+  /// Shares one cleanup future across repeated title-bar and native requests.
+  Future<void> _closeAfterDisposal() =>
+      _closeFuture ??= _disposeControllerAndCloseWindow();
 
-  /// Selects an RPCS3 process through the SDK session capability.
-  void _selectProcess(int processId) => _sdk.session.selectProcess(processId);
-
-  /// Opens the inline editor only for a currently approved field and target.
-  void _editField(GameField field) {
-    if (!TrainerWriteEligibility.isWriteEligible(_session, field)) return;
-    setState(() => _editingFieldId = field.id);
-  }
-
-  /// Calls the SDK's guarded field-write operation after explicit Apply.
-  GameWriteResult _applyField(String fieldId, int value) =>
-      _sdk.session.writeField(fieldId, value);
-
-  /// Discards the active draft without performing a write.
-  void _cancelFieldEdit() => setState(() => _editingFieldId = null);
-
-  /// Applies state updates while the root widget remains mounted.
-  void _handleStateChanged(TrainerSessionState state) {
-    if (_shuttingDown || !mounted) return;
-    final editingFieldId = _editingFieldId;
-    var nextEditingFieldId = editingFieldId;
-    if (editingFieldId != null) {
-      final field = state.profile?.findField(editingFieldId);
-      final readResult = state.readResults[editingFieldId];
-      if (!_sameSession(_session, state) ||
-          field == null ||
-          !TrainerWriteEligibility.hasValidTarget(state, field) ||
-          (readResult != null &&
-              !readResult.succeeded &&
-              state.lastWriteResult?.fieldId != editingFieldId)) {
-        nextEditingFieldId = null;
-      }
-    }
-    setState(() {
-      _session = state;
-      _editingFieldId = nextEditingFieldId;
-    });
-  }
-
-  /// Checks that [first] and [second] describe the same SDK write target.
-  bool _sameSession(TrainerSessionState first, TrainerSessionState second) =>
-      first.selectedProcessId == second.selectedProcessId &&
-      first.processMetadata?.startedAtUtc ==
-          second.processMetadata?.startedAtUtc &&
-      first.detection?.status == second.detection?.status &&
-      first.detection?.confidence == second.detection?.confidence &&
-      first.profile?.id == second.profile?.id &&
-      first.detection?.executableHash == second.detection?.executableHash &&
-      first.memoryBase == second.memoryBase;
-
-  /// Stops the subscription before awaiting SDK resource disposal.
-  Future<void> _disposeResources() async {
-    final subscription = _stateSubscription;
-    _stateSubscription = null;
-    final cancellation = subscription?.cancel();
-    final disposal = _sdk.dispose();
+  /// Awaits controller cleanup and then closes the native window.
+  Future<void> _disposeControllerAndCloseWindow() async {
     try {
-      await Future.wait<void>([?cancellation, disposal]);
+      await _controller.dispose();
     } catch (error, stackTrace) {
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: error,
-          stack: stackTrace,
-          library: 'ludava_app',
-          context: ErrorDescription('while disposing the Ludava SDK runtime'),
-        ),
-      );
+      _reportError(error, stackTrace, 'while disposing the trainer controller');
     }
+    await _windowController.close();
+  }
+
+  /// Reports fallback controller cleanup errors after external tree removal.
+  Future<void> _reportControllerDisposal() async {
+    try {
+      await _controller.dispose();
+    } catch (error, stackTrace) {
+      _reportError(error, stackTrace, 'while disposing the trainer controller');
+    }
+  }
+
+  /// Reports [error] with context about the failed asynchronous operation.
+  void _reportError(Object error, StackTrace stackTrace, String context) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'ludava_app',
+        context: ErrorDescription(context),
+      ),
+    );
   }
 }

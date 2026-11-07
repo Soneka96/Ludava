@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
@@ -57,6 +59,7 @@ void main() {
             initialSize = initial;
           },
           registerWindowStateObserver: (_) => () {},
+          registerWindowCloseObserver: (_) => () {},
         );
 
         controller.configure();
@@ -78,6 +81,8 @@ void main() {
           onMaximizedChanged = onChanged;
           return () => removeCalls++;
         },
+        registerWindowCloseObserver: (_) =>
+            () => removeCalls++,
       );
 
       controller.configure();
@@ -90,7 +95,53 @@ void main() {
       expect(controller.isMaximized.value, isFalse);
 
       controller.dispose();
-      expect(removeCalls, 1);
+      expect(removeCalls, 2);
+    });
+
+    test('Method LudavaWindowController.configure() forwards native close requests to its owner', () async {
+      final window = Window.borrowed(0);
+      Future<void> Function(VoidCallback cancelRequest)? onNativeCloseRequested;
+      final cleanupGate = Completer<void>();
+      var cleanupCalls = 0;
+      var cancellationCalls = 0;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        isWindows: () => true,
+        onConfigureWindow: (_, _, _) {},
+        registerWindowStateObserver: (_) => () {},
+        registerWindowCloseObserver: (callback) {
+          onNativeCloseRequested = callback;
+          return () {};
+        },
+        requestNativeClose: (window) async {
+          await onNativeCloseRequested!(() => cancellationCalls++);
+          return true;
+        },
+      );
+
+      controller.configure(
+        onCloseRequested: () {
+          cleanupCalls++;
+          return cleanupGate.future;
+        },
+      );
+      final closeRequest = onNativeCloseRequested!(() => cancellationCalls++);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cleanupCalls, 1);
+      expect(cancellationCalls, 1);
+      var requestCompleted = false;
+      closeRequest.then((_) => requestCompleted = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(requestCompleted, isFalse);
+
+      cleanupGate.complete();
+      await closeRequest;
+      expect(requestCompleted, isTrue);
+      await controller.close();
+      expect(cancellationCalls, 1);
+      expect(cleanupCalls, 1);
+      controller.dispose();
     });
   });
 
@@ -116,10 +167,10 @@ void main() {
   group('Method LudavaWindowController.close() behaves correctly', () {
     test(
       'Method LudavaWindowController.close() tolerates a missing window',
-      () {
+      () async {
         final controller = LudavaWindowController(currentWindow: () => null);
 
-        expect(controller.close, returnsNormally);
+        await controller.close();
       },
     );
   });
