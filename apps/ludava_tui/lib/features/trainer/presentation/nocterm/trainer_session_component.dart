@@ -131,7 +131,7 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
       GameDetectionStatus.rpcs3NotRunning =>
         'RPCS3 was not found. Start RPCS3 and press R to refresh.',
       GameDetectionStatus.noActiveGame =>
-        'Start a supported Collection game, then press R to refresh.',
+        'Start a supported game in RPCS3, then press R to refresh.',
       GameDetectionStatus.unsupportedGame => 'This game is not supported.',
       GameDetectionStatus.ambiguous =>
         'Could not verify the active game. Press G to re-detect.',
@@ -155,7 +155,11 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
 
   /// Opens [field] for editing without copying its verified value.
   void _openField(GameField field) {
-    setState(() => _editingField = field);
+    final profile = _session.profile;
+    if (profile == null || !profile.canWrite) return;
+    final editableField = profile.findField(field.id);
+    if (editableField == null || !editableField.canWrite) return;
+    setState(() => _editingField = editableField);
   }
 
   /// Reconnects or refreshes the selected process through the controller.
@@ -187,6 +191,14 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     }
     final editingField = _editingField;
     final writeResult = session.lastWriteResult;
+    final currentField =
+        editingField == null
+            ? null
+            : session.profile?.findField(editingField.id);
+    if (editingField != null &&
+        (session.profile?.canWrite != true || currentField?.canWrite != true)) {
+      _editingField = null;
+    }
     if (editingField != null &&
         session.readResults[editingField.id]?.succeeded != true &&
         writeResult?.fieldId != editingField.id) {

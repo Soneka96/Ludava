@@ -1,3 +1,4 @@
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
@@ -8,6 +9,135 @@ import 'package:test/test.dart';
 
 void main() {
   group('Method execute() behaves correctly', () {
+    test(
+      'Method execute() matches Deadlocked from its observed standalone identity',
+      () {
+        final profile = DeadlockedPs3Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: profile.buildId,
+            gameTitle: profile.gameName,
+            executable: profile.executable,
+            executableHash: profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.supportedGame);
+        expect(result.profile, same(profile));
+        expect(result.confidence, GameIdentityConfidence.confirmed);
+        expect(result.availableFields.map((field) => field.id), ['bolts']);
+      },
+    );
+
+    test('Method execute() normalizes the measured Deadlocked identity', () {
+      final profile = DeadlockedPs3Profile.profile;
+      final result = ResolveGameProfileUseCase().execute(
+        _params(
+          titleId: ' npua80646 ',
+          executable: ' eboot.bin ',
+          executableHash: ' ${profile.executableHash!.toLowerCase()} ',
+          confidence: GameIdentityConfidence.confirmed,
+        ),
+      );
+
+      expect(result.status, GameDetectionStatus.supportedGame);
+      expect(result.profile, same(profile));
+      expect(result.confidence, GameIdentityConfidence.confirmed);
+    });
+
+    test(
+      'Method execute() rejects Deadlocked identity with the Collection title ID',
+      () {
+        final profile = DeadlockedPs3Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: 'BCUS98282',
+            executable: profile.executable,
+            executableHash: profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test(
+      'Method execute() rejects Deadlocked when its executable name differs',
+      () {
+        final profile = DeadlockedPs3Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: profile.buildId,
+            executable: 'RC2.ppu.self',
+            executableHash: profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test(
+      'Method execute() keeps Deadlocked ambiguous without its executable name',
+      () {
+        final profile = DeadlockedPs3Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: profile.buildId,
+            executable: null,
+            executableHash: profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test('Method execute() rejects Deadlocked when its PPU hash differs', () {
+      final profile = DeadlockedPs3Profile.profile;
+      final result = ResolveGameProfileUseCase().execute(
+        _params(
+          titleId: profile.buildId,
+          executable: profile.executable,
+          executableHash: Rc2CollectionProfile.profile.executableHash,
+          confidence: GameIdentityConfidence.confirmed,
+        ),
+      );
+
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.uncertain);
+    });
+
+    test(
+      'Method execute() leaves Deadlocked ambiguous when its PPU hash is missing',
+      () {
+        final profile = DeadlockedPs3Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: profile.buildId,
+            executable: profile.executable,
+            executableHash: null,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
     test('Method execute() matches RC2 from its measured PPU hash', () {
       final result = ResolveGameProfileUseCase().execute(
         _params(

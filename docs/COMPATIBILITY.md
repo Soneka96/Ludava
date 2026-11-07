@@ -17,6 +17,9 @@ The final compiled Ludava CLI was subsequently run against the restarted RC2 ses
 | Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / Windows | `bolts` read | Owner-tested live on 2026-11-05; observed `0` during startup and `110` in gameplay; exact runtime/build details unavailable |
 | Ratchet & Clank 2 — PS3 Collection | `BCUS98282`, inner app `NPUA80644` | RPCS3 / Windows | `bolts` write | Owner-tested live on 2026-11-05; requested `120`, Ludava displayed `120`, and the owner screenshot showed `120` on the HUD; cross-build compatibility not established |
 | Ratchet & Clank 2 — standalone PS3 | `NPUA80644` | RPCS3 / Windows | Read/write bolts | Not supported by this Collection profile |
+| Ratchet: Deadlocked — standalone PS3 | `NPUA80646` | RPCS3 `0.0.43-20567-6a59542f`, game `01.00/01.01` | Bolts read | Two distinct Ludava reads (`1,785`, `4,903`) matched owner-provided HUD screenshots in the same session; read-verified for this build only |
+| Ratchet: Deadlocked — standalone PS3 | `NPUA80646` | Same observed session | Bolts write | Owner-authorized test changed `6,278` to `6,279`; write/read-back, refresh, and post-write HUD all showed `6,279`; write-verified for this build only |
+| Ratchet: Deadlocked — standalone PS3 | `NPUA80646` | Same observed identity session | Automatic detection | Title ID, executable basename, and PPU hash are registered; fake-based detection tests pass; the live Nocterm trainer session is untested |
 | Ratchet & Clank 1 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80643` | RPCS3 / Windows | `bolts` read/write | Owner-tested live on 2026-11-05: gameplay read `22`, requested write `12,312`, Ludava read-back and owner screenshot HUD showed `12,312` |
 | Ratchet & Clank 3 — PS3 Collection | `BCUS98282`, observed save namespace `NPUA80645` | RPCS3 / Windows | `bolts` read/write | Owner-tested live on 2026-11-05: gameplay read `248`, requested write `1,312,312`, Ludava read-back and owner screenshot HUD showed `1,312,312` |
 | RC1, RC2, and RC3 — PS3 Collection | `BCUS98282` | Windows laptop and ROG Ally; per-game device mapping unavailable | Automatic detection and trainer operation | Owner-confirmed later; exact RPCS3/Windows build and device pairing not recorded; no cross-build claim |
@@ -36,7 +39,7 @@ The owner tested both new Ludava profiles in RPCS3 and supplied terminal output 
 
 - **RC1:** Ludava read `22` bolts in the running game. The owner set `12,312`; Ludava reported matching read-back and the HUD screenshot displayed `12312`.
 - **RC3:** Ludava read `248` bolts. The owner set `1,312,312`; Ludava reported matching read-back and the HUD screenshot displayed `1312312`. A separate `+20` game reward appeared in the HUD; whether that bonus had already been reflected in the displayed balance was not independently established.
-- The owner ran `dart pub get` successfully, `dart analyze` with no issues and `dart test` with **254 tests passed**. The compiled Windows EXE was not demonstrated for that branch.
+- The compiled Windows EXE was not demonstrated for that branch.
 - These are successful live read/write observations for the owner's configuration, not proof of general cross-build compatibility or of the updated Ludava detector.
 
 ## RC2 Collection mapping
@@ -70,5 +73,11 @@ A process ID, selected profile, successful native API call, automated test, or p
 - The owner-observed closed-game failure, startup zero, gameplay value `110`, and write-to-`120` HUD result are recorded above; they are not evidence of cross-build compatibility.
 - The later owner confirmation does not include an exact game-to-device matrix or precise Windows/RPCS3 build details.
 - Repeatable evidence on another runtime/build is needed before making broader compatibility claims.
+
+## Ratchet: Deadlocked — standalone PS3 (NPUA80646)
+
+The current RPCS3 log provided fresh identity observations for one Deadlocked session on 2026-11-06: RPCS3 `0.0.43-20567-6a59542f`, game `APP_VER=01.00 VERSION=01.01`, executable `EBOOT.BIN`, PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`, and session guest base `0x300000000`. The title ID was `NPUA80646`. This establishes observed session identity metadata only; it does not validate the Bolts mapping.
+
+The RatchetHax reference supplies a big-endian unsigned 32-bit Bolts mapping at guest offset `0x009C32E8`. Two distinct Ludava diagnostic reads (`1,785` and `4,903`) matched the corresponding owner-provided gameplay HUD screenshots in the same RPCS3 session. An owner-authorized write from `6,278` to `6,279` returned a complete matching read-back, a subsequent refresh read remained `6,279`, and the post-write gameplay HUD screenshot showed `6,279`. Read and write verification are established for this build/session only. Live Nocterm trainer detection, restart handling, and compatibility beyond this observed build remain **UNVERIFIED**. Full provenance and session-scoped evidence are recorded in [the Deadlocked research note](DEADLOCKED_PS3_RESEARCH.md).
 
 Avoid exposing personal local paths, save data, or incidental private information in public logs.

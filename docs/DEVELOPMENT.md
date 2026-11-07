@@ -56,6 +56,14 @@ For a stateful or rendering Nocterm component whose behavior is exercised by pum
 
 Treat `docs/ARCHITECTURE.md` and this document as the repository source of truth for engineering conventions. When a task establishes a durable rule, update the appropriate document before applying it in implementation, and cross-link shared guidance rather than copying competing versions. Keep the README as an entry point to these conventions, not a second policy source.
 
+## Low-maintenance documentation
+
+Document stable knowledge: how the system works, why decisions exist, how to build and use Ludava, where responsibilities belong, technical limits, and reproducible research. Update documentation when functionality, public interfaces, supported games, research conclusions, architectural rules, or instructions change; do not edit it just because a commit, test run, or CI run occurred.
+
+Give each fact one authoritative home and link to it elsewhere. `ARCHITECTURE.md` owns architecture rules, this document owns development and documentation conventions, `WINDOWS_BUILD.md` owns Windows build instructions, `ROADMAP.md` owns milestones, and per-game research documents own detailed game evidence. The README introduces Ludava and links to deeper documentation. Future game-specific research belongs in one document per game under `docs/games/`; shared Collection information may have one Collection-level document. General architecture may explain detection without repeating game hashes or memory addresses. This PR does not perform that future migration.
+
+GitHub Actions is authoritative for current CI results. Permanent documentation must not repeat changing run numbers, automated test counts, or pass/fail status; link to [GitHub Actions](https://github.com/Soneka96/Ludava/actions) instead and describe the validation categories the workflow covers. PR descriptions may preserve run-specific results as historical records. Keep meaningful historical research observations, such as recorded gameplay values and exact RPCS3 builds; remove only duplicated, volatile status metadata.
+
 The permanent structural rules are defined in [`ARCHITECTURE.md`](ARCHITECTURE.md#directory-ownership-and-composition-rules). Apply this checklist when adding or moving code:
 
 1. Give every significant directory a clear owner, purpose, and admission criteria.

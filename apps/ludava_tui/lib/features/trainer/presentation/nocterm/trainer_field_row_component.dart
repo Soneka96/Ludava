@@ -12,13 +12,17 @@ class TrainerFieldRowComponent extends StatelessComponent {
   /// Latest read result, or `null` when no read is available.
   final GameReadResult? readResult;
 
+  /// Whether both the profile and field permit editing.
+  final bool canEdit;
+
   /// Whether the row is currently selected.
   final bool selected;
 
-  /// Creates a row for [field] and its current [readResult].
+  /// Creates a row for [field], its current [readResult], and [canEdit].
   const TrainerFieldRowComponent({
     required this.index,
     required this.field,
+    required this.canEdit,
     required this.readResult,
     required this.selected,
     super.key,
@@ -32,10 +36,11 @@ class TrainerFieldRowComponent extends StatelessComponent {
         result?.succeeded == true && result?.value != null
             ? _formatNumber(result!.value!)
             : 'Unavailable';
+    final writeLabel = canEdit ? '' : ' (read-only)';
     return Row(
       children: [
         Text(selected ? '❯ ' : '  '),
-        Text('${index + 1}. ${field.name}'),
+        Text('${index + 1}. ${field.name}$writeLabel'),
         const Spacer(),
         Text(
           value,

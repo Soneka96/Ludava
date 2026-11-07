@@ -145,6 +145,75 @@ void main() {
     );
 
     test(
+      'Class TrainerSessionComponent closes editing when the current profile becomes read-only',
+      () async {
+        await testNocterm('profile permission changes during refresh', (
+          tester,
+        ) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT BOLTS'));
+
+          fixture.profile = _profile(twoFields: true, profileWritable: false);
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('100'));
+          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendEnter();
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+          expect(fixture.writeCalls, 0);
+
+          final readCalls = fixture.readCalls;
+          await tester.sendKey(LogicalKey.keyR);
+          expect(fixture.readCalls, greaterThan(readCalls));
+
+          fixture.profile = _profile(twoFields: true);
+          fixture.controller.refresh();
+          await tester.pump();
+          expect(tester.terminalState, containsText('1–9 Edit'));
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT BOLTS'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent closes editing when the current field becomes read-only',
+      () async {
+        await testNocterm('field permission changes during refresh', (
+          tester,
+        ) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT BOLTS'));
+
+          fixture.profile = _profile(twoFields: true, fieldWritable: false);
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('100'));
+          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendEnter();
+          expect(tester.terminalState, isNot(containsText('EDIT BOLTS')));
+          expect(fixture.writeCalls, 0);
+
+          final readCalls = fixture.readCalls;
+          await tester.sendKey(LogicalKey.keyR);
+          expect(fixture.readCalls, greaterThan(readCalls));
+        });
+      },
+    );
+
+    test(
       'Class TrainerSessionComponent closes stale editing state when refresh loses the field value',
       () async {
         await testNocterm('field becomes unavailable during refresh', (
@@ -284,7 +353,7 @@ void main() {
           await tester.pumpComponent(_app(fixture));
           expect(
             tester.terminalState,
-            containsText('Start a supported Collection game'),
+            containsText('Start a supported game in RPCS3'),
           );
 
           fixture.detectionStatus = GameDetectionStatus.unsupportedGame;
@@ -769,6 +838,8 @@ GameProfile _profile({
   String id = 'rc2-collection',
   String executableHash = 'measured-hash',
   bool twoFields = false,
+  bool profileWritable = true,
+  bool fieldWritable = true,
 }) => GameProfile(
   id: id,
   gameName: 'Ratchet & Clank 2',
@@ -776,7 +847,10 @@ GameProfile _profile({
   executable: 'RC2.ppu.self',
   executableHash: executableHash,
   readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.researchConfirmed,
+  writeStatus:
+      profileWritable
+          ? VerificationStatus.researchConfirmed
+          : VerificationStatus.none,
   fields: {
     'bolts': GameField(
       id: 'bolts',
@@ -785,7 +859,10 @@ GameProfile _profile({
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
       readStatus: VerificationStatus.verified,
-      writeStatus: VerificationStatus.researchConfirmed,
+      writeStatus:
+          fieldWritable
+              ? VerificationStatus.researchConfirmed
+              : VerificationStatus.none,
       minimumValue: 0,
       maximumValue: 0xffffffff,
     ),
@@ -797,6 +874,12 @@ GameProfile _profile({
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
         readStatus: VerificationStatus.verified,
+        writeStatus:
+            fieldWritable
+                ? VerificationStatus.researchConfirmed
+                : VerificationStatus.none,
+        minimumValue: 0,
+        maximumValue: 0xffffffff,
       ),
   },
 );

@@ -1,5 +1,13 @@
 # RPCS3 game detection
 
+## Standalone PS3 titles
+
+Standalone PS3 releases use the same profile-driven resolver as the Collection games. A supported profile must use the observed title ID, executable name, and complete PPU hash for the current build. A unique serial, title string, manually selected profile, or historical log entry does not confirm automatic trainer identity. The executable lifecycle must be evaluated from fresh, selected-process evidence; Collection menu hashes and embedded-game transitions are not reused for a standalone title. See [Deadlocked PS3 research](DEADLOCKED_PS3_RESEARCH.md) for the current NPUA80646 observations and their limits.
+
+### Deadlocked identity observation
+
+One fresh RPCS3 `0.0.43-20567-6a59542f` session logged Deadlocked `NPUA80646`, game version `APP_VER=01.00 VERSION=01.01`, `EBOOT.BIN`, and PPU hash `PPU-c44d700265e50dfe49054c1703f8fea668cc33b9`. The profile resolver matches only title ID, executable name, and PPU hash; the observed game and RPCS3 versions are session context, not additional match guards. The Deadlocked hash is distinct from the Collection menu's `EBOOT.BIN` hash. A live diagnostic read matched the session hash, but the automatic trainer UI was not exercised. Generic detection tests passed in the SDK suite on Dart 3.13.7.
+
 ## Current behavior
 
 Ludava resolves the current Collection executable from the latest ordered PPU load and process-finished events in one fresh RPCS3 log. Automatic profile matching requires the shared title ID `BCUS98282`, the executable filename, and one measured PPU hash. Historical titles and hashes are not treated as current identity after a later stop, menu boot, pending executable load, or process restart.

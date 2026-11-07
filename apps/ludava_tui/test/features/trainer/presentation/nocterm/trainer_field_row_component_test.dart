@@ -13,6 +13,7 @@ void main() {
             TrainerFieldRowComponent(
               index: 0,
               field: _field,
+              canEdit: true,
               readResult: GameReadResult(
                 status: GameReadStatus.success,
                 fieldId: 'bolts',
@@ -30,6 +31,54 @@ void main() {
     );
 
     test(
+      'Class TrainerFieldRowComponent labels a non-writable field read-only',
+      () async {
+        await testNocterm('read-only field row', (tester) async {
+          await tester.pumpComponent(
+            TrainerFieldRowComponent(
+              index: 0,
+              field: _field,
+              canEdit: false,
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'bolts',
+                value: 1234,
+              ),
+              selected: false,
+            ),
+          );
+
+          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1,234'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerFieldRowComponent labels a writable field read-only when profile permission is absent',
+      () async {
+        await testNocterm('read-only profile field row', (tester) async {
+          await tester.pumpComponent(
+            TrainerFieldRowComponent(
+              index: 0,
+              field: _writableField,
+              canEdit: false,
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'bolts',
+                value: 1234,
+              ),
+              selected: true,
+            ),
+          );
+
+          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1,234'));
+        });
+      },
+    );
+
+    test(
       'Class TrainerFieldRowComponent shows unavailable when a read did not succeed',
       () async {
         await testNocterm('unavailable field row', (tester) async {
@@ -37,6 +86,7 @@ void main() {
             TrainerFieldRowComponent(
               index: 0,
               field: _field,
+              canEdit: false,
               readResult: const GameReadResult(
                 status: GameReadStatus.readFailed,
                 fieldId: 'bolts',
@@ -60,6 +110,7 @@ void main() {
             TrainerFieldRowComponent(
               index: 0,
               field: _field,
+              canEdit: false,
               readResult: null,
               selected: false,
             ),
@@ -80,4 +131,16 @@ final _field = GameField(
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
   readStatus: VerificationStatus.verified,
+);
+
+final _writableField = GameField(
+  id: 'bolts',
+  name: 'Bolts',
+  guestOffset: 0x1000,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.researchConfirmed,
+  minimumValue: 0,
+  maximumValue: 0xffffffff,
 );
