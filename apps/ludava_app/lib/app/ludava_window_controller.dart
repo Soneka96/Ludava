@@ -20,7 +20,7 @@ class LudavaWindowController {
 
     /// Replaces native close observation in deterministic controller tests.
     VoidCallback Function(
-      Future<void> Function(VoidCallback cancelRequest) onCloseRequested,
+      Future<void> Function(bool Function() cancelRequest) onCloseRequested,
     )?
     registerWindowCloseObserver,
 
@@ -39,7 +39,7 @@ class LudavaWindowController {
   final VoidCallback Function(ValueChanged<bool> onMaximizedChanged)?
   _listenForWindowState;
   final VoidCallback Function(
-    Future<void> Function(VoidCallback cancelRequest) onCloseRequested,
+    Future<void> Function(bool Function() cancelRequest) onCloseRequested,
   )?
   _listenForWindowClose;
 
@@ -48,14 +48,16 @@ class LudavaWindowController {
   final ValueNotifier<bool> _isMaximized = ValueNotifier(false);
   VoidCallback? _removeWindowStateListener;
   VoidCallback? _removeWindowCloseListener;
-  Future<void> Function()? _onCloseRequested;
+  Future<void> Function(bool requestCancelled)? _onCloseRequested;
   bool _closingAfterCleanup = false;
 
   /// Current native maximize state, observed from window-manager events.
   ValueListenable<bool> get isMaximized => _isMaximized;
 
   /// Configures window geometry and intercepts close requests on Windows.
-  void configure({Future<void> Function()? onCloseRequested}) {
+  void configure({
+    Future<void> Function(bool requestCancelled)? onCloseRequested,
+  }) {
     _onCloseRequested = onCloseRequested;
     if (!_isWindows()) return;
     final window = _currentWindow();
@@ -107,7 +109,10 @@ class LudavaWindowController {
       final closeAccepted = requestNativeClose == null
           ? window.close()
           : await requestNativeClose(window);
-      if (!closeAccepted) _closingAfterCleanup = false;
+      if (!closeAccepted) {
+        _closingAfterCleanup = false;
+        throw StateError('The native window rejected the close request.');
+      }
     } catch (_) {
       _closingAfterCleanup = false;
       rethrow;
@@ -158,26 +163,38 @@ class LudavaWindowController {
 
   /// Cancels native close until the app's asynchronous cleanup has completed.
   VoidCallback _listenToNativeWindowClose(
-    Future<void> Function(VoidCallback cancelRequest) onCloseRequested,
+    Future<void> Function(bool Function() cancelRequest) onCloseRequested,
   ) {
     final window = _currentWindow();
     if (window == null) return () {};
     final listenerId = window.addListener((event) async {
       if (event case WindowCloseRequestedEvent(:final request)) {
-        await onCloseRequested(request.cancel);
+        await onCloseRequested(() {
+          try {
+            return request.cancel();
+          } catch (_) {
+            // Let the app perform cleanup and expose a retryable close failure.
+            return false;
+          }
+        });
       }
     });
     return () => window.removeListener(listenerId);
   }
 
-  /// Cancels unsolicited closure, then awaits cleanup before allowing closure.
-  Future<void> _handleWindowCloseRequest(VoidCallback cancelRequest) async {
+  /// Handles a close event after its native veto result is known.
+  Future<void> _handleWindowCloseRequest(bool Function() cancelRequest) async {
     if (_closingAfterCleanup) {
       _closingAfterCleanup = false;
       return;
     }
-    cancelRequest();
-    await _onCloseRequested?.call();
+    var requestCancelled = false;
+    try {
+      requestCancelled = cancelRequest();
+    } catch (_) {
+      // Let the app perform cleanup and expose a retryable close failure.
+    }
+    await _onCloseRequested?.call(requestCancelled);
   }
 
   /// Gets the app's active native window from the window manager plugin.

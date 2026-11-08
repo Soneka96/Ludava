@@ -100,10 +100,12 @@ void main() {
 
     test('Method LudavaWindowController.configure() forwards native close requests to its owner', () async {
       final window = Window.borrowed(0);
-      Future<void> Function(VoidCallback cancelRequest)? onNativeCloseRequested;
+      Future<void> Function(bool Function() cancelRequest)?
+      onNativeCloseRequested;
       final cleanupGate = Completer<void>();
       var cleanupCalls = 0;
       var cancellationCalls = 0;
+      bool? observedCancellationResult;
       final controller = LudavaWindowController(
         currentWindow: () => window,
         isWindows: () => true,
@@ -114,21 +116,29 @@ void main() {
           return () {};
         },
         requestNativeClose: (window) async {
-          await onNativeCloseRequested!(() => cancellationCalls++);
+          await onNativeCloseRequested!(() {
+            cancellationCalls++;
+            return true;
+          });
           return true;
         },
       );
 
       controller.configure(
-        onCloseRequested: () {
+        onCloseRequested: (requestCancelled) {
+          observedCancellationResult = requestCancelled;
           cleanupCalls++;
           return cleanupGate.future;
         },
       );
-      final closeRequest = onNativeCloseRequested!(() => cancellationCalls++);
+      final closeRequest = onNativeCloseRequested!(() {
+        cancellationCalls++;
+        return true;
+      });
       await Future<void>.delayed(Duration.zero);
 
       expect(cleanupCalls, 1);
+      expect(observedCancellationResult, isTrue);
       expect(cancellationCalls, 1);
       var requestCompleted = false;
       closeRequest.then((_) => requestCompleted = true);
@@ -139,10 +149,40 @@ void main() {
       await closeRequest;
       expect(requestCompleted, isTrue);
       await controller.close();
-      expect(cancellationCalls, 1);
       expect(cleanupCalls, 1);
+      expect(cancellationCalls, 1);
       controller.dispose();
     });
+
+    test(
+      'Method LudavaWindowController.configure() forwards failed close veto',
+      () async {
+        final window = Window.borrowed(0);
+        Future<void> Function(bool Function() cancelRequest)?
+        onNativeCloseRequested;
+        bool? observedCancellationResult;
+        final controller = LudavaWindowController(
+          currentWindow: () => window,
+          isWindows: () => true,
+          onConfigureWindow: (_, _, _) {},
+          registerWindowStateObserver: (_) => () {},
+          registerWindowCloseObserver: (callback) {
+            onNativeCloseRequested = callback;
+            return () {};
+          },
+        );
+
+        controller.configure(
+          onCloseRequested: (requestCancelled) async {
+            observedCancellationResult = requestCancelled;
+          },
+        );
+        await onNativeCloseRequested!(() => false);
+
+        expect(observedCancellationResult, isFalse);
+        controller.dispose();
+      },
+    );
   });
 
   group('Method LudavaWindowController.minimize() behaves correctly', () {
@@ -173,5 +213,43 @@ void main() {
         await controller.close();
       },
     );
+
+    test('Method LudavaWindowController.close() reports native rejection and retries', () async {
+      final window = Window.borrowed(0);
+      final results = <bool>[false, true];
+      var closeCalls = 0;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        requestNativeClose: (_) async {
+          closeCalls++;
+          return results.removeAt(0);
+        },
+      );
+
+      await expectLater(controller.close(), throwsStateError);
+      await controller.close();
+
+      expect(closeCalls, 2);
+      controller.dispose();
+    });
+
+    test('Method LudavaWindowController.close() propagates native errors for retry', () async {
+      final window = Window.borrowed(0);
+      var closeCalls = 0;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        requestNativeClose: (_) async {
+          closeCalls++;
+          if (closeCalls == 1) throw StateError('Native close failed.');
+          return true;
+        },
+      );
+
+      await expectLater(controller.close(), throwsStateError);
+      await controller.close();
+
+      expect(closeCalls, 2);
+      controller.dispose();
+    });
   });
 }

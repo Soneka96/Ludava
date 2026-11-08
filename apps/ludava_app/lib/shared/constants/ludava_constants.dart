@@ -56,6 +56,9 @@ abstract final class LudavaDimensions {
   /// Height of the integrated window title bar.
   static const double titleBarHeight = 48;
 
+  /// Fixed height reserved for a one-line SDK session feedback message.
+  static const double sessionFeedbackHeight = 24;
+
   /// Width of a title-bar control hit target.
   static const double windowControlWidth = 48;
 

@@ -51,10 +51,15 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   @override
   void initState() {
     super.initState();
-    _textController = TextEditingController(
-      text: widget.currentValue?.toString() ?? '',
+    final initialText = widget.currentValue?.toString() ?? '';
+    _textController = TextEditingController.fromValue(
+      TextEditingValue(
+        text: initialText,
+        selection: TextSelection.collapsed(offset: initialText.length),
+      ),
     );
     _inputFocusNode = FocusNode(debugLabel: 'Ludava numeric value');
+    _inputFocusNode.addListener(_placeCaretAtEndOnInitialFocus);
   }
 
   /// Preserves changed drafts across reads and shows SDK write failures.
@@ -62,7 +67,11 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   void didUpdateWidget(covariant InlineValueEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.field.id != widget.field.id) {
-      _textController.text = widget.currentValue?.toString() ?? '';
+      final newText = widget.currentValue?.toString() ?? '';
+      _textController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newText.length),
+      );
       _feedback = null;
     }
     if (!_sameWriteResult(oldWidget.writeResult, widget.writeResult)) {
@@ -76,6 +85,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   /// Releases the input controller and focus node owned by this editor.
   @override
   void dispose() {
+    _inputFocusNode.removeListener(_placeCaretAtEndOnInitialFocus);
     _textController.dispose();
     _inputFocusNode.dispose();
     super.dispose();
@@ -207,6 +217,11 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final value = int.tryParse(_textController.text);
     if (value == null) return;
 
+    if (value == widget.currentValue) {
+      widget.onApplied();
+      return;
+    }
+
     _submissionInProgress = true;
     late final GameWriteResult result;
     try {
@@ -222,6 +237,14 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
       return;
     }
     setState(() => _feedback = _writeFailureMessage(result));
+  }
+
+  /// Places the initial caret after the prefilled value exactly once.
+  void _placeCaretAtEndOnInitialFocus() {
+    if (!_inputFocusNode.hasFocus) return;
+    _inputFocusNode.removeListener(_placeCaretAtEndOnInitialFocus);
+    final text = _textController.text;
+    _textController.selection = TextSelection.collapsed(offset: text.length);
   }
 
   /// Converts a typed SDK failure into tooltip feedback without visible text.

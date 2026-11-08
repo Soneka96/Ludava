@@ -4,6 +4,7 @@ import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
+import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -237,6 +238,76 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Class LudavaShell keeps field rows fixed while SDK feedback changes at compact sizes',
+      (tester) async {
+        const message = 'The SDK could not refresh the current game session.';
+        final profile = GameProfileCatalog.profiles.first;
+        final field = profile.fields.values.first;
+        final maximizeState = ValueNotifier(false);
+        addTearDown(maximizeState.dispose);
+
+        Widget buildShell(String? errorMessage) => _wrap(
+          LudavaShell(
+            session: TrainerSessionState(
+              processIds: const [42],
+              selectedProcessId: 42,
+              detection: GameDetectionResult(
+                status: GameDetectionStatus.supportedGame,
+                processId: 42,
+                profile: profile,
+                confidence: GameIdentityConfidence.confirmed,
+                evidenceDescription: 'Test game identity.',
+              ),
+              memoryBase: 0x1000,
+              readResults: {
+                field.id: GameReadResult(
+                  status: GameReadStatus.success,
+                  fieldId: field.id,
+                  value: 17,
+                ),
+              },
+              errorMessage: errorMessage,
+            ),
+            editingFieldId: null,
+            onEditField: (_) {},
+            onApplyField: _failedWrite,
+            onCancelEditing: () {},
+            onMinimize: () {},
+            onToggleMaximize: () {},
+            isMaximized: maximizeState,
+            onClose: () {},
+            onRefresh: () {},
+            onSelectProcess: (_) {},
+          ),
+        );
+
+        for (final size in const [Size(520, 360), Size(480, 340)]) {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+
+          await tester.pumpWidget(buildShell(null));
+          final before = _fieldRowRects(tester, profile);
+
+          await tester.pumpWidget(buildShell(message));
+          expect(_fieldRowRects(tester, profile), before);
+          expect(find.byTooltip(message), findsOneWidget);
+
+          await tester.pumpWidget(buildShell(null));
+          expect(_fieldRowRects(tester, profile), before);
+          expect(find.byTooltip(message), findsNothing);
+          expect(
+            find.byType(TrainerFieldRow),
+            findsNWidgets(profile.fields.length),
+          );
+          expect(tester.takeException(), isNull);
+        }
+
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+      },
+    );
+
     testWidgets('Class LudavaShell supports process choice at minimum size', (
       tester,
     ) async {
@@ -373,6 +444,15 @@ void main() {
     );
   });
 }
+
+List<Rect> _fieldRowRects(WidgetTester tester, GameProfile profile) => profile
+    .fields
+    .keys
+    .map(
+      (fieldId) =>
+          tester.getRect(find.byKey(ValueKey('trainer-field-row-$fieldId'))),
+    )
+    .toList(growable: false);
 
 Widget _wrap(Widget child) =>
     MaterialApp(theme: LudavaTheme.graphiteAndTeal, home: child);

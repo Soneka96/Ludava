@@ -37,6 +37,9 @@ class LudavaShell extends StatelessWidget {
   /// Closes the native window.
   final VoidCallback onClose;
 
+  /// Explains a rejected native close while keeping the app noninteractive.
+  final String? closeFailure;
+
   /// Refreshes the selected session or retries process discovery.
   final VoidCallback onRefresh;
 
@@ -54,6 +57,7 @@ class LudavaShell extends StatelessWidget {
     required this.onToggleMaximize,
     required this.isMaximized,
     required this.onClose,
+    this.closeFailure,
     required this.onRefresh,
     required this.onSelectProcess,
     super.key,
@@ -64,34 +68,84 @@ class LudavaShell extends StatelessWidget {
   Widget build(BuildContext context) => DragToResizeArea(
     resizeEdgeSize: LudavaDimensions.windowResizeHandleSize,
     child: Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          LudavaWindowTitleBar(
-            session: session,
-            isMaximized: isMaximized,
-            onMinimize: onMinimize,
-            onToggleMaximize: onToggleMaximize,
-            onClose: onClose,
-          ),
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: LudavaDimensions.maximumContentWidth,
+          IgnorePointer(
+            ignoring: closeFailure != null,
+            child: Column(
+              children: [
+                LudavaWindowTitleBar(
+                  session: session,
+                  isMaximized: isMaximized,
+                  onMinimize: onMinimize,
+                  onToggleMaximize: onToggleMaximize,
+                  onClose: onClose,
                 ),
-                child: SizedBox.expand(
-                  child: Column(
-                    children: [
-                      TrainerGameHeader(session: session, onRefresh: onRefresh),
-                      Expanded(
-                        child: SafeArea(child: _buildSessionBody(context)),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: LudavaDimensions.maximumContentWidth,
                       ),
-                    ],
+                      child: SizedBox.expand(
+                        child: Column(
+                          children: [
+                            TrainerGameHeader(
+                              session: session,
+                              onRefresh: onRefresh,
+                            ),
+                            Expanded(
+                              child: SafeArea(
+                                child: _buildSessionBody(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (closeFailure case final failure?)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.scrim
+                    .withValues(alpha: .72),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(LudavaSpacing.lg),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Ludava could not close. App actions are disabled.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: LudavaSpacing.sm),
+                        Tooltip(
+                          message: failure,
+                          child: Text(
+                            failure,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        const SizedBox(height: LudavaSpacing.md),
+                        FilledButton(
+                          onPressed: onClose,
+                          child: const Text('Retry close'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     ),
@@ -112,26 +166,30 @@ class LudavaShell extends StatelessWidget {
     final errorMessage = session.errorMessage;
     return Column(
       children: [
-        if (errorMessage != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: LudavaSpacing.lg,
-              vertical: LudavaSpacing.xs,
-            ),
-            child: Tooltip(
-              message: errorMessage,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  errorMessage,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+        SizedBox(
+          height: LudavaDimensions.sessionFeedbackHeight,
+          child: errorMessage == null
+              ? null
+              : Tooltip(
+                  message: errorMessage,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: LudavaSpacing.lg,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        errorMessage,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
+        ),
         Expanded(
           child: TrainerFieldsPanel(
             session: session,

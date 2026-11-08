@@ -93,7 +93,7 @@ void main() {
       await tester.tap(find.byTooltip('Close window'));
       await tester.pump();
       await tester.tap(find.byTooltip('Close window'));
-      final nativeCloseFuture = windowController.onCloseRequested!.call();
+      final nativeCloseFuture = windowController.onCloseRequested!.call(true);
       await tester.pump();
 
       expect(controller.disposeCalls, 1);
@@ -108,29 +108,180 @@ void main() {
       await controller.disposeSdk();
     });
 
-    testWidgets('Class LudavaApp retries a failed native close request', (
-      tester,
-    ) async {
-      final sdk = _createSdk(() => const []);
-      final controller = _AppTestTrainerController(sdk);
-      final windowController = _RecordingWindowController()
-        ..failNextClose = true;
-      await tester.pumpWidget(
-        LudavaApp(controller: controller, windowController: windowController),
-      );
+    testWidgets(
+      'Class LudavaApp reports disposal failure before attempting native close',
+      (tester) async {
+        final sdk = _createSdk(() => const []);
+        final controller = _AppTestTrainerController(sdk)..failDisposal = true;
+        final windowController = _RecordingWindowController();
+        final reportedErrors = <FlutterErrorDetails>[];
+        final previousErrorHandler = FlutterError.onError;
+        FlutterError.onError = reportedErrors.add;
+        addTearDown(() => FlutterError.onError = previousErrorHandler);
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
 
-      final closeRequest = windowController.onCloseRequested!;
-      await expectLater(closeRequest(), throwsStateError);
-      expect(windowController.closeCalls, 1);
+        await tester.tap(find.byTooltip('Close window'));
+        await tester.pump();
 
-      await closeRequest();
+        expect(controller.disposeCalls, 1);
+        expect(windowController.closeCalls, 1);
+        expect(reportedErrors, hasLength(1));
+        expect(reportedErrors.single.exception, isA<StateError>());
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await controller.disposeSdk();
+      },
+    );
 
-      expect(windowController.closeCalls, 2);
-      expect(controller.disposeCalls, 1);
-      await tester.pumpWidget(const SizedBox());
-      await tester.pump();
-      await controller.disposeSdk();
-    });
+    testWidgets(
+      'Class LudavaApp reports title-bar close failure and retries without disposing twice',
+      (tester) async {
+        final sdk = _createSdk(() => const []);
+        final controller = _AppTestTrainerController(sdk);
+        final windowController = _RecordingWindowController()
+          ..failNextClose = true;
+        final reportedErrors = <FlutterErrorDetails>[];
+        final previousErrorHandler = FlutterError.onError;
+        FlutterError.onError = reportedErrors.add;
+        addTearDown(() => FlutterError.onError = previousErrorHandler);
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
+
+        await tester.tap(find.byTooltip('Close window'));
+        await tester.pump();
+
+        expect(windowController.closeCalls, 1);
+        expect(controller.disposeCalls, 1);
+        expect(
+          find.text('Ludava could not close. App actions are disabled.'),
+          findsOneWidget,
+        );
+        expect(reportedErrors, hasLength(1));
+        expect(reportedErrors.single.exception, isA<StateError>());
+
+        await tester.tap(find.text('Retry close'));
+        await tester.pump();
+
+        expect(windowController.closeCalls, 2);
+        expect(controller.disposeCalls, 1);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+        await controller.disposeSdk();
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp blocks interaction after native close returns false',
+      (tester) async {
+        final sdk = _createSdk(() => const []);
+        final controller = _AppTestTrainerController(sdk);
+        final closePlan = _NativeClosePlan([false, true]);
+        final windowController = _RejectingNativeWindowController(closePlan);
+        final reportedErrors = <FlutterErrorDetails>[];
+        final previousErrorHandler = FlutterError.onError;
+        FlutterError.onError = reportedErrors.add;
+        addTearDown(() => FlutterError.onError = previousErrorHandler);
+
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
+        await tester.tap(find.byTooltip('Close window'));
+        await tester.pump();
+
+        expect(closePlan.calls, 1);
+        expect(controller.disposeCalls, 1);
+        expect(
+          find.text('Ludava could not close. App actions are disabled.'),
+          findsOneWidget,
+        );
+        expect(reportedErrors, hasLength(1));
+        expect(reportedErrors.single.exception, isA<StateError>());
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(
+          find.byTooltip('Refresh values or rediscover RPCS3'),
+          warnIfMissed: false,
+        );
+        await tester.pump();
+        expect(controller.refreshCalls, 0);
+
+        await tester.tap(find.text('Retry close'));
+        await tester.pump();
+
+        expect(closePlan.calls, 2);
+        expect(controller.disposeCalls, 1);
+        await tester.pumpWidget(const SizedBox());
+        await controller.disposeSdk();
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp handles native close events and repeated requests after rejection',
+      (tester) async {
+        final sdk = _createSdk(() => const []);
+        final controller = _AppTestTrainerController(sdk);
+        final windowController = _RecordingWindowController()
+          ..failNextClose = true;
+        final reportedErrors = <FlutterErrorDetails>[];
+        final previousErrorHandler = FlutterError.onError;
+        FlutterError.onError = reportedErrors.add;
+        addTearDown(() => FlutterError.onError = previousErrorHandler);
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
+
+        await windowController.onCloseRequested!(true);
+        await tester.pump();
+        await windowController.onCloseRequested!(true);
+        await tester.pump();
+
+        expect(controller.disposeCalls, 1);
+        expect(windowController.closeCalls, 2);
+        expect(reportedErrors, hasLength(1));
+        expect(find.text('Retry close'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(find.text('Retry close'));
+        await tester.pump();
+        await tester.pumpWidget(const SizedBox());
+        await controller.disposeSdk();
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp handles a native close event that could not be vetoed',
+      (tester) async {
+        final sdk = _createSdk(() => const []);
+        final controller = _AppTestTrainerController(sdk);
+        final windowController = _RecordingWindowController();
+        final reportedErrors = <FlutterErrorDetails>[];
+        final previousErrorHandler = FlutterError.onError;
+        FlutterError.onError = reportedErrors.add;
+        addTearDown(() => FlutterError.onError = previousErrorHandler);
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
+
+        await windowController.onCloseRequested!(false);
+        await tester.pump();
+
+        expect(controller.disposeCalls, 1);
+        expect(windowController.closeCalls, 0);
+        expect(find.text('Retry close'), findsOneWidget);
+        expect(reportedErrors, hasLength(1));
+        expect(reportedErrors.single.exception, isA<StateError>());
+
+        await tester.tap(find.text('Retry close'));
+        await tester.pump();
+        expect(windowController.closeCalls, 1);
+        expect(controller.disposeCalls, 1);
+        await tester.pumpWidget(const SizedBox());
+        await controller.disposeSdk();
+      },
+    );
   });
 }
 
@@ -167,7 +318,7 @@ class _RecordingWindowController extends LudavaWindowController {
   _RecordingWindowController() : super(currentWindow: () => null);
 
   /// Close callback registered by the app composition root.
-  Future<void> Function()? onCloseRequested;
+  Future<void> Function(bool requestCancelled)? onCloseRequested;
 
   /// Number of native close operations received after cleanup.
   int closeCalls = 0;
@@ -175,7 +326,9 @@ class _RecordingWindowController extends LudavaWindowController {
 
   /// Registers the test callback instead of configuring a native window.
   @override
-  void configure({Future<void> Function()? onCloseRequested}) {
+  void configure({
+    Future<void> Function(bool requestCancelled)? onCloseRequested,
+  }) {
     this.onCloseRequested = onCloseRequested;
   }
 
@@ -190,6 +343,32 @@ class _RecordingWindowController extends LudavaWindowController {
   }
 }
 
+/// Returns native rejection once, then accepts a retry without opening a window.
+class _RejectingNativeWindowController extends LudavaWindowController {
+  _RejectingNativeWindowController(_NativeClosePlan closePlan)
+    : super(
+        currentWindow: () => Window.borrowed(0),
+        requestNativeClose: (_) => closePlan.request(),
+      );
+
+  @override
+  void configure({
+    Future<void> Function(bool requestCancelled)? onCloseRequested,
+  }) {}
+}
+
+class _NativeClosePlan {
+  _NativeClosePlan(this.responses);
+
+  final List<bool> responses;
+  int calls = 0;
+
+  Future<bool> request() async {
+    calls++;
+    return responses.removeAt(0);
+  }
+}
+
 /// Keeps SDK cleanup separate from widget-test controller disposal.
 class _AppTestTrainerController extends TrainerController {
   /// Creates a controller that owns [sdk] for explicit test cleanup.
@@ -197,15 +376,24 @@ class _AppTestTrainerController extends TrainerController {
 
   final LudavaSdk _sdk;
   int disposeCalls = 0;
+  int refreshCalls = 0;
+  bool failDisposal = false;
   Future<void>? _disposeFuture;
 
   /// Records the app lifecycle cleanup request without disposing the test SDK.
   @override
   Future<void> dispose() => _disposeFuture ??= _recordDisposal();
 
+  @override
+  void refresh() {
+    refreshCalls++;
+    super.refresh();
+  }
+
   /// Records the first lifecycle cleanup request for an idempotent capability.
   Future<void> _recordDisposal() async {
     disposeCalls++;
+    if (failDisposal) throw StateError('Trainer disposal failed.');
   }
 
   /// Disposes the SDK after the test removes its app tree.

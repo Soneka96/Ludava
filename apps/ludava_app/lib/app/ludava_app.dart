@@ -39,6 +39,8 @@ class _LudavaAppState extends State<LudavaApp> {
   late final TrainerController _controller;
   late final LudavaWindowController _windowController;
   Future<void>? _closeFuture;
+  Future<void>? _controllerDisposalFuture;
+  String? _closeFailure;
 
   /// Creates the controller and registers the awaited native close sequence.
   @override
@@ -46,14 +48,16 @@ class _LudavaAppState extends State<LudavaApp> {
     super.initState();
     _controller = widget.controller ?? TrainerController(sdk: widget.sdk);
     _windowController = widget.windowController ?? LudavaWindowController();
-    _windowController.configure(onCloseRequested: _closeAfterDisposal);
+    _windowController.configure(onCloseRequested: _handleNativeCloseRequest);
   }
 
   /// Releases window observation and starts fallback cleanup for tree removal.
   @override
   void dispose() {
     _windowController.dispose();
-    if (_closeFuture == null) unawaited(_reportControllerDisposal());
+    if (_controllerDisposalFuture == null) {
+      unawaited(_reportControllerDisposal());
+    }
     super.dispose();
   }
 
@@ -77,6 +81,7 @@ class _LudavaAppState extends State<LudavaApp> {
           onToggleMaximize: _toggleMaximizeWindow,
           isMaximized: _windowController.isMaximized,
           onClose: _requestWindowClose,
+          closeFailure: _closeFailure,
           onRefresh: _controller.refresh,
           onSelectProcess: (processId) => _controller.selectProcess(processId),
         ),
@@ -100,9 +105,16 @@ class _LudavaAppState extends State<LudavaApp> {
     final activeClose = _closeFuture;
     if (activeClose != null) return activeClose;
 
-    final closeFuture = _disposeControllerAndCloseWindow().whenComplete(() {
-      _closeFuture = null;
-    });
+    final closeFuture = _disposeControllerAndCloseWindow()
+        .catchError((Object error, StackTrace stackTrace) {
+          _reportError(error, stackTrace, 'while closing the native window');
+          if (mounted) {
+            setState(() => _closeFailure = error.toString());
+          }
+        })
+        .whenComplete(() {
+          _closeFuture = null;
+        });
     _closeFuture = closeFuture;
     return closeFuture;
   }
@@ -110,17 +122,42 @@ class _LudavaAppState extends State<LudavaApp> {
   /// Awaits controller cleanup and then closes the native window.
   Future<void> _disposeControllerAndCloseWindow() async {
     try {
-      await _controller.dispose();
+      await _disposeControllerOnce();
     } catch (error, stackTrace) {
       _reportError(error, stackTrace, 'while disposing the trainer controller');
     }
     await _windowController.close();
   }
 
+  /// Completes cleanup after a native close event's veto result is known.
+  Future<void> _handleNativeCloseRequest(bool requestCancelled) async {
+    if (requestCancelled) {
+      await _closeAfterDisposal();
+      return;
+    }
+
+    try {
+      await _disposeControllerOnce();
+    } catch (error, stackTrace) {
+      _reportError(error, stackTrace, 'while disposing the trainer controller');
+    }
+    final error = StateError('The native close event could not be cancelled.');
+    _reportError(
+      error,
+      StackTrace.current,
+      'while intercepting the native window close request',
+    );
+    if (mounted) setState(() => _closeFailure = error.message);
+  }
+
+  /// Shares terminal SDK cleanup between close retries and tree disposal.
+  Future<void> _disposeControllerOnce() =>
+      _controllerDisposalFuture ??= _controller.dispose();
+
   /// Reports fallback controller cleanup errors after external tree removal.
   Future<void> _reportControllerDisposal() async {
     try {
-      await _controller.dispose();
+      await _disposeControllerOnce();
     } catch (error, stackTrace) {
       _reportError(error, stackTrace, 'while disposing the trainer controller');
     }

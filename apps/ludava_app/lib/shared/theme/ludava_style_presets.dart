@@ -18,7 +18,7 @@ abstract final class LudavaStylePresets {
         fontFeatures: [FontFeature.tabularFigures()],
       ),
       titleLarge: TextStyle(
-        fontSize: 18,
+        fontSize: 14,
         fontWeight: FontWeight.w600,
         fontFeatures: [FontFeature.tabularFigures()],
       ),

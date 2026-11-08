@@ -18,7 +18,7 @@ void main() {
         preset.textTheme.headlineMedium?.fontFeatures,
         contains(const FontFeature.tabularFigures()),
       );
-      expect(preset.textTheme.titleLarge?.fontSize, 18);
+      expect(preset.textTheme.titleLarge?.fontSize, 14);
       expect(
         preset.textTheme.titleLarge?.fontFeatures,
         contains(const FontFeature.tabularFigures()),

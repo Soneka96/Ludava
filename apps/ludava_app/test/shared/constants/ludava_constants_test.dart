@@ -21,6 +21,7 @@ void main() {
       expect(LudavaDimensions.minimumInteractiveTarget, 48);
       expect(LudavaDimensions.maximumContentWidth, 720);
       expect(LudavaDimensions.titleBarHeight, 48);
+      expect(LudavaDimensions.sessionFeedbackHeight, 24);
       expect(LudavaDimensions.windowControlWidth, 48);
       expect(LudavaDimensions.windowResizeHandleSize, 8);
       expect(LudavaDimensions.iconSmall, 20);

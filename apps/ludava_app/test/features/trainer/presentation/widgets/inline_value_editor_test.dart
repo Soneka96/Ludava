@@ -29,6 +29,132 @@ void main() {
     );
 
     testWidgets(
+      'Class InlineValueEditor starts at the end and appends the first digit',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(_editor(currentValue: 123, onApply: _success)),
+        );
+        final input = tester.widget<TextField>(_inputFinder);
+        expect(_editorText(tester), '123');
+        expect(
+          input.controller!.selection,
+          const TextSelection.collapsed(offset: 3),
+        );
+        expect(
+          input.style?.fontSize,
+          LudavaTheme.graphiteAndTeal.textTheme.bodyMedium?.fontSize,
+        );
+
+        await tester.tap(_inputFinder);
+        await tester.pump();
+        final focusedInput = tester.widget<TextField>(_inputFinder);
+        expect(focusedInput.controller!.selection.extentOffset, 3);
+        expect(focusedInput.controller!.selection.isCollapsed, isTrue);
+        tester.testTextInput.updateEditingValue(
+          const TextEditingValue(
+            text: '1230',
+            selection: TextSelection.collapsed(offset: 4),
+          ),
+        );
+        await tester.pump();
+
+        expect(_editorText(tester), '1230');
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor keeps maximum unsigned draft ungrouped',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(_editor(currentValue: 4294967295, onApply: _success)),
+        );
+
+        expect(_editorText(tester), '4294967295');
+        expect(find.text('4,294,967,295'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor preserves draft and cursor across same-session refresh',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        await tester.pumpWidget(
+          _wrap(_editor(key: editorKey, currentValue: 123, onApply: _success)),
+        );
+        await tester.enterText(_inputFinder, '1234');
+        await tester.pump();
+        final controller = tester.widget<TextField>(_inputFinder).controller!;
+        controller.selection = const TextSelection.collapsed(offset: 2);
+
+        await tester.pumpWidget(
+          _wrap(_editor(key: editorKey, currentValue: 456, onApply: _success)),
+        );
+
+        expect(_editorText(tester), '1234');
+        expect(controller.selection, const TextSelection.collapsed(offset: 2));
+
+        controller.selection = const TextSelection(
+          baseOffset: 1,
+          extentOffset: 3,
+        );
+        await tester.pumpWidget(
+          _wrap(_editor(key: editorKey, currentValue: 789, onApply: _success)),
+        );
+        expect(
+          controller.selection,
+          const TextSelection(baseOffset: 1, extentOffset: 3),
+        );
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor treats unchanged values as a neutral no-op',
+      (tester) async {
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        var editing = true;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: LudavaTheme.graphiteAndTeal,
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) => editing
+                    ? Center(
+                        child: SizedBox(
+                          width: 480,
+                          child: _editor(
+                            currentValue: 123,
+                            onApply: (value) {
+                              writeCalls++;
+                              return _success(value);
+                            },
+                            onApplied: () {
+                              appliedCalls++;
+                              setState(() => editing = false);
+                            },
+                          ),
+                        ),
+                      )
+                    : const Text('Read-only value: 123'),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(find.text('Read-only value: 123'), findsOneWidget);
+        expect(find.byType(InlineValueEditor), findsNothing);
+        expect(find.byTooltip('No value was written.'), findsNothing);
+        expect(find.byTooltip('Applied and verified: 123'), findsNothing);
+      },
+    );
+
+    testWidgets(
       'Class InlineValueEditor applies once through the explicit check action',
       (tester) async {
         var writeCalls = 0;
