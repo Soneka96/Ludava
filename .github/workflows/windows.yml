@@ -69,6 +69,10 @@ jobs:
         shell: pwsh
         run: .\tool\package_windows.ps1
 
+      - name: Build SDK integration-test discovery library
+        shell: pwsh
+        run: .\tool\build_process_discovery.ps1 -OutputPath build\ludava_process_discovery.dll
+
       - name: Test SDK
         run: dart test
         working-directory: packages/ludava_sdk

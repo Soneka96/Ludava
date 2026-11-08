@@ -77,7 +77,8 @@ New-Item -ItemType Directory -Force -Path $tuiBuildDirectory, $tuiStage, $deskto
 try {
     & (Join-Path $PSScriptRoot 'build_windows.ps1') -OutputDirectory $tuiBuildDirectory
     & (Join-Path $PSScriptRoot 'build_flutter_windows.ps1') `
-        -BuildDirectory $flutterBuildDirectoryName
+        -BuildDirectory $flutterBuildDirectoryName `
+        -ProcessDiscoveryLibraryPath $nativeLibrary
 
     foreach ($requiredPath in @($tuiExecutable, $nativeLibrary)) {
         if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {

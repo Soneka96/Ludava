@@ -1,5 +1,6 @@
 param(
-    [string]$BuildDirectory
+    [string]$BuildDirectory,
+    [string]$ProcessDiscoveryLibraryPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,6 +12,10 @@ if ([System.IO.Path]::IsPathRooted($BuildDirectory) -or
     $BuildDirectory -match '(^|[\\/])\.\.([\\/]|$)') {
     throw 'The Flutter build directory must be a safe project-relative path.'
 }
+if (-not [string]::IsNullOrWhiteSpace($ProcessDiscoveryLibraryPath) -and
+    -not (Test-Path -LiteralPath $ProcessDiscoveryLibraryPath -PathType Leaf)) {
+    throw "The supplied process-discovery library was not found: $ProcessDiscoveryLibraryPath."
+}
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $flutterProject = Join-Path $projectRoot 'apps\ludava_app'
@@ -19,6 +24,7 @@ if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
 }
 $flutterBuildDirectory = Join-Path $flutterProject $BuildDirectory
 $releaseDirectory = Join-Path $flutterBuildDirectory 'windows\x64\runner\Release'
+$releaseDiscoveryLibrary = Join-Path $releaseDirectory 'ludava_process_discovery.dll'
 
 Push-Location $flutterProject
 try {
@@ -85,6 +91,18 @@ foreach ($requiredFile in $requiredFiles) {
 }
 if (-not (Test-Path -LiteralPath (Join-Path $releaseDirectory 'data\flutter_assets') -PathType Container)) {
     throw 'Flutter release output is missing data\flutter_assets.'
+}
+
+if ([string]::IsNullOrWhiteSpace($ProcessDiscoveryLibraryPath)) {
+    & (Join-Path $PSScriptRoot 'build_process_discovery.ps1') `
+        -OutputPath $releaseDiscoveryLibrary
+} else {
+    Copy-Item -LiteralPath $ProcessDiscoveryLibraryPath `
+        -Destination $releaseDiscoveryLibrary -Force
+}
+
+if (-not (Test-Path -LiteralPath $releaseDiscoveryLibrary -PathType Leaf)) {
+    throw "Flutter release output is missing $releaseDiscoveryLibrary."
 }
 
 Write-Host "Built the Flutter Windows release output at $releaseDirectory"

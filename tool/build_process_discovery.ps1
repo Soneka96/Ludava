@@ -22,6 +22,7 @@ if ([string]::IsNullOrWhiteSpace($windowsSdkRoot)) {
 }
 $windowsSdkLibRoot = Join-Path $windowsSdkRoot 'Lib'
 $windowsSdkVersion = Get-ChildItem -LiteralPath $windowsSdkLibRoot -Directory |
+    Where-Object { $_.Name -match '^\d+(\.\d+){1,3}$' } |
     Sort-Object { [version]$_.Name } -Descending |
     Select-Object -First 1 -ExpandProperty Name
 if ([string]::IsNullOrWhiteSpace($windowsSdkVersion)) {

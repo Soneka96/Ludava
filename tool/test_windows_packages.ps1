@@ -142,7 +142,7 @@ try {
             'ludava_process_discovery.dll'
         )
         $missingModules = $requiredLoadedModules
-        for ($attempt = 0; $attempt -lt 10 -and $missingModules.Count -gt 0; $attempt++) {
+        for ($attempt = 0; $attempt -lt 30 -and $missingModules.Count -gt 0; $attempt++) {
             Start-Sleep -Milliseconds 500
             $application.Refresh()
             if ($application.HasExited) {
