@@ -1,9 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:ludava_app/app/presentation/screens/ludava_session_body.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
-import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
-import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -107,7 +106,14 @@ class LudavaShell extends StatelessWidget {
                                   ),
                                   Expanded(
                                     child: SafeArea(
-                                      child: _buildSessionBody(context),
+                                      child: LudavaSessionBody(
+                                        session: session,
+                                        editingFieldId: editingFieldId,
+                                        onSelectProcess: onSelectProcess,
+                                        onEditField: onEditField,
+                                        onApplyField: onApplyField,
+                                        onCancelEditing: onCancelEditing,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -132,58 +138,6 @@ class LudavaShell extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  /// Shows connection guidance until the SDK resolves a usable memory base.
-  Widget _buildSessionBody(BuildContext context) {
-    final isReady =
-        session.detection?.status == GameDetectionStatus.supportedGame &&
-        session.memoryBase != null;
-    if (!isReady) {
-      return SessionConnectionBody(
-        session: session,
-        onSelectProcess: onSelectProcess,
-      );
-    }
-
-    final errorMessage = session.errorMessage;
-    return Column(
-      children: [
-        SizedBox(
-          height: LudavaDimensions.sessionFeedbackHeight,
-          child: errorMessage == null
-              ? null
-              : Tooltip(
-                  message: errorMessage,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: LudavaSpacing.lg,
-                    ),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        errorMessage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-        ),
-        Expanded(
-          child: TrainerFieldsPanel(
-            session: session,
-            editingFieldId: editingFieldId,
-            onEditField: onEditField,
-            onApplyField: onApplyField,
-            onCancelEditing: onCancelEditing,
-          ),
-        ),
-      ],
     );
   }
 }

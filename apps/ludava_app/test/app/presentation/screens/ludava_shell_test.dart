@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
+import 'package:ludava_app/app/presentation/screens/ludava_session_body.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
-import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
-import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
-import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -46,8 +44,15 @@ void main() {
     });
 
     testWidgets(
-      'Class LudavaShell composes connection guidance and window actions',
+      'Class LudavaShell composes its session body and window actions',
       (tester) async {
+        final session = TrainerSessionState();
+        final field = GameProfileCatalog.profiles.first.fields.values.first;
+        var selectedProcessId = 0;
+        GameField? editedField;
+        String? appliedFieldId;
+        int? appliedValue;
+        var cancelCalls = 0;
         var minimizeCalls = 0;
         var maximizeCalls = 0;
         var closeCalls = 0;
@@ -57,258 +62,54 @@ void main() {
         await tester.pumpWidget(
           _wrap(
             LudavaShell(
-              session: TrainerSessionState(),
-              editingFieldId: null,
-              onEditField: (_) {},
-              onApplyField: _failedWrite,
-              onCancelEditing: () {},
+              session: session,
+              editingFieldId: field.id,
+              onEditField: (value) => editedField = value,
+              onApplyField: (fieldId, value) {
+                appliedFieldId = fieldId;
+                appliedValue = value;
+                return _failedWrite(fieldId, value);
+              },
+              onCancelEditing: () => cancelCalls++,
               onMinimize: () => minimizeCalls++,
               onToggleMaximize: () => maximizeCalls++,
               isMaximized: maximizeState,
               onClose: () => closeCalls++,
               onRefresh: () {},
-              onSelectProcess: (_) {},
+              onSelectProcess: (processId) => selectedProcessId = processId,
             ),
           ),
         );
 
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanel), findsNothing);
-        expect(find.text('Connect to RPCS3'), findsOneWidget);
+        final body = tester.widget<LudavaSessionBody>(
+          find.byType(LudavaSessionBody),
+        );
+        expect(body.session, same(session));
+        expect(body.editingFieldId, field.id);
+        body.onSelectProcess(42);
+        body.onEditField(field);
+        expect(
+          body.onApplyField(field.id, 99).status,
+          GameWriteStatus.writeFailed,
+        );
+        body.onCancelEditing();
+        expect(selectedProcessId, 42);
+        expect(editedField, same(field));
+        expect(appliedFieldId, field.id);
+        expect(appliedValue, 99);
+        expect(cancelCalls, 1);
+
+        expect(find.byType(LudavaSessionBody), findsOneWidget);
         expect(find.text('RPCS3'), findsOneWidget);
         await tester.tap(find.byTooltip('Minimize window'));
         await tester.tap(find.byTooltip('Maximize window'));
         await tester.tap(find.byTooltip('Close window'));
-
         expect(minimizeCalls, 1);
         expect(maximizeCalls, 1);
         expect(closeCalls, 1);
         expect(tester.takeException(), isNull);
       },
     );
-
-    testWidgets('Class LudavaShell renders SDK profile fields when ready', (
-      tester,
-    ) async {
-      final profile = GameProfileCatalog.profiles.first;
-      final field = profile.fields.values.first;
-      final maximizeState = ValueNotifier(false);
-      addTearDown(maximizeState.dispose);
-      final session = TrainerSessionState(
-        processIds: const [42],
-        selectedProcessId: 42,
-        detection: GameDetectionResult(
-          status: GameDetectionStatus.supportedGame,
-          processId: 42,
-          profile: profile,
-          confidence: GameIdentityConfidence.confirmed,
-          evidenceDescription: 'Test game identity.',
-        ),
-        memoryBase: 0x1000,
-      );
-
-      await tester.pumpWidget(
-        _wrap(
-          LudavaShell(
-            session: session,
-            editingFieldId: null,
-            onEditField: (_) {},
-            onApplyField: _failedWrite,
-            onCancelEditing: () {},
-            onMinimize: () {},
-            onToggleMaximize: () {},
-            isMaximized: maximizeState,
-            onClose: () {},
-            onRefresh: () {},
-            onSelectProcess: (_) {},
-          ),
-        ),
-      );
-
-      expect(find.byType(TrainerFieldsPanel), findsOneWidget);
-      expect(find.byType(SessionConnectionBody), findsNothing);
-      expect(find.text(profile.gameName), findsOneWidget);
-      expect(find.text(field.name), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets(
-      'Class LudavaShell shows memory-base guidance for a supported game',
-      (tester) async {
-        final maximizeState = ValueNotifier(false);
-        addTearDown(maximizeState.dispose);
-        final profile = GameProfileCatalog.profiles.first;
-        final session = TrainerSessionState(
-          processIds: const [42],
-          selectedProcessId: 42,
-          detection: GameDetectionResult(
-            status: GameDetectionStatus.supportedGame,
-            processId: 42,
-            profile: profile,
-            confidence: GameIdentityConfidence.confirmed,
-            evidenceDescription: 'Test game identity.',
-          ),
-        );
-
-        await tester.pumpWidget(
-          _wrap(
-            LudavaShell(
-              session: session,
-              editingFieldId: null,
-              onEditField: (_) {},
-              onApplyField: _failedWrite,
-              onCancelEditing: () {},
-              onMinimize: () {},
-              onToggleMaximize: () {},
-              isMaximized: maximizeState,
-              onClose: () {},
-              onRefresh: () {},
-              onSelectProcess: (_) {},
-            ),
-          ),
-        );
-
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanel), findsNothing);
-        expect(
-          find.text(
-            'The game was detected, but its session memory base is unavailable.',
-          ),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'Class LudavaShell shows SDK errors alongside supported fields',
-      (tester) async {
-        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        final maximizeState = ValueNotifier(false);
-        addTearDown(maximizeState.dispose);
-        final profile = GameProfileCatalog.profiles.first;
-        final field = profile.fields.values.first;
-        const message = 'The SDK could not refresh the current game session.';
-
-        await tester.pumpWidget(
-          _wrap(
-            LudavaShell(
-              session: TrainerSessionState(
-                processIds: const [42],
-                selectedProcessId: 42,
-                detection: GameDetectionResult(
-                  status: GameDetectionStatus.supportedGame,
-                  processId: 42,
-                  profile: profile,
-                  confidence: GameIdentityConfidence.confirmed,
-                  evidenceDescription: 'Test game identity.',
-                ),
-                memoryBase: 0x1000,
-                readResults: {
-                  field.id: GameReadResult(
-                    status: GameReadStatus.success,
-                    fieldId: field.id,
-                    value: 17,
-                  ),
-                },
-                errorMessage: message,
-              ),
-              editingFieldId: null,
-              onEditField: (_) {},
-              onApplyField: _failedWrite,
-              onCancelEditing: () {},
-              onMinimize: () {},
-              onToggleMaximize: () {},
-              isMaximized: maximizeState,
-              onClose: () {},
-              onRefresh: () {},
-              onSelectProcess: (_) {},
-            ),
-          ),
-        );
-
-        expect(find.byType(TrainerFieldsPanel), findsOneWidget);
-        expect(find.byType(SessionConnectionBody), findsNothing);
-        expect(find.text(message), findsOneWidget);
-        expect(find.text(field.name), findsOneWidget);
-        expect(find.text('17'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'Class LudavaShell keeps field rows fixed while SDK feedback changes at compact sizes',
-      (tester) async {
-        const message = 'The SDK could not refresh the current game session.';
-        final profile = GameProfileCatalog.profiles.first;
-        final field = profile.fields.values.first;
-        final maximizeState = ValueNotifier(false);
-        addTearDown(maximizeState.dispose);
-
-        Widget buildShell(String? errorMessage) => _wrap(
-          LudavaShell(
-            session: TrainerSessionState(
-              processIds: const [42],
-              selectedProcessId: 42,
-              detection: GameDetectionResult(
-                status: GameDetectionStatus.supportedGame,
-                processId: 42,
-                profile: profile,
-                confidence: GameIdentityConfidence.confirmed,
-                evidenceDescription: 'Test game identity.',
-              ),
-              memoryBase: 0x1000,
-              readResults: {
-                field.id: GameReadResult(
-                  status: GameReadStatus.success,
-                  fieldId: field.id,
-                  value: 17,
-                ),
-              },
-              errorMessage: errorMessage,
-            ),
-            editingFieldId: null,
-            onEditField: (_) {},
-            onApplyField: _failedWrite,
-            onCancelEditing: () {},
-            onMinimize: () {},
-            onToggleMaximize: () {},
-            isMaximized: maximizeState,
-            onClose: () {},
-            onRefresh: () {},
-            onSelectProcess: (_) {},
-          ),
-        );
-
-        for (final size in const [Size(520, 360), Size(480, 340)]) {
-          tester.view.physicalSize = size;
-          tester.view.devicePixelRatio = 1;
-
-          await tester.pumpWidget(buildShell(null));
-          final before = _fieldRowRects(tester, profile);
-
-          await tester.pumpWidget(buildShell(message));
-          expect(_fieldRowRects(tester, profile), before);
-          expect(find.byTooltip(message), findsOneWidget);
-
-          await tester.pumpWidget(buildShell(null));
-          expect(_fieldRowRects(tester, profile), before);
-          expect(find.byTooltip(message), findsNothing);
-          expect(
-            find.byType(TrainerFieldRow),
-            findsNWidgets(profile.fields.length),
-          );
-          expect(tester.takeException(), isNull);
-        }
-
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-      },
-    );
-
     testWidgets(
       'Class LudavaShell fills and blocks interaction with shutdown overlay',
       (tester) async {
@@ -435,78 +236,8 @@ void main() {
       expect(find.text(message), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
-
-    testWidgets(
-      'Class LudavaShell keeps an expanded trainer usable at minimum size',
-      (tester) async {
-        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        final maximizeState = ValueNotifier(false);
-        addTearDown(maximizeState.dispose);
-        final profile = GameProfileCatalog.profiles.first;
-        final field = profile.fields.values.first;
-
-        await tester.pumpWidget(
-          _wrap(
-            LudavaShell(
-              session: TrainerSessionState(
-                processIds: const [42],
-                selectedProcessId: 42,
-                processMetadata: Rpcs3ProcessMetadata(
-                  executablePath: r'C:\RPCS3\rpcs3.exe',
-                  startedAtUtc: DateTime.utc(2026),
-                ),
-                detection: GameDetectionResult(
-                  status: GameDetectionStatus.supportedGame,
-                  processId: 42,
-                  profile: profile,
-                  confidence: GameIdentityConfidence.confirmed,
-                  evidenceDescription: 'Confirmed test profile.',
-                ),
-                memoryBase: 0x1000,
-                readResults: {
-                  field.id: GameReadResult(
-                    status: GameReadStatus.success,
-                    fieldId: field.id,
-                    value: 17,
-                  ),
-                },
-              ),
-              editingFieldId: field.id,
-              onEditField: (_) {},
-              onApplyField: _failedWrite,
-              onCancelEditing: () {},
-              onMinimize: () {},
-              onToggleMaximize: () {},
-              isMaximized: maximizeState,
-              onClose: () {},
-              onRefresh: () {},
-              onSelectProcess: (_) {},
-            ),
-          ),
-        );
-
-        final input = find.byKey(ValueKey('inline-editor-input-${field.id}'));
-        expect(find.byType(TrainerFieldsPanel), findsOneWidget);
-        expect(input, findsOneWidget);
-        await tester.ensureVisible(find.byTooltip('Apply Bolts'));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-      },
-    );
   });
 }
-
-List<Rect> _fieldRowRects(WidgetTester tester, GameProfile profile) => profile
-    .fields
-    .keys
-    .map(
-      (fieldId) =>
-          tester.getRect(find.byKey(ValueKey('trainer-field-row-$fieldId'))),
-    )
-    .toList(growable: false);
 
 Widget _wrap(Widget child, {ThemeData? theme}) =>
     MaterialApp(theme: theme ?? LudavaTheme.graphiteAndTeal, home: child);
