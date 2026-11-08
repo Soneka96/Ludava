@@ -1,0 +1,255 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ludava_app/app/ludava_window_controller.dart';
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
+import 'package:window_manager/window_manager.dart';
+
+void main() {
+  group('Method LudavaWindowController.configure() behaves correctly', () {
+    test(
+      'Method LudavaWindowController.configure() skips non-Windows targets',
+      () {
+        var lookups = 0;
+        final controller = LudavaWindowController(
+          currentWindow: () {
+            lookups++;
+            return null;
+          },
+          isWindows: () => false,
+        );
+
+        controller.configure();
+
+        expect(lookups, 0);
+      },
+    );
+
+    test(
+      'Method LudavaWindowController.configure() tolerates a missing window',
+      () {
+        var lookups = 0;
+        final controller = LudavaWindowController(
+          currentWindow: () {
+            lookups++;
+            return null;
+          },
+          isWindows: () => true,
+        );
+
+        controller.configure();
+
+        expect(lookups, 1);
+      },
+    );
+
+    test(
+      'Method LudavaWindowController.configure() applies shared window sizes',
+      () {
+        final window = Window.borrowed(0);
+        Size? minimumSize;
+        Size? initialSize;
+        final controller = LudavaWindowController(
+          currentWindow: () => window,
+          isWindows: () => true,
+          onConfigureWindow: (configuredWindow, minimum, initial) {
+            expect(configuredWindow, same(window));
+            minimumSize = minimum;
+            initialSize = initial;
+          },
+          registerWindowStateObserver: (_) => () {},
+          registerWindowCloseObserver: (_) => () {},
+        );
+
+        controller.configure();
+
+        expect(minimumSize, LudavaDimensions.minimumWindowSize);
+        expect(initialSize, LudavaDimensions.initialWindowSize);
+      },
+    );
+
+    test('Method LudavaWindowController.configure() tracks maximize and restore events', () {
+      final window = Window.borrowed(0);
+      ValueChanged<bool>? onMaximizedChanged;
+      var removeCalls = 0;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        isWindows: () => true,
+        onConfigureWindow: (_, _, _) {},
+        registerWindowStateObserver: (onChanged) {
+          onMaximizedChanged = onChanged;
+          return () => removeCalls++;
+        },
+        registerWindowCloseObserver: (_) =>
+            () => removeCalls++,
+      );
+
+      controller.configure();
+      expect(controller.isMaximized.value, isFalse);
+
+      onMaximizedChanged!(true);
+      expect(controller.isMaximized.value, isTrue);
+
+      onMaximizedChanged!(false);
+      expect(controller.isMaximized.value, isFalse);
+
+      controller.dispose();
+      expect(removeCalls, 2);
+    });
+
+    test('Method LudavaWindowController.configure() forwards native close requests to its owner', () async {
+      final window = Window.borrowed(0);
+      Future<void> Function(bool Function() cancelRequest)?
+      onNativeCloseRequested;
+      final cleanupGate = Completer<void>();
+      var cleanupCalls = 0;
+      var cancellationCalls = 0;
+      bool? observedCancellationResult;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        isWindows: () => true,
+        onConfigureWindow: (_, _, _) {},
+        registerWindowStateObserver: (_) => () {},
+        registerWindowCloseObserver: (callback) {
+          onNativeCloseRequested = callback;
+          return () {};
+        },
+        requestNativeClose: (window) async {
+          await onNativeCloseRequested!(() {
+            cancellationCalls++;
+            return true;
+          });
+          return true;
+        },
+      );
+
+      controller.configure(
+        onCloseRequested: (requestCancelled) {
+          observedCancellationResult = requestCancelled;
+          cleanupCalls++;
+          return cleanupGate.future;
+        },
+      );
+      final closeRequest = onNativeCloseRequested!(() {
+        cancellationCalls++;
+        return true;
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cleanupCalls, 1);
+      expect(observedCancellationResult, isTrue);
+      expect(cancellationCalls, 1);
+      var requestCompleted = false;
+      closeRequest.then((_) => requestCompleted = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(requestCompleted, isFalse);
+
+      cleanupGate.complete();
+      await closeRequest;
+      expect(requestCompleted, isTrue);
+      await controller.close();
+      expect(cleanupCalls, 1);
+      expect(cancellationCalls, 1);
+      controller.dispose();
+    });
+
+    test(
+      'Method LudavaWindowController.configure() forwards failed close veto',
+      () async {
+        final window = Window.borrowed(0);
+        Future<void> Function(bool Function() cancelRequest)?
+        onNativeCloseRequested;
+        bool? observedCancellationResult;
+        final controller = LudavaWindowController(
+          currentWindow: () => window,
+          isWindows: () => true,
+          onConfigureWindow: (_, _, _) {},
+          registerWindowStateObserver: (_) => () {},
+          registerWindowCloseObserver: (callback) {
+            onNativeCloseRequested = callback;
+            return () {};
+          },
+        );
+
+        controller.configure(
+          onCloseRequested: (requestCancelled) async {
+            observedCancellationResult = requestCancelled;
+          },
+        );
+        await onNativeCloseRequested!(() => false);
+
+        expect(observedCancellationResult, isFalse);
+        controller.dispose();
+      },
+    );
+  });
+
+  group('Method LudavaWindowController.minimize() behaves correctly', () {
+    test(
+      'Method LudavaWindowController.minimize() tolerates a missing window',
+      () {
+        final controller = LudavaWindowController(currentWindow: () => null);
+
+        expect(controller.minimize, returnsNormally);
+      },
+    );
+  });
+
+  group('Method LudavaWindowController.toggleMaximize() behaves correctly', () {
+    test('Method LudavaWindowController.toggleMaximize() tolerates a missing window', () {
+      final controller = LudavaWindowController(currentWindow: () => null);
+
+      expect(controller.toggleMaximize, returnsNormally);
+    });
+  });
+
+  group('Method LudavaWindowController.close() behaves correctly', () {
+    test(
+      'Method LudavaWindowController.close() tolerates a missing window',
+      () async {
+        final controller = LudavaWindowController(currentWindow: () => null);
+
+        await controller.close();
+      },
+    );
+
+    test('Method LudavaWindowController.close() reports native rejection and retries', () async {
+      final window = Window.borrowed(0);
+      final results = <bool>[false, true];
+      var closeCalls = 0;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        requestNativeClose: (_) async {
+          closeCalls++;
+          return results.removeAt(0);
+        },
+      );
+
+      await expectLater(controller.close(), throwsStateError);
+      await controller.close();
+
+      expect(closeCalls, 2);
+      controller.dispose();
+    });
+
+    test('Method LudavaWindowController.close() propagates native errors for retry', () async {
+      final window = Window.borrowed(0);
+      var closeCalls = 0;
+      final controller = LudavaWindowController(
+        currentWindow: () => window,
+        requestNativeClose: (_) async {
+          closeCalls++;
+          if (closeCalls == 1) throw StateError('Native close failed.');
+          return true;
+        },
+      );
+
+      await expectLater(controller.close(), throwsStateError);
+      await controller.close();
+
+      expect(closeCalls, 2);
+      controller.dispose();
+    });
+  });
+}

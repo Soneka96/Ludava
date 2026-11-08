@@ -25,9 +25,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
+          flutter-version: '3.47.5'
 
       - name: Resolve workspace dependencies
         run: dart pub get
@@ -60,10 +61,17 @@ jobs:
         run: dart analyze
         working-directory: apps/ludava_tui
 
-      - name: Build Windows executable and discovery library
+      - name: Analyze Flutter app
+        run: flutter analyze
+        working-directory: apps/ludava_app
+
+      - name: Build and validate portable Windows distributions
         shell: pwsh
-        working-directory: ${{ runner.temp }}
-        run: '& "$env:GITHUB_WORKSPACE\tool\build_windows.ps1"'
+        run: .\tool\package_windows.ps1
+
+      - name: Build SDK integration-test discovery library
+        shell: pwsh
+        run: .\tool\build_process_discovery.ps1 -OutputPath build\ludava_process_discovery.dll
 
       - name: Test SDK
         run: dart test
@@ -72,6 +80,10 @@ jobs:
       - name: Test TUI
         run: dart test
         working-directory: apps/ludava_tui
+
+      - name: Test Flutter app
+        run: flutter test
+        working-directory: apps/ludava_app
 
       - name: Test root compatibility entry points
         run: dart test
@@ -83,18 +95,12 @@ jobs:
         run: dart run bin/ludava.dart --help
         working-directory: apps/ludava_tui
 
-      - name: Check packaged executable from another directory
-        shell: pwsh
-        run: |
-          $packageDirectory = Join-Path $env:TEMP ("ludava-ci-standalone-" + [guid]::NewGuid().ToString('N'))
-          New-Item -ItemType Directory -Path $packageDirectory | Out-Null
-          Copy-Item "$env:GITHUB_WORKSPACE\build\Ludava.exe" $packageDirectory
-          Copy-Item "$env:GITHUB_WORKSPACE\build\ludava_process_discovery.dll" $packageDirectory
-          Push-Location $env:TEMP
-          try {
-            & (Join-Path $packageDirectory 'Ludava.exe') --help | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Packaged help failed with exit code $LASTEXITCODE." }
-          } finally {
-            Pop-Location
-            Remove-Item -LiteralPath $packageDirectory -Recurse -Force
-          }
+      - name: Upload portable Windows distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: Ludava-Windows-x64
+          path: |
+            build/distributions/Ludava-Desktop-Windows-x64.zip
+            build/distributions/Ludava-TUI-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 30

@@ -164,9 +164,24 @@ function Invoke-DartFormatCheck {
         $relativePath = $changedPath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
         $absolutePath = [System.IO.Path]::GetFullPath((Join-Path $WorkingDirectory $relativePath))
         if (-not (Test-Path -LiteralPath $absolutePath -PathType Leaf)) {
+            $worktreeStatus = Get-RequiredOutput 'git' @(
+                'diff', '--name-status', '-z', 'HEAD', '--', $changedPath
+            ) $WorkingDirectory
+            $statusParts = $worktreeStatus.Split(
+                [char]0,
+                [System.StringSplitOptions]::RemoveEmptyEntries
+            )
+            if ($statusParts.Length -ge 2 -and $statusParts[0][0] -eq 'D') {
+                continue
+            }
             throw "Git reported changed Dart file '$changedPath', but it is missing from the checkout."
         }
         $absolutePaths.Add($absolutePath)
+    }
+
+    if ($absolutePaths.Count -eq 0) {
+        Write-Host 'All changed Dart files were deleted from the checkout.'
+        return
     }
 
     $formatArguments = @('format', '--output=none', '--set-exit-if-changed') + $absolutePaths.ToArray()

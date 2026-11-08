@@ -1,10 +1,10 @@
 # Ludava
 
-> A Windows trainer for supported RPCS3 games, powered by a reusable Dart SDK.
+> A personal Windows trainer for supported RPCS3 games, powered by a reusable Dart SDK.
 
-Ludava currently uses a Nocterm terminal interface. Game and build compatibility is documented with the [game research records](docs/games/collection.md); source profiles define the actual supported fields.
+Ludava includes a Nocterm frontend and a Flutter Windows desktop app. Game and build compatibility is documented with the [game research records](docs/games/collection.md); source profiles define the actual supported fields.
 
-The Windows CI workflow validates formatting, analysis and test suites, workspace boundaries, and executable packaging. See [GitHub Actions](https://github.com/Soneka96/Ludava/actions) for current results.
+Windows CI validates formatting, package boundaries, SDK/TUI/Flutter tests, both portable ZIPs, and relocated launch behavior. Each successful run publishes downloadable ZIP artifacts. See [GitHub Actions](https://github.com/Soneka96/Ludava/actions) for current results and downloads.
 
 ## Start here
 
@@ -18,15 +18,11 @@ This root command remains as a compatibility entry point. To run the TUI
 package's own entry point, change to `apps/ludava_tui` and run
 `dart run bin/ludava.dart` there.
 
-Run `.\tool\build_windows.ps1` first to create the native process-discovery
-library used by `dart run` and the compiled executable.
+For the graphical desktop app and portable Windows downloads, see the [Windows build and ROG Ally guide](docs/guides/windows-build.md).
 
-Press **1–9** to open the corresponding field directly. Use **↑/↓** to move
-through fields and **Enter** to open the selected field. In the editor,
-**Enter** applies a changed, valid value and shows the verified read-back;
-**Escape** cancels without writing. Use **R** to refresh, **G** to re-detect
-the game, and **Q** to quit. The editor starts with the current value ungrouped
-and its cursor at the end.
+Before running the TUI from source on Windows, run `.\tool\build_windows.ps1` to create the native process-discovery library used by `dart run`.
+
+In the TUI, press **1–9** to open a field, use **↑/↓** to move and **Enter** to edit. In the editor, **Enter** applies a value and **Escape** cancels. Use **R** to refresh, **G** to re-detect, and **Q** to quit.
 
 Ludava discovers RPCS3 automatically and lets you choose a process when several are running. It resolves game identity and session memory base from current evidence, without a normal-user address prompt.
 
@@ -36,22 +32,24 @@ Ludava verifies fresh RPCS3 executable and session evidence before selecting a p
 
 For development and troubleshooting, use the [diagnostic CLI guide](docs/guides/diagnostics.md). The terminal commands are not required for ordinary trainer use.
 
-## Portable Windows build
+## Portable Windows distributions
 
-Build the Windows x64 executable and its native process-discovery library with:
+Build both Windows x64 packages from the repository root:
 
 ```powershell
-.\tool\build_windows.ps1
+.\tool\package_windows.ps1
 ```
 
-Copy `build\Ludava.exe` and `build\ludava_process_discovery.dll` to the ROG
-Ally, keeping them in the same directory. Dart and Flutter are not required on
-the Ally. See [Windows build and ROG Ally setup](docs/guides/windows-build.md) for the
-build and transfer steps.
+This produces:
+
+- `build\distributions\Ludava-Desktop-Windows-x64.zip`, containing `Ludava.exe` and the complete Flutter runtime bundle.
+- `build\distributions\Ludava-TUI-Windows-x64.zip`, containing `Ludava-TUI.exe` and the native process-discovery DLL.
+
+Copy either ZIP to the ROG Ally and extract it into its own folder. Dart and Flutter are not required on the Ally. See [Windows build and ROG Ally setup](docs/guides/windows-build.md) for transfer details and the physical-device acceptance checklist.
 
 ## Development
 
-The Dart workspace contains a reusable SDK (`packages/ludava_sdk`) and the Nocterm terminal frontend (`apps/ludava_tui`). The planned Flutter Windows app will reuse the SDK instead of implementing a second memory engine. See [architecture](docs/ARCHITECTURE.md) and [development conventions](docs/DEVELOPMENT.md) for package responsibilities, testing and workspace setup.
+The Dart workspace contains a reusable SDK (`packages/ludava_sdk`), the Nocterm terminal frontend (`apps/ludava_tui`), and a Flutter Windows frontend (`apps/ludava_app`). Both frontends use the SDK rather than implementing separate memory engines. See [architecture](docs/ARCHITECTURE.md) and [development conventions](docs/DEVELOPMENT.md) for package responsibilities, testing and workspace setup.
 
 ## Documentation
 
