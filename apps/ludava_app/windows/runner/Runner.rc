@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.soneka96" "\0"
-            VALUE "FileDescription", "ludava_app" "\0"
+            VALUE "FileDescription", "Ludava" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "ludava_app" "\0"
+            VALUE "InternalName", "Ludava" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.soneka96. All rights reserved." "\0"
-            VALUE "OriginalFilename", "ludava_app.exe" "\0"
-            VALUE "ProductName", "ludava_app" "\0"
+            VALUE "OriginalFilename", "Ludava.exe" "\0"
+            VALUE "ProductName", "Ludava" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

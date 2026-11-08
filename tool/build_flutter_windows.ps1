@@ -1,18 +1,21 @@
+param(
+    [string]$BuildDirectory = 'build'
+)
+
 $ErrorActionPreference = 'Stop'
 
 if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
     throw 'Run this build script with the Windows x64 Flutter SDK.'
 }
+if ([System.IO.Path]::IsPathRooted($BuildDirectory) -or
+    $BuildDirectory -match '(^|[\\/])\.\.([\\/]|$)') {
+    throw 'The Flutter build directory must be a safe project-relative path.'
+}
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$nativeLibraryPath = Join-Path $projectRoot 'build\ludava_process_discovery.dll'
 $flutterProject = Join-Path $projectRoot 'apps\ludava_app'
-$releaseDirectory = Join-Path $flutterProject 'build\windows\x64\runner\Release'
-
-& (Join-Path $PSScriptRoot 'build_process_discovery.ps1') -OutputPath $nativeLibraryPath
-if ($LASTEXITCODE -ne 0) {
-    throw "Native process-discovery library build failed with exit code $LASTEXITCODE."
-}
+$flutterBuildDirectory = Join-Path $flutterProject $BuildDirectory
+$releaseDirectory = Join-Path $flutterBuildDirectory 'windows\x64\runner\Release'
 
 Push-Location $flutterProject
 try {
@@ -21,34 +24,64 @@ try {
         throw "Flutter dependency resolution failed with exit code $LASTEXITCODE."
     }
 
-    flutter build windows --release
+    $configuration = flutter config --list
     if ($LASTEXITCODE -ne 0) {
-        throw "Flutter Windows release build failed with exit code $LASTEXITCODE."
+        throw "Flutter configuration lookup failed with exit code $LASTEXITCODE."
+    }
+    $buildDirectorySetting = $configuration |
+        Where-Object { $_ -match '^\s*build-dir:' } |
+        Select-Object -First 1
+    $previousBuildDirectory = if ($null -eq $buildDirectorySetting) {
+        $null
+    } else {
+        ($buildDirectorySetting -replace '^\s*build-dir:\s*', '').Trim()
+    }
+    if ($previousBuildDirectory -eq '(Not set)') {
+        $previousBuildDirectory = $null
+    }
+
+    try {
+        flutter config "--build-dir=$BuildDirectory"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Flutter build directory configuration failed with exit code $LASTEXITCODE."
+        }
+
+        flutter build windows --release
+        if ($LASTEXITCODE -ne 0) {
+            throw "Flutter Windows release build failed with exit code $LASTEXITCODE."
+        }
+    } finally {
+        if ([string]::IsNullOrWhiteSpace($previousBuildDirectory)) {
+            flutter config '--build-dir='
+        } else {
+            flutter config "--build-dir=$previousBuildDirectory"
+        }
+        if ($LASTEXITCODE -ne 0) {
+            throw "Flutter build directory configuration could not be restored (exit code $LASTEXITCODE)."
+        }
     }
 } finally {
     Pop-Location
 }
 
 if (-not (Test-Path -LiteralPath $releaseDirectory -PathType Container)) {
-    throw "Flutter release bundle was not found at $releaseDirectory."
+    throw "Flutter release output was not found at $releaseDirectory."
 }
 
-Copy-Item -LiteralPath $nativeLibraryPath -Destination $releaseDirectory -Force
-
 $requiredFiles = @(
-    'ludava_app.exe',
+    'Ludava.exe',
     'flutter_windows.dll',
     'cnativeapi.dll',
-    'ludava_process_discovery.dll'
+    'data\app.so',
+    'data\icudtl.dat'
 )
 foreach ($requiredFile in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $releaseDirectory $requiredFile) -PathType Leaf)) {
-        throw "Flutter release bundle is missing $requiredFile."
+        throw "Flutter release output is missing $requiredFile."
     }
 }
-
 if (-not (Test-Path -LiteralPath (Join-Path $releaseDirectory 'data\flutter_assets') -PathType Container)) {
-    throw 'Flutter release bundle is missing data\flutter_assets.'
+    throw 'Flutter release output is missing data\flutter_assets.'
 }
 
-Write-Host "Built the movable Flutter Windows bundle at $releaseDirectory"
+Write-Host "Built the Flutter Windows release output at $releaseDirectory"

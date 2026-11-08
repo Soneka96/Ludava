@@ -65,51 +65,9 @@ jobs:
         run: flutter analyze
         working-directory: apps/ludava_app
 
-      - name: Build Windows executable and discovery library
+      - name: Build and validate portable Windows distributions
         shell: pwsh
-        working-directory: ${{ runner.temp }}
-        run: '& "$env:GITHUB_WORKSPACE\tool\build_windows.ps1"'
-
-      - name: Build Flutter Windows release bundle
-        shell: pwsh
-        run: .\tool\build_flutter_windows.ps1
-
-      - name: Verify relocated Flutter Windows bundle
-        shell: pwsh
-        run: |
-          $bundleDirectory = Join-Path $env:GITHUB_WORKSPACE 'apps\ludava_app\build\windows\x64\runner\Release'
-          $requiredFiles = @(
-            'ludava_app.exe',
-            'flutter_windows.dll',
-            'cnativeapi.dll',
-            'ludava_process_discovery.dll'
-          )
-          foreach ($requiredFile in $requiredFiles) {
-            if (-not (Test-Path -LiteralPath (Join-Path $bundleDirectory $requiredFile) -PathType Leaf)) {
-              throw "Flutter release bundle is missing $requiredFile."
-            }
-          }
-          if (-not (Test-Path -LiteralPath (Join-Path $bundleDirectory 'data\flutter_assets') -PathType Container)) {
-            throw 'Flutter release bundle is missing data\flutter_assets.'
-          }
-
-          $relocatedDirectory = Join-Path $env:TEMP ("ludava-flutter-relocated-" + [guid]::NewGuid().ToString('N'))
-          New-Item -ItemType Directory -Path $relocatedDirectory | Out-Null
-          Get-ChildItem -LiteralPath $bundleDirectory | Copy-Item -Destination $relocatedDirectory -Recurse -Force
-          $applicationPath = Join-Path $relocatedDirectory 'ludava_app.exe'
-          $application = Start-Process -FilePath $applicationPath -WorkingDirectory $relocatedDirectory -PassThru -WindowStyle Hidden
-          try {
-            Start-Sleep -Seconds 3
-            $application.Refresh()
-            if ($application.HasExited) {
-              throw "Relocated Flutter app exited with code $($application.ExitCode)."
-            }
-          } finally {
-            $application.Refresh()
-            if (-not $application.HasExited) {
-              Stop-Process -Id $application.Id -Force -ErrorAction SilentlyContinue
-            }
-          }
+        run: .\tool\package_windows.ps1
 
       - name: Test SDK
         run: dart test
@@ -133,18 +91,12 @@ jobs:
         run: dart run bin/ludava.dart --help
         working-directory: apps/ludava_tui
 
-      - name: Check packaged executable from another directory
-        shell: pwsh
-        run: |
-          $packageDirectory = Join-Path $env:TEMP ("ludava-ci-standalone-" + [guid]::NewGuid().ToString('N'))
-          New-Item -ItemType Directory -Path $packageDirectory | Out-Null
-          Copy-Item "$env:GITHUB_WORKSPACE\build\Ludava.exe" $packageDirectory
-          Copy-Item "$env:GITHUB_WORKSPACE\build\ludava_process_discovery.dll" $packageDirectory
-          Push-Location $env:TEMP
-          try {
-            & (Join-Path $packageDirectory 'Ludava.exe') --help | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Packaged help failed with exit code $LASTEXITCODE." }
-          } finally {
-            Pop-Location
-            Remove-Item -LiteralPath $packageDirectory -Recurse -Force
-          }
+      - name: Upload portable Windows distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: Ludava-Windows-x64
+          path: |
+            build/distributions/Ludava-Desktop-Windows-x64.zip
+            build/distributions/Ludava-TUI-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 30

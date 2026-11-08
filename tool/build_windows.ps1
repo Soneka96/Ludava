@@ -6,7 +6,7 @@ if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $outputDirectory = Join-Path $projectRoot 'build'
-$executablePath = Join-Path $outputDirectory 'Ludava.exe'
+$executablePath = Join-Path $outputDirectory 'Ludava-TUI.exe'
 $nativeLibraryPath = Join-Path $outputDirectory 'ludava_process_discovery.dll'
 $tuiEntrypoint = Join-Path $projectRoot 'apps\ludava_tui\bin\ludava.dart'
 
