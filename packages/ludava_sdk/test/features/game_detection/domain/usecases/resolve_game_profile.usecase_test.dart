@@ -2,6 +2,7 @@ import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/tools_of_destruction_bcus98127_profile.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/params/resolve_game_profile.params.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/resolve_game_profile.usecase.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
@@ -157,6 +158,64 @@ void main() {
       );
       expect(result.availableFields.map((field) => field.id), ['bolts']);
     });
+
+    test(
+      'Method execute() matches Tools of Destruction from its measured PPU hash',
+      () {
+        final profile = ToolsOfDestructionBcus98127Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: profile.buildId,
+            executable: profile.executable,
+            executableHash: profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.supportedGame);
+        expect(result.profile, same(profile));
+        expect(result.confidence, GameIdentityConfidence.confirmed);
+        expect(result.availableFields.map((field) => field.id), ['bolts']);
+      },
+    );
+
+    test(
+      'Method execute() rejects Tools of Destruction with another PPU hash',
+      () {
+        final profile = ToolsOfDestructionBcus98127Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: profile.buildId,
+            executable: profile.executable,
+            executableHash: DeadlockedPs3Profile.profile.executableHash,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test(
+      'Method execute() keeps Tools of Destruction ambiguous without its PPU hash',
+      () {
+        final profile = ToolsOfDestructionBcus98127Profile.profile;
+        final result = ResolveGameProfileUseCase().execute(
+          _params(
+            titleId: profile.buildId,
+            executable: profile.executable,
+            executableHash: null,
+            confidence: GameIdentityConfidence.confirmed,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
 
     test('Method execute() matches each game from its measured PPU hash', () {
       final profiles = [

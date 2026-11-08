@@ -3,11 +3,12 @@ import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/tools_of_destruction_bcus98127_profile.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('Method find() behaves correctly', () {
-    test('Method find() returns each registered Collection game profile', () {
+    test('Method find() returns each registered game profile', () {
       expect(
         GameProfileCatalog.find(Rc1CollectionProfile.id),
         same(Rc1CollectionProfile.profile),
@@ -23,6 +24,10 @@ void main() {
       expect(
         GameProfileCatalog.find(DeadlockedPs3Profile.id),
         same(DeadlockedPs3Profile.profile),
+      );
+      expect(
+        GameProfileCatalog.find(ToolsOfDestructionBcus98127Profile.id),
+        same(ToolsOfDestructionBcus98127Profile.profile),
       );
     });
 
@@ -40,6 +45,7 @@ void main() {
           Rc2CollectionProfile.id,
           Rc3CollectionProfile.id,
           DeadlockedPs3Profile.id,
+          ToolsOfDestructionBcus98127Profile.id,
         ],
       );
     });

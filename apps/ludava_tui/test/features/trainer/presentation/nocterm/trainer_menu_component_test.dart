@@ -69,6 +69,45 @@ void main() {
     );
 
     test(
+      'Class TrainerMenuComponent displays and opens the researched Tools of Destruction Bolts editor',
+      () async {
+        await testNocterm('Tools of Destruction bolt profile', (tester) async {
+          final openedFields = <GameField>[];
+          await tester.pumpComponent(
+            _menu(
+              _session(
+                profile:
+                    GameProfileCatalog.find('tools-of-destruction-bcus98127')!,
+                reads: {
+                  'bolts': const GameReadResult(
+                    status: GameReadStatus.success,
+                    fieldId: 'bolts',
+                    value: 3793,
+                  ),
+                },
+              ),
+              onOpenField: openedFields.add,
+            ),
+          );
+
+          expect(
+            tester.terminalState,
+            containsText(
+              'Ratchet & Clank Future: Tools of Destruction · PS3 BCUS98127',
+            ),
+          );
+          expect(tester.terminalState, containsText('1. Bolts'));
+          expect(tester.terminalState, containsText('3,793'));
+
+          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendEnter();
+
+          expect(openedFields.map((field) => field.id), ['bolts', 'bolts']);
+        });
+      },
+    );
+
+    test(
       'Class TrainerMenuComponent changes edit behavior by field write status',
       () async {
         await testNocterm('mixed field write status', (tester) async {

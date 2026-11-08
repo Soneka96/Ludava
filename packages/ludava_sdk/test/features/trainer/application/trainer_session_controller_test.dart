@@ -8,6 +8,7 @@ import 'package:ludava_sdk/features/game_memory/domain/entities/game_write_resul
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/tools_of_destruction_bcus98127_profile.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:ludava_sdk/features/trainer/application/trainer_session_controller.dart';
@@ -313,24 +314,28 @@ void main() {
       },
     );
 
-    test('Method selectProcess() supports each Collection game profile', () {
-      final profiles = [
-        Rc1CollectionProfile.profile,
-        Rc2CollectionProfile.profile,
-        Rc3CollectionProfile.profile,
-      ];
+    test(
+      'Method selectProcess() supports each Collection and standalone profile',
+      () {
+        final profiles = [
+          Rc1CollectionProfile.profile,
+          Rc2CollectionProfile.profile,
+          Rc3CollectionProfile.profile,
+          ToolsOfDestructionBcus98127Profile.profile,
+        ];
 
-      for (final profile in profiles) {
-        final fixture = _SessionFixture()..profile = profile;
-        fixture.controller.connect();
+        for (final profile in profiles) {
+          final fixture = _SessionFixture()..profile = profile;
+          fixture.controller.connect();
 
-        expect(fixture.controller.state.profile?.id, profile.id);
-        expect(
-          fixture.controller.state.readResults['bolts']?.succeeded,
-          isTrue,
-        );
-      }
-    });
+          expect(fixture.controller.state.profile?.id, profile.id);
+          expect(
+            fixture.controller.state.readResults['bolts']?.succeeded,
+            isTrue,
+          );
+        }
+      },
+    );
 
     test('Method selectProcess() does not read when no game is active', () {
       final fixture =
