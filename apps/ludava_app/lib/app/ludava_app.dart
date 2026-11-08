@@ -40,6 +40,7 @@ class _LudavaAppState extends State<LudavaApp> {
   late final LudavaWindowController _windowController;
   Future<void>? _closeFuture;
   Future<void>? _controllerDisposalFuture;
+  _ShutdownState _shutdownState = _ShutdownState.running;
   String? _closeFailure;
 
   /// Creates the controller and registers the awaited native close sequence.
@@ -74,80 +75,141 @@ class _LudavaAppState extends State<LudavaApp> {
         builder: (context, child) => LudavaShell(
           session: _controller.session,
           editingFieldId: _controller.editingFieldId,
-          onEditField: (field) => _controller.editField(field),
-          onApplyField: _controller.writeField,
-          onCancelEditing: _controller.cancelEditing,
+          onEditField: _editField,
+          onApplyField: _writeField,
+          onCancelEditing: _cancelEditing,
           onMinimize: _minimizeWindow,
           onToggleMaximize: _toggleMaximizeWindow,
           isMaximized: _windowController.isMaximized,
           onClose: _requestWindowClose,
+          isClosing: _shutdownState == _ShutdownState.closing,
           closeFailure: _closeFailure,
-          onRefresh: _controller.refresh,
-          onSelectProcess: (processId) => _controller.selectProcess(processId),
+          onRefresh: _refresh,
+          onSelectProcess: _selectProcess,
         ),
       ),
     );
   }
 
+  /// Opens a field editor only while the controller is still active.
+  void _editField(GameField field) {
+    if (_shutdownState == _ShutdownState.running) {
+      _controller.editField(field);
+    }
+  }
+
+  /// Writes a value only while the controller is still active.
+  GameWriteResult _writeField(String fieldId, int value) {
+    if (_shutdownState == _ShutdownState.running) {
+      return _controller.writeField(fieldId, value);
+    }
+    return GameWriteResult(
+      status: GameWriteStatus.none,
+      fieldId: fieldId,
+      requestedValue: value,
+    );
+  }
+
+  /// Cancels editing only while the controller is still active.
+  void _cancelEditing() {
+    if (_shutdownState == _ShutdownState.running) {
+      _controller.cancelEditing();
+    }
+  }
+
+  /// Refreshes the session only while the controller is still active.
+  void _refresh() {
+    if (_shutdownState == _ShutdownState.running) _controller.refresh();
+  }
+
+  /// Selects a process only while the controller is still active.
+  void _selectProcess(int processId) {
+    if (_shutdownState == _ShutdownState.running) {
+      _controller.selectProcess(processId);
+    }
+  }
+
   /// Minimizes the current native application window when it is available.
-  void _minimizeWindow() => _windowController.minimize();
+  void _minimizeWindow() {
+    if (_shutdownState == _ShutdownState.running) _windowController.minimize();
+  }
 
   /// Toggles the current native window between maximized and restored sizes.
-  void _toggleMaximizeWindow() => _windowController.toggleMaximize();
+  void _toggleMaximizeWindow() {
+    if (_shutdownState == _ShutdownState.running) {
+      _windowController.toggleMaximize();
+    }
+  }
 
   /// Starts the same awaited cleanup path for title-bar close requests.
   void _requestWindowClose() {
-    unawaited(_closeAfterDisposal());
+    if (_shutdownState == _ShutdownState.closing) return;
+    unawaited(_closeAfterDisposal(requestCancelled: true));
   }
 
   /// Shares one cleanup future across repeated title-bar and native requests.
-  Future<void> _closeAfterDisposal() {
+  Future<void> _closeAfterDisposal({required bool requestCancelled}) {
     final activeClose = _closeFuture;
     if (activeClose != null) return activeClose;
+    if (_shutdownState == _ShutdownState.closing) return Future<void>.value();
 
-    final closeFuture = _disposeControllerAndCloseWindow()
-        .catchError((Object error, StackTrace stackTrace) {
-          _reportError(error, stackTrace, 'while closing the native window');
-          if (mounted) {
-            setState(() => _closeFailure = error.toString());
-          }
-        })
-        .whenComplete(() {
-          _closeFuture = null;
-        });
+    if (_shutdownState == _ShutdownState.running) {
+      setState(() => _shutdownState = _ShutdownState.closing);
+    }
+
+    final closeFuture =
+        _disposeControllerAndCloseWindow(requestCancelled: requestCancelled)
+            .whenComplete(() {
+              _closeFuture = null;
+            });
     _closeFuture = closeFuture;
     return closeFuture;
   }
 
   /// Awaits controller cleanup and then closes the native window.
-  Future<void> _disposeControllerAndCloseWindow() async {
+  Future<void> _disposeControllerAndCloseWindow({
+    required bool requestCancelled,
+  }) async {
     try {
       await _disposeControllerOnce();
     } catch (error, stackTrace) {
       _reportError(error, stackTrace, 'while disposing the trainer controller');
     }
-    await _windowController.close();
-  }
-
-  /// Completes cleanup after a native close event's veto result is known.
-  Future<void> _handleNativeCloseRequest(bool requestCancelled) async {
-    if (requestCancelled) {
-      await _closeAfterDisposal();
+    if (!requestCancelled) {
+      final error = StateError(
+        'The native close event could not be cancelled.',
+      );
+      _reportError(
+        error,
+        StackTrace.current,
+        'while intercepting the native window close request',
+      );
+      _showCloseFailure(error.message);
       return;
     }
 
     try {
-      await _disposeControllerOnce();
+      await _windowController.close();
+      if (mounted) setState(() => _shutdownState = _ShutdownState.closing);
     } catch (error, stackTrace) {
-      _reportError(error, stackTrace, 'while disposing the trainer controller');
+      _reportError(error, stackTrace, 'while closing the native window');
+      _showCloseFailure(error.toString());
     }
-    final error = StateError('The native close event could not be cancelled.');
-    _reportError(
-      error,
-      StackTrace.current,
-      'while intercepting the native window close request',
-    );
-    if (mounted) setState(() => _closeFailure = error.message);
+  }
+
+  /// Completes cleanup after a native close event's veto result is known.
+  Future<void> _handleNativeCloseRequest(bool requestCancelled) async {
+    await _closeAfterDisposal(requestCancelled: requestCancelled);
+  }
+
+  /// Keeps the terminal disposed controller behind a retryable failure state.
+  void _showCloseFailure(String failure) {
+    if (mounted) {
+      setState(() {
+        _shutdownState = _ShutdownState.closeFailed;
+        _closeFailure = failure;
+      });
+    }
   }
 
   /// Shares terminal SDK cleanup between close retries and tree disposal.
@@ -175,3 +237,6 @@ class _LudavaAppState extends State<LudavaApp> {
     );
   }
 }
+
+/// Tracks the terminal application shutdown path without reviving the SDK.
+enum _ShutdownState { running, closing, closeFailed }

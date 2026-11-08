@@ -40,6 +40,9 @@ class LudavaShell extends StatelessWidget {
   /// Explains a rejected native close while keeping the app noninteractive.
   final String? closeFailure;
 
+  /// Whether resource cleanup is still underway.
+  final bool isClosing;
+
   /// Refreshes the selected session or retries process discovery.
   final VoidCallback onRefresh;
 
@@ -57,6 +60,7 @@ class LudavaShell extends StatelessWidget {
     required this.onToggleMaximize,
     required this.isMaximized,
     required this.onClose,
+    this.isClosing = false,
     this.closeFailure,
     required this.onRefresh,
     required this.onSelectProcess,
@@ -65,91 +69,132 @@ class LudavaShell extends StatelessWidget {
 
   /// Renders the integrated window chrome and compact utility content.
   @override
-  Widget build(BuildContext context) => DragToResizeArea(
-    resizeEdgeSize: LudavaDimensions.windowResizeHandleSize,
-    child: Scaffold(
-      body: Stack(
-        children: [
-          IgnorePointer(
-            ignoring: closeFailure != null,
-            child: Column(
-              children: [
-                LudavaWindowTitleBar(
-                  session: session,
-                  isMaximized: isMaximized,
-                  onMinimize: onMinimize,
-                  onToggleMaximize: onToggleMaximize,
-                  onClose: onClose,
-                ),
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: LudavaDimensions.maximumContentWidth,
+  Widget build(BuildContext context) {
+    final isBlocked = isClosing || closeFailure != null;
+    return DragToResizeArea(
+      resizeEdgeSize: LudavaDimensions.windowResizeHandleSize,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            ExcludeSemantics(
+              excluding: isBlocked,
+              child: ExcludeFocus(
+                excluding: isBlocked,
+                child: IgnorePointer(
+                  ignoring: isBlocked,
+                  child: Column(
+                    children: [
+                      LudavaWindowTitleBar(
+                        session: session,
+                        isMaximized: isMaximized,
+                        onMinimize: onMinimize,
+                        onToggleMaximize: onToggleMaximize,
+                        onClose: onClose,
                       ),
-                      child: SizedBox.expand(
-                        child: Column(
-                          children: [
-                            TrainerGameHeader(
-                              session: session,
-                              onRefresh: onRefresh,
+                      Expanded(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: LudavaDimensions.maximumContentWidth,
                             ),
-                            Expanded(
-                              child: SafeArea(
-                                child: _buildSessionBody(context),
+                            child: SizedBox.expand(
+                              child: Column(
+                                children: [
+                                  TrainerGameHeader(
+                                    session: session,
+                                    onRefresh: onRefresh,
+                                  ),
+                                  Expanded(
+                                    child: SafeArea(
+                                      child: _buildSessionBody(context),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (closeFailure case final failure?)
-            Positioned.fill(
-              child: ColoredBox(
-                color: Theme.of(context).colorScheme.scrim
-                    .withValues(alpha: .72),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(LudavaSpacing.lg),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Ludava could not close. App actions are disabled.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: LudavaSpacing.sm),
-                        Tooltip(
-                          message: failure,
-                          child: Text(
-                            failure,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
-                        const SizedBox(height: LudavaSpacing.md),
-                        FilledButton(
-                          onPressed: onClose,
-                          child: const Text('Retry close'),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-        ],
+            if (isClosing)
+              Positioned.fill(child: _buildClosingOverlay(context))
+            else if (closeFailure case final failure?)
+              Positioned.fill(
+                child: _buildCloseFailureOverlay(context, failure),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  /// Shows cleanup progress without obscuring the existing window shell.
+  Widget _buildClosingOverlay(BuildContext context) {
+    final theme = Theme.of(context);
+    return ColoredBox(
+      color: theme.colorScheme.scrim.withValues(alpha: .72),
+      child: Center(
+        child: Semantics(
+          liveRegion: true,
+          label: 'Closing Ludava… Finishing cleanup',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: theme.colorScheme.secondary),
+              const SizedBox(height: LudavaSpacing.md),
+              Text('Closing Ludava…', style: theme.textTheme.titleSmall),
+              const SizedBox(height: LudavaSpacing.xs),
+              Text('Finishing cleanup', style: theme.textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Keeps cleanup failures visible and gives Retry keyboard focus.
+  Widget _buildCloseFailureOverlay(BuildContext context, String failure) {
+    final theme = Theme.of(context);
+    return ColoredBox(
+      color: theme.colorScheme.scrim.withValues(alpha: .72),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(LudavaSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Ludava could not close. App actions are disabled.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: LudavaSpacing.sm),
+              Tooltip(
+                message: failure,
+                child: Text(
+                  failure,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+              const SizedBox(height: LudavaSpacing.md),
+              FilledButton(
+                autofocus: true,
+                onPressed: onClose,
+                child: const Text('Retry close'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   /// Shows connection guidance until the SDK resolves a usable memory base.
   Widget _buildSessionBody(BuildContext context) {

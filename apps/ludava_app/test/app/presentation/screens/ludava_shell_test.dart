@@ -308,6 +308,97 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Class LudavaShell overlays closing and failure states at compact sizes',
+      (tester) async {
+        final profile = GameProfileCatalog.profiles.first;
+        final field = profile.fields.values.first;
+        final maximizeState = ValueNotifier(false);
+        addTearDown(maximizeState.dispose);
+        var refreshCalls = 0;
+
+        Widget buildShell({bool isClosing = false, String? closeFailure}) =>
+            _wrap(
+              LudavaShell(
+                session: TrainerSessionState(
+                  processIds: const [42],
+                  selectedProcessId: 42,
+                  processMetadata: Rpcs3ProcessMetadata(
+                    executablePath: r'C:\RPCS3\rpcs3.exe',
+                    startedAtUtc: DateTime.utc(2026),
+                  ),
+                  detection: GameDetectionResult(
+                    status: GameDetectionStatus.supportedGame,
+                    processId: 42,
+                    profile: profile,
+                    confidence: GameIdentityConfidence.confirmed,
+                    evidenceDescription: 'Confirmed test profile.',
+                  ),
+                  memoryBase: 0x1000,
+                  readResults: {
+                    field.id: GameReadResult(
+                      status: GameReadStatus.success,
+                      fieldId: field.id,
+                      value: 17,
+                    ),
+                  },
+                ),
+                editingFieldId: field.id,
+                onEditField: (_) {},
+                onApplyField: _failedWrite,
+                onCancelEditing: () {},
+                onMinimize: () {},
+                onToggleMaximize: () {},
+                isMaximized: maximizeState,
+                onClose: () {},
+                isClosing: isClosing,
+                closeFailure: closeFailure,
+                onRefresh: () => refreshCalls++,
+                onSelectProcess: (_) {},
+              ),
+            );
+
+        for (final size in const [Size(520, 360), Size(480, 340)]) {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          await tester.pumpWidget(buildShell());
+          final rows = _fieldRowRects(tester, profile);
+
+          await tester.pumpWidget(buildShell(isClosing: true));
+          expect(find.text('Closing Ludava…'), findsOneWidget);
+          expect(find.text('Finishing cleanup'), findsOneWidget);
+          expect(find.byType(CircularProgressIndicator), findsOneWidget);
+          expect(_fieldRowRects(tester, profile), rows);
+          expect(
+            tester.getRect(find.text('Closing Ludava…')).bottom,
+            lessThan(size.height),
+          );
+          await tester.tap(
+            find.byTooltip('Refresh values or rediscover RPCS3'),
+            warnIfMissed: false,
+          );
+          expect(refreshCalls, 0);
+
+          await tester.pumpWidget(
+            buildShell(
+              closeFailure: 'The native window rejected the close request.',
+            ),
+          );
+          expect(find.text('Retry close'), findsOneWidget);
+          expect(_fieldRowRects(tester, profile), rows);
+          final retry = tester.getRect(find.text('Retry close'));
+          expect(retry.left, greaterThanOrEqualTo(0));
+          expect(retry.top, greaterThanOrEqualTo(0));
+          expect(retry.right, lessThanOrEqualTo(size.width));
+          expect(retry.bottom, lessThanOrEqualTo(size.height));
+          expect(tester.takeException(), isNull);
+        }
+
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+      },
+    );
+
     testWidgets('Class LudavaShell supports process choice at minimum size', (
       tester,
     ) async {

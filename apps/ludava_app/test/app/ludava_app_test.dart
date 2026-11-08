@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_app.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
+import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_controller.dart';
+import 'package:ludava_app/features/trainer/presentation/trainer_sdk_capability.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
@@ -92,7 +95,6 @@ void main() {
 
       await tester.tap(find.byTooltip('Close window'));
       await tester.pump();
-      await tester.tap(find.byTooltip('Close window'));
       final nativeCloseFuture = windowController.onCloseRequested!.call(true);
       await tester.pump();
 
@@ -100,6 +102,7 @@ void main() {
       expect(windowController.closeCalls, 0);
 
       controller.disposalGate.complete();
+      await tester.pump();
       await nativeCloseFuture;
       await tester.pump();
 
@@ -107,6 +110,198 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await controller.disposeSdk();
     });
+
+    testWidgets(
+      'Class LudavaApp blocks focused editor input and actions during terminal cleanup',
+      (tester) async {
+        tester.view.physicalSize = const Size(520, 360);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final field = GameProfileCatalog.profiles.first.fields.values.first;
+        final controller = _TerminalDelayedTrainerController(field);
+        final windowController = _RecordingWindowController();
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
+        await tester.pump();
+
+        final inputFinder = find.byKey(
+          ValueKey('inline-editor-input-${field.id}'),
+        );
+        await tester.tap(inputFinder);
+        await tester.pump();
+        final inputFocusNode = tester.widget<TextField>(inputFinder).focusNode!;
+        expect(inputFocusNode.hasFocus, isTrue);
+
+        await tester.tap(find.byTooltip('Close window'));
+        await tester.pump();
+        expect(find.text('Closing Ludava…'), findsOneWidget);
+        expect(find.text('Finishing cleanup'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(inputFocusNode.hasFocus, isFalse);
+        expect(windowController.closeCalls, 0);
+        expect(controller.disposeCalls, 1);
+        expect(controller.sdkDisposed, isTrue);
+
+        final shell = tester.widget<LudavaShell>(find.byType(LudavaShell));
+        shell.onRefresh();
+        shell.onSelectProcess(42);
+        shell.onEditField(field);
+        final blockedWrite = shell.onApplyField(field.id, 99);
+        shell.onCancelEditing();
+        shell.onMinimize();
+        shell.onToggleMaximize();
+        shell.onClose();
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        expect(windowController.minimizeCalls, 0);
+        expect(windowController.maximizeCalls, 0);
+        expect(blockedWrite.status, GameWriteStatus.none);
+        expect(windowController.closeCalls, 0);
+
+        final nativeClose = windowController.onCloseRequested!.call(true);
+        await tester.pump();
+        controller.disposalGate.complete();
+        await tester.pump();
+        await tester.pump();
+        await nativeClose;
+        await tester.pump();
+        expect(windowController.closeCalls, 1);
+        expect(controller.disposeCalls, 1);
+        expect(controller.sdkDisposed, isTrue);
+        expect(find.text('Closing Ludava…'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        expect(controller.refresh, throwsStateError);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp keeps terminal actions blocked after rejection and retries by keyboard',
+      (tester) async {
+        tester.view.physicalSize = const Size(480, 340);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final field = GameProfileCatalog.profiles.first.fields.values.first;
+        final controller = _TerminalDelayedTrainerController(field);
+        final retryGate = Completer<void>();
+        final closePlan = _NativeClosePlan(
+          [false, false, false, true],
+          delayedCall: 2,
+          delayGate: retryGate,
+        );
+        final windowController = _RejectingNativeWindowController(closePlan);
+
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
+        await tester.pump();
+        final input = find.byKey(ValueKey('inline-editor-input-${field.id}'));
+        await tester.tap(input);
+        await tester.pump();
+        expect(tester.widget<TextField>(input).focusNode!.hasFocus, isTrue);
+
+        await tester.tap(find.byTooltip('Close window'));
+        await tester.pump();
+        expect(controller.disposeCalls, 1);
+        expect(closePlan.calls, 0);
+        controller.disposalGate.complete();
+        await tester.pump();
+        await tester.pump();
+        expect(closePlan.calls, 1);
+        await tester.pump();
+        expect(
+          find.text('Ludava could not close. App actions are disabled.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Bad state: The native window rejected the close request.'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isA<StateError>());
+        expect(tester.widget<TextField>(input).focusNode!.hasFocus, isFalse);
+
+        final shell = tester.widget<LudavaShell>(find.byType(LudavaShell));
+        shell.onRefresh();
+        shell.onSelectProcess(42);
+        shell.onEditField(field);
+        shell.onApplyField(field.id, 100);
+        shell.onCancelEditing();
+        shell.onMinimize();
+        shell.onToggleMaximize();
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        expect(windowController.minimizeCalls, 0);
+        expect(windowController.maximizeCalls, 0);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        expect(closePlan.calls, 2);
+        tester.widget<LudavaShell>(find.byType(LudavaShell)).onClose();
+        expect(closePlan.calls, 2);
+        retryGate.complete();
+        await tester.pump();
+        await tester.pump();
+        expect(closePlan.calls, 2);
+        expect(controller.disposeCalls, 1);
+        expect(tester.takeException(), isA<StateError>());
+        expect(
+          find.text('Ludava could not close. App actions are disabled.'),
+          findsOneWidget,
+        );
+        expect(find.text('Retry close'), findsOneWidget);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.pump();
+        await tester.pump();
+        expect(closePlan.calls, 3);
+        expect(tester.takeException(), isA<StateError>());
+        expect(find.text('Retry close'), findsOneWidget);
+
+        await tester.tap(find.text('Retry close'));
+        await tester.pump();
+        await tester.pump();
+        expect(closePlan.calls, 4);
+        expect(controller.disposeCalls, 1);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'Class LudavaApp completes pending cleanup safely after its widget is removed',
+      (tester) async {
+        final controller = _TerminalDelayedTrainerController(
+          GameProfileCatalog.profiles.first.fields.values.first,
+        );
+        final windowController = _RecordingWindowController();
+        final errors = <FlutterErrorDetails>[];
+        final oldHandler = FlutterError.onError;
+        FlutterError.onError = errors.add;
+        addTearDown(() => FlutterError.onError = oldHandler);
+
+        await tester.pumpWidget(
+          LudavaApp(controller: controller, windowController: windowController),
+        );
+        await tester.tap(find.byTooltip('Close window'));
+        await tester.pump();
+        expect(controller.disposeCalls, 1);
+        expect(windowController.closeCalls, 0);
+
+        await tester.pumpWidget(const SizedBox());
+        controller.disposalGate.complete();
+        await tester.pump();
+        await tester.pump();
+
+        expect(controller.disposeCalls, 1);
+        expect(windowController.closeCalls, 1);
+        expect(errors, isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets(
       'Class LudavaApp reports disposal failure before attempting native close',
@@ -235,12 +430,13 @@ void main() {
 
         await windowController.onCloseRequested!(true);
         await tester.pump();
+        windowController.failNextClose = true;
         await windowController.onCloseRequested!(true);
         await tester.pump();
 
         expect(controller.disposeCalls, 1);
         expect(windowController.closeCalls, 2);
-        expect(reportedErrors, hasLength(1));
+        expect(reportedErrors, hasLength(2));
         expect(find.text('Retry close'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
@@ -322,7 +518,15 @@ class _RecordingWindowController extends LudavaWindowController {
 
   /// Number of native close operations received after cleanup.
   int closeCalls = 0;
+  int minimizeCalls = 0;
+  int maximizeCalls = 0;
   bool failNextClose = false;
+
+  @override
+  void minimize() => minimizeCalls++;
+
+  @override
+  void toggleMaximize() => maximizeCalls++;
 
   /// Registers the test callback instead of configuring a native window.
   @override
@@ -345,11 +549,21 @@ class _RecordingWindowController extends LudavaWindowController {
 
 /// Returns native rejection once, then accepts a retry without opening a window.
 class _RejectingNativeWindowController extends LudavaWindowController {
-  _RejectingNativeWindowController(_NativeClosePlan closePlan)
+  _RejectingNativeWindowController(this.closePlan)
     : super(
         currentWindow: () => Window.borrowed(0),
         requestNativeClose: (_) => closePlan.request(),
       );
+
+  final _NativeClosePlan closePlan;
+  int minimizeCalls = 0;
+  int maximizeCalls = 0;
+
+  @override
+  void minimize() => minimizeCalls++;
+
+  @override
+  void toggleMaximize() => maximizeCalls++;
 
   @override
   void configure({
@@ -357,15 +571,28 @@ class _RejectingNativeWindowController extends LudavaWindowController {
   }) {}
 }
 
+/// Returns configured native-close results to exercise rejection and retry.
 class _NativeClosePlan {
-  _NativeClosePlan(this.responses);
+  _NativeClosePlan(this.responses, {this.delayedCall, this.delayGate});
 
+  /// Native acceptance and rejection outcomes in request order.
   final List<bool> responses;
+
+  /// Request number held at [delayGate], when a close must remain in flight.
+  final int? delayedCall;
+
+  /// Gate released by the retry-coalescing test.
+  final Completer<void>? delayGate;
+
+  /// Number of native close attempts made so far.
   int calls = 0;
 
+  /// Returns the next configured native result, optionally after a gate.
   Future<bool> request() async {
     calls++;
-    return responses.removeAt(0);
+    final response = responses.removeAt(0);
+    if (calls == delayedCall) await delayGate!.future;
+    return response;
   }
 }
 
@@ -414,4 +641,141 @@ class _DelayedTrainerController extends _AppTestTrainerController {
     disposeCalls++;
     await disposalGate.future;
   }
+}
+
+/// Exposes a real trainer controller's terminal state behind delayed cleanup.
+class _TerminalDelayedTrainerController extends TrainerController {
+  factory _TerminalDelayedTrainerController(GameField field) =>
+      _TerminalDelayedTrainerController._(
+        field,
+        _TerminalTrainerSdkCapability(_readySession(field)),
+      );
+
+  _TerminalDelayedTrainerController._(
+    this._field,
+    _TerminalTrainerSdkCapability capability,
+  ) : _capability = capability,
+      super(capability: capability);
+
+  final GameField _field;
+  final Completer<void> _disposalGate = Completer<void>();
+  final _TerminalTrainerSdkCapability _capability;
+
+  /// Gate controlling the trainer controller's awaited cleanup completion.
+  Completer<void> get disposalGate => _disposalGate;
+
+  int _disposeCalls = 0;
+  Future<void>? _disposeFuture;
+
+  /// Number of terminal cleanup calls forwarded by the real controller.
+  int get disposeCalls => _disposeCalls;
+
+  /// Whether the injected SDK capability has entered terminal disposal.
+  bool get sdkDisposed => _capability.isDisposed;
+
+  /// Returns the test field as the active editor target.
+  @override
+  String? get editingFieldId => _field.id;
+
+  /// Makes the real controller terminal and returns the test cleanup barrier.
+  @override
+  Future<void> dispose() {
+    final activeDisposal = _disposeFuture;
+    if (activeDisposal != null) return activeDisposal;
+    _disposeCalls++;
+    final terminalDisposal = super.dispose();
+    unawaited(
+      terminalDisposal.catchError((Object error, StackTrace stackTrace) {
+        FlutterError.reportError(
+          FlutterErrorDetails(exception: error, stack: stackTrace),
+        );
+      }),
+    );
+    return _disposeFuture = _disposalGate.future;
+  }
+}
+
+/// Models an SDK capability that rejects operations as soon as cleanup starts.
+class _TerminalTrainerSdkCapability implements TrainerSdkCapability {
+  _TerminalTrainerSdkCapability(this.state);
+
+  final StreamController<TrainerSessionState> _stateChanges =
+      StreamController<TrainerSessionState>.broadcast(sync: true);
+
+  /// Initial session used to render the focused field editor.
+  @override
+  final TrainerSessionState state;
+
+  /// Whether SDK operations have become terminal.
+  bool isDisposed = false;
+
+  /// Provides the controller's state subscription.
+  @override
+  Stream<TrainerSessionState> get stateChanges => _stateChanges.stream;
+
+  /// Models discovery while the SDK capability is active.
+  @override
+  void connect() => _ensureActive();
+
+  /// Models refresh while the SDK capability is active.
+  @override
+  void refresh() => _ensureActive();
+
+  /// Models process selection and rejects access after disposal.
+  @override
+  bool selectProcess(int processId) {
+    _ensureActive();
+    return state.processIds.contains(processId);
+  }
+
+  /// Models a guarded write and rejects access after disposal.
+  @override
+  GameWriteResult writeField(String fieldId, int value) {
+    _ensureActive();
+    return GameWriteResult(
+      status: GameWriteStatus.writeFailed,
+      fieldId: fieldId,
+      requestedValue: value,
+    );
+  }
+
+  /// Marks the test capability terminal and closes state observation.
+  @override
+  Future<void> dispose() {
+    isDisposed = true;
+    return _stateChanges.close();
+  }
+
+  /// Rejects every capability call after cleanup has started.
+  void _ensureActive() {
+    if (isDisposed) throw StateError('The test SDK capability is disposed.');
+  }
+}
+
+/// Builds a ready test session whose first profile field can be edited.
+TrainerSessionState _readySession(GameField field) {
+  final profile = GameProfileCatalog.profiles.first;
+  return TrainerSessionState(
+    processIds: const [42],
+    selectedProcessId: 42,
+    processMetadata: Rpcs3ProcessMetadata(
+      executablePath: r'C:\RPCS3\rpcs3.exe',
+      startedAtUtc: DateTime.utc(2026),
+    ),
+    detection: GameDetectionResult(
+      status: GameDetectionStatus.supportedGame,
+      processId: 42,
+      profile: profile,
+      confidence: GameIdentityConfidence.confirmed,
+      evidenceDescription: 'Confirmed test profile.',
+    ),
+    memoryBase: 0x1000,
+    readResults: {
+      field.id: GameReadResult(
+        status: GameReadStatus.success,
+        fieldId: field.id,
+        value: 17,
+      ),
+    },
+  );
 }
