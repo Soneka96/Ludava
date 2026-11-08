@@ -1,30 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_choice.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_picker.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 void main() {
-  group('Class Rpcs3ProcessPicker selection behavior', () {
+  group('Class Rpcs3ProcessPicker composition behavior', () {
     testWidgets(
-      'Class Rpcs3ProcessPicker scrolls process choices at minimum size',
+      'Class Rpcs3ProcessPicker keeps its heading and composes named process choices',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            Rpcs3ProcessPicker(
+              processIds: const [120, 240],
+              onSelectProcess: (_) {},
+            ),
+          ),
+        );
+
+        expect(find.text('Available RPCS3 processes'), findsOneWidget);
+        expect(
+          find.text('Select the process running your game.'),
+          findsOneWidget,
+        );
+        expect(find.byType(Rpcs3ProcessChoice), findsNWidgets(2));
+      },
+    );
+
+    testWidgets(
+      'Class Rpcs3ProcessPicker scrolls and selects a process at minimum size',
       (tester) async {
         tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        int? selectedProcess;
+        int? selectedProcessId;
 
         await tester.pumpWidget(
-          MaterialApp(
-            theme: LudavaTheme.graphiteAndTeal,
-            home: Scaffold(
-              body: Rpcs3ProcessPicker(
-                processIds: List.generate(12, (index) => 120 + index),
-                onSelectProcess: (processId) => selectedProcess = processId,
-              ),
+          _wrap(
+            Rpcs3ProcessPicker(
+              processIds: List.generate(12, (index) => 120 + index),
+              onSelectProcess: (processId) => selectedProcessId = processId,
             ),
           ),
         );
@@ -33,97 +50,37 @@ void main() {
 
         expect(find.text('Process ID 131'), findsOneWidget);
         await tester.tap(find.text('Process ID 131'));
-        expect(selectedProcess, 131);
+        expect(selectedProcessId, 131);
         expect(tester.takeException(), isNull);
       },
     );
 
-    testWidgets('Class Rpcs3ProcessPicker selects the tapped process', (
-      tester,
-    ) async {
-      int? selectedProcess;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: LudavaTheme.graphiteAndTeal,
-          home: Scaffold(
-            body: Rpcs3ProcessPicker(
-              processIds: const [120, 240],
-              onSelectProcess: (processId) => selectedProcess = processId,
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Process ID 120'), findsOneWidget);
-      expect(find.text('Process ID 240'), findsOneWidget);
-      await tester.tap(find.text('Process ID 240'));
-
-      expect(selectedProcess, 240);
-    });
-
-    testWidgets('Class Rpcs3ProcessPicker uses the semantic border role', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 700);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: LudavaTheme.graphiteAndTeal,
-          home: Scaffold(
-            body: Rpcs3ProcessPicker(
+    testWidgets(
+      'Class Rpcs3ProcessPicker keeps the process list within its readable width',
+      (tester) async {
+        tester.view.physicalSize = const Size(1200, 700);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          _wrap(
+            Rpcs3ProcessPicker(
               processIds: const [120, 240],
               onSelectProcess: (_) {},
             ),
           ),
-        ),
-      );
-
-      final divider = tester.widget<Divider>(find.byType(Divider).first);
-      expect(
-        divider.color,
-        LudavaTheme.graphiteAndTeal
-            .extension<LudavaThemeTokens>()!
-            .borderSubtle,
-      );
-      expect(
-        tester.getSize(find.byType(Divider).first).height,
-        ConnectionDimensions.processSeparatorExtent,
-      );
-      expect(
-        tester.getSize(find.byType(ListView)).width,
-        ConnectionDimensions.contentMaxWidth,
-      );
-    });
-
-    testWidgets(
-      'Class Rpcs3ProcessPicker supports keyboard activation and semantics',
-      (tester) async {
-        int? selectedProcess;
-        final semantics = tester.ensureSemantics();
-
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: LudavaTheme.graphiteAndTeal,
-            home: Scaffold(
-              body: Rpcs3ProcessPicker(
-                processIds: const [120, 240],
-                onSelectProcess: (processId) => selectedProcess = processId,
-              ),
-            ),
-          ),
         );
 
-        expect(find.bySemanticsLabel(RegExp('Process ID 120')), findsOneWidget);
-        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-
-        expect(selectedProcess, 120);
-        semantics.dispose();
+        expect(
+          tester.getSize(find.byType(ListView)).width,
+          ConnectionDimensions.contentMaxWidth,
+        );
       },
     );
   });
 }
+
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);

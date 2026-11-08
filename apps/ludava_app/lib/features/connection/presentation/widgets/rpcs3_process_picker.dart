@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_choice.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
 /// Presents multiple RPCS3 processes for explicit selection.
 class Rpcs3ProcessPicker extends StatelessWidget {
@@ -53,25 +53,10 @@ class Rpcs3ProcessPicker extends StatelessWidget {
           }
 
           final processId = processIds[index - 1];
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (index > 1)
-                Divider(
-                  height: ConnectionDimensions.processSeparatorExtent,
-                  color: Theme.of(context)
-                      .extension<LudavaThemeTokens>()!
-                      .borderSubtle,
-                ),
-              ListTile(
-                key: ValueKey(processId),
-                leading: const Icon(Icons.desktop_windows_outlined),
-                title: const Text('RPCS3 process'),
-                subtitle: Text('Process ID $processId'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => onSelectProcess(processId),
-              ),
-            ],
+          return Rpcs3ProcessChoice(
+            processId: processId,
+            onSelectProcess: onSelectProcess,
+            showDividerBefore: index > 1,
           );
         },
       ),
