@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_guidance.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_picker.dart';
-import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
@@ -23,33 +23,6 @@ void main() {
       expect(
         find.text('RPCS3 was not found. Start RPCS3, then select Refresh.'),
         findsOneWidget,
-      );
-    });
-
-    testWidgets('Class SessionConnectionBody keeps guidance readable', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 700);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _wrap(
-          SessionConnectionBody(
-            session: TrainerSessionState(),
-            onSelectProcess: (_) {},
-          ),
-        ),
-      );
-
-      final guidance = find.descendant(
-        of: find.byType(SessionConnectionBody),
-        matching: find.byType(Row),
-      );
-      expect(
-        tester.getSize(guidance.first).width,
-        ConnectionDimensions.contentMaxWidth,
       );
     });
 
@@ -90,6 +63,19 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           SessionConnectionBody(
+            session: _session(GameDetectionStatus.unsupportedGame),
+            onSelectProcess: (_) {},
+          ),
+        ),
+      );
+      expect(
+        find.text('This game is not supported by Ludava.'),
+        findsOneWidget,
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          SessionConnectionBody(
             session: _session(
               GameDetectionStatus.ambiguous,
               evidence: 'The current executable evidence conflicts.',
@@ -122,7 +108,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           SessionConnectionBody(
-            session: _session(GameDetectionStatus.ambiguous, evidence: ''),
+            session: _session(GameDetectionStatus.ambiguous, evidence: '  \t '),
             onSelectProcess: (_) {},
           ),
         ),
@@ -172,6 +158,7 @@ void main() {
             SessionConnectionBody(
               session: TrainerSessionState(
                 errorMessage: 'Process metadata failed.',
+                detection: _session(GameDetectionStatus.noActiveGame).detection,
               ),
               onSelectProcess: (_) {},
             ),
@@ -245,6 +232,26 @@ void main() {
         find.text('Connect to RPCS3 to detect the active game.'),
         findsOneWidget,
       );
+
+      await tester.pumpWidget(
+        _wrap(
+          SessionConnectionBody(
+            session: TrainerSessionState(
+              selectedProcessId: 42,
+              detection: GameDetectionResult(
+                status: GameDetectionStatus.none,
+                confidence: GameIdentityConfidence.none,
+                evidenceDescription: 'No detection is available.',
+              ),
+            ),
+            onSelectProcess: (_) {},
+          ),
+        ),
+      );
+      expect(
+        find.text('Connect to RPCS3 to detect the active game.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Class SessionConnectionBody renders the process picker', (
@@ -260,7 +267,86 @@ void main() {
       );
 
       expect(find.byType(Rpcs3ProcessPicker), findsOneWidget);
+      expect(find.byType(Rpcs3ConnectionGuidance), findsNothing);
+
+      await tester.pumpWidget(
+        _wrap(
+          SessionConnectionBody(
+            session: TrainerSessionState(
+              processIds: const [10, 20],
+              selectedProcessId: 10,
+              detection: GameDetectionResult(
+                status: GameDetectionStatus.noActiveGame,
+                processId: 10,
+                confidence: GameIdentityConfidence.none,
+                evidenceDescription: 'RPCS3 has no active game.',
+              ),
+            ),
+            onSelectProcess: (_) {},
+          ),
+        ),
+      );
+      expect(find.byType(Rpcs3ProcessPicker), findsNothing);
+      expect(find.byType(Rpcs3ConnectionGuidance), findsOneWidget);
     });
+
+    testWidgets(
+      'Class SessionConnectionBody selects guidance error state from SDK failures',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            SessionConnectionBody(
+              session: _session(GameDetectionStatus.noActiveGame),
+              onSelectProcess: (_) {},
+            ),
+          ),
+        );
+        expect(
+          tester
+              .widget<Rpcs3ConnectionGuidance>(
+                find.byType(Rpcs3ConnectionGuidance),
+              )
+              .isError,
+          isFalse,
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            SessionConnectionBody(
+              session: _session(GameDetectionStatus.failed),
+              onSelectProcess: (_) {},
+            ),
+          ),
+        );
+        expect(
+          tester
+              .widget<Rpcs3ConnectionGuidance>(
+                find.byType(Rpcs3ConnectionGuidance),
+              )
+              .isError,
+          isTrue,
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            SessionConnectionBody(
+              session: TrainerSessionState(
+                errorMessage: 'Process metadata failed.',
+              ),
+              onSelectProcess: (_) {},
+            ),
+          ),
+        );
+        expect(
+          tester
+              .widget<Rpcs3ConnectionGuidance>(
+                find.byType(Rpcs3ConnectionGuidance),
+              )
+              .isError,
+          isTrue,
+        );
+      },
+    );
   });
 }
 

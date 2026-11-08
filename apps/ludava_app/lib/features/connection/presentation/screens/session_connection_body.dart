@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_guidance.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_picker.dart';
-import 'package:ludava_app/shared/constants/ludava_constants.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Shows process choice or concise guidance for the latest session state.
@@ -28,41 +27,11 @@ class SessionConnectionBody extends StatelessWidget {
         onSelectProcess: onSelectProcess,
       );
     }
-    return _buildMessage(context);
-  }
-
-  /// Renders actionable guidance without inventing trainer fields.
-  Widget _buildMessage(BuildContext context) {
-    final theme = Theme.of(context);
-    final isError =
-        session.errorMessage != null ||
-        session.detection?.status == GameDetectionStatus.failed;
-    final message = session.errorMessage ?? _messageForState;
-    return Padding(
-      padding: const EdgeInsets.all(LudavaSpacing.xl),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: ConnectionDimensions.contentMaxWidth,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                isError
-                    ? Icons.error_outline_rounded
-                    : Icons.info_outline_rounded,
-                color: isError
-                    ? theme.colorScheme.error
-                    : theme.extension<LudavaThemeTokens>()!.textMuted,
-              ),
-              const SizedBox(width: LudavaSpacing.md),
-              Expanded(child: Text(message, style: theme.textTheme.bodyLarge)),
-            ],
-          ),
-        ),
-      ),
+    return Rpcs3ConnectionGuidance(
+      message: session.errorMessage ?? _messageForState,
+      isError:
+          session.errorMessage != null ||
+          session.detection?.status == GameDetectionStatus.failed,
     );
   }
 
