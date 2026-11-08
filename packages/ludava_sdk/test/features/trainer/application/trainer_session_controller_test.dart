@@ -329,10 +329,13 @@ void main() {
           fixture.controller.connect();
 
           expect(fixture.controller.state.profile?.id, profile.id);
-          expect(
-            fixture.controller.state.readResults['bolts']?.succeeded,
-            isTrue,
-          );
+          for (final field in profile.fields.values) {
+            expect(
+              fixture.controller.state.readResults[field.id]?.succeeded,
+              isTrue,
+              reason: 'Expected ${field.id} to be read for ${profile.id}.',
+            );
+          }
         }
       },
     );
@@ -730,6 +733,23 @@ void main() {
       expect(fixture.lastConfirmed, isTrue);
       expect(fixture.controller.state.readResults['bolts']?.value, 101);
     });
+
+    test(
+      'Method writeField() writes researched Raritanium under the matching profile',
+      () {
+        final fixture =
+            _SessionFixture()
+              ..profile = ToolsOfDestructionBcus98127Profile.profile
+              ..controller.connect();
+
+        final result = fixture.controller.writeField('raritanium', 215);
+
+        expect(result.succeeded, isTrue);
+        expect(fixture.writeCalls, 1);
+        expect(fixture.lastConfirmed, isTrue);
+        expect(fixture.controller.state.readResults['raritanium']?.value, 215);
+      },
+    );
 
     test('Method writeField() does not write an unchanged value', () {
       final fixture = _SessionFixture()..controller.connect();

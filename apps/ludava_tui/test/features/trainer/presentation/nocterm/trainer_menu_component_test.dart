@@ -69,7 +69,7 @@ void main() {
     );
 
     test(
-      'Class TrainerMenuComponent displays and opens the researched Tools of Destruction Bolts editor',
+      'Class TrainerMenuComponent displays both fields and opens the Raritanium editor',
       () async {
         await testNocterm('Tools of Destruction bolt profile', (tester) async {
           final openedFields = <GameField>[];
@@ -84,6 +84,11 @@ void main() {
                     fieldId: 'bolts',
                     value: 3793,
                   ),
+                  'raritanium': const GameReadResult(
+                    status: GameReadStatus.success,
+                    fieldId: 'raritanium',
+                    value: 215,
+                  ),
                 },
               ),
               onOpenField: openedFields.add,
@@ -97,12 +102,17 @@ void main() {
             ),
           );
           expect(tester.terminalState, containsText('1. Bolts'));
+          expect(tester.terminalState, containsText('2. Raritanium'));
           expect(tester.terminalState, containsText('3,793'));
+          expect(tester.terminalState, containsText('215'));
 
-          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendKey(LogicalKey.digit2);
           await tester.sendEnter();
 
-          expect(openedFields.map((field) => field.id), ['bolts', 'bolts']);
+          expect(openedFields.map((field) => field.id), [
+            'raritanium',
+            'raritanium',
+          ]);
         });
       },
     );

@@ -5,10 +5,11 @@ import 'package:test/test.dart';
 void main() {
   group('Profile ToolsOfDestructionBcus98127Profile configuration', () {
     test(
-      'Profile ToolsOfDestructionBcus98127Profile exposes the read-verified Bolts field',
+      'Profile ToolsOfDestructionBcus98127Profile exposes both fields with observed evidence',
       () {
         final profile = ToolsOfDestructionBcus98127Profile.profile;
         final field = profile.findField('bolts');
+        final raritanium = profile.findField('raritanium');
 
         expect(
           ToolsOfDestructionBcus98127Profile.id,
@@ -29,7 +30,7 @@ void main() {
         expect(profile.writeStatus, VerificationStatus.researchConfirmed);
         expect(profile.canRead, isTrue);
         expect(profile.canWrite, isTrue);
-        expect(profile.fields, hasLength(1));
+        expect(profile.fields, hasLength(2));
         expect(field?.id, 'bolts');
         expect(field?.name, 'Bolts');
         expect(field?.guestOffset, 0x101eff3c);
@@ -41,6 +42,17 @@ void main() {
         expect(field?.maximumValue, 0xffffffff);
         expect(field?.canRead, isTrue);
         expect(field?.canWrite, isTrue);
+        expect(raritanium?.id, 'raritanium');
+        expect(raritanium?.name, 'Raritanium');
+        expect(raritanium?.guestOffset, 0x101eff40);
+        expect(raritanium?.valueType, MemoryValueType.unsigned32);
+        expect(raritanium?.byteOrder, ByteOrder.big);
+        expect(raritanium?.readStatus, VerificationStatus.verified);
+        expect(raritanium?.writeStatus, VerificationStatus.researchConfirmed);
+        expect(raritanium?.minimumValue, 0);
+        expect(raritanium?.maximumValue, 0xffffffff);
+        expect(raritanium?.canRead, isTrue);
+        expect(raritanium?.canWrite, isTrue);
       },
     );
   });

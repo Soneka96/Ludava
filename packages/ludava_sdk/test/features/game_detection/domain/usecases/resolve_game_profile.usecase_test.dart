@@ -175,7 +175,10 @@ void main() {
         expect(result.status, GameDetectionStatus.supportedGame);
         expect(result.profile, same(profile));
         expect(result.confidence, GameIdentityConfidence.confirmed);
-        expect(result.availableFields.map((field) => field.id), ['bolts']);
+        expect(result.availableFields.map((field) => field.id), [
+          'bolts',
+          'raritanium',
+        ]);
       },
     );
 
