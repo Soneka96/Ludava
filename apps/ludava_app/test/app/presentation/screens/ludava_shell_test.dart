@@ -6,7 +6,10 @@ import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
+import 'package:ludava_app/shared/theme/ludava_style_presets.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
+import 'package:ludava_app/shared/theme/ludava_theme_factory.dart';
+import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
@@ -315,6 +318,14 @@ void main() {
         final field = profile.fields.values.first;
         final maximizeState = ValueNotifier(false);
         addTearDown(maximizeState.dispose);
+        final alternateTheme = LudavaThemeFactory.build(
+          colors: GraphiteTealTheme.colors.copyWith(canvas: Colors.purple),
+          style: LudavaStylePresets.comfortable,
+          brightness: GraphiteTealTheme.brightness,
+        );
+        final expectedScrim = alternateTheme.colorScheme.scrim.withValues(
+          alpha: 0.72,
+        );
         var refreshCalls = 0;
 
         Widget buildShell({bool isClosing = false, String? closeFailure}) =>
@@ -356,6 +367,7 @@ void main() {
                 onRefresh: () => refreshCalls++,
                 onSelectProcess: (_) {},
               ),
+              theme: alternateTheme,
             );
 
         for (final size in const [Size(520, 360), Size(480, 340)]) {
@@ -368,6 +380,12 @@ void main() {
           expect(find.text('Closing Ludava…'), findsOneWidget);
           expect(find.text('Finishing cleanup'), findsOneWidget);
           expect(find.byType(CircularProgressIndicator), findsOneWidget);
+          expect(
+            find.byWidgetPredicate(
+              (widget) => widget is ColoredBox && widget.color == expectedScrim,
+            ),
+            findsOneWidget,
+          );
           expect(_fieldRowRects(tester, profile), rows);
           expect(
             tester.getRect(find.text('Closing Ludava…')).bottom,
@@ -385,6 +403,12 @@ void main() {
             ),
           );
           expect(find.text('Retry close'), findsOneWidget);
+          expect(
+            find.byWidgetPredicate(
+              (widget) => widget is ColoredBox && widget.color == expectedScrim,
+            ),
+            findsOneWidget,
+          );
           expect(_fieldRowRects(tester, profile), rows);
           final retry = tester.getRect(find.text('Retry close'));
           expect(retry.left, greaterThanOrEqualTo(0));
@@ -545,8 +569,8 @@ List<Rect> _fieldRowRects(WidgetTester tester, GameProfile profile) => profile
     )
     .toList(growable: false);
 
-Widget _wrap(Widget child) =>
-    MaterialApp(theme: LudavaTheme.graphiteAndTeal, home: child);
+Widget _wrap(Widget child, {ThemeData? theme}) =>
+    MaterialApp(theme: theme ?? LudavaTheme.graphiteAndTeal, home: child);
 
 GameWriteResult _failedWrite(String fieldId, int value) => GameWriteResult(
   status: GameWriteStatus.writeFailed,

@@ -67,6 +67,9 @@ class LudavaShell extends StatelessWidget {
     super.key,
   });
 
+  /// Shared opacity for the shell's closing and close-failure overlays.
+  static const double _shutdownOverlayOpacity = 0.72;
+
   /// Renders the integrated window chrome and compact utility content.
   @override
   Widget build(BuildContext context) {
@@ -136,7 +139,7 @@ class LudavaShell extends StatelessWidget {
   Widget _buildClosingOverlay(BuildContext context) {
     final theme = Theme.of(context);
     return ColoredBox(
-      color: theme.colorScheme.scrim.withValues(alpha: .72),
+      color: theme.colorScheme.scrim.withValues(alpha: _shutdownOverlayOpacity),
       child: Center(
         child: Semantics(
           liveRegion: true,
@@ -160,7 +163,7 @@ class LudavaShell extends StatelessWidget {
   Widget _buildCloseFailureOverlay(BuildContext context, String failure) {
     final theme = Theme.of(context);
     return ColoredBox(
-      color: theme.colorScheme.scrim.withValues(alpha: .72),
+      color: theme.colorScheme.scrim.withValues(alpha: _shutdownOverlayOpacity),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(LudavaSpacing.lg),
