@@ -40,5 +40,6 @@ abstract final class LudavaStylePresets {
     buttonPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     buttonMinimumSize: Size(0, 48),
     inputPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    inputFocusedBorderWidth: 1.5,
   );
 }

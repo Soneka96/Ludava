@@ -99,13 +99,19 @@ abstract final class LudavaThemeFactory {
         border: inputBorder,
         enabledBorder: inputBorder,
         focusedBorder: inputBorder.copyWith(
-          borderSide: BorderSide(color: colors.focus, width: 1.5),
+          borderSide: BorderSide(
+            color: colors.focus,
+            width: style.inputFocusedBorderWidth,
+          ),
         ),
         errorBorder: inputBorder.copyWith(
           borderSide: BorderSide(color: colors.error),
         ),
         focusedErrorBorder: inputBorder.copyWith(
-          borderSide: BorderSide(color: colors.error, width: 1.5),
+          borderSide: BorderSide(
+            color: colors.error,
+            width: style.inputFocusedBorderWidth,
+          ),
         ),
         disabledBorder: inputBorder.copyWith(
           borderSide: BorderSide(color: colors.borderSubtle),

@@ -12,6 +12,7 @@ class LudavaStylePreset {
     required this.buttonPadding,
     required this.buttonMinimumSize,
     required this.inputPadding,
+    required this.inputFocusedBorderWidth,
   });
 
   /// Application typeface.
@@ -34,4 +35,7 @@ class LudavaStylePreset {
 
   /// Default input content padding.
   final EdgeInsetsGeometry inputPadding;
+
+  /// Thickness shared by focused input borders.
+  final double inputFocusedBorderWidth;
 }

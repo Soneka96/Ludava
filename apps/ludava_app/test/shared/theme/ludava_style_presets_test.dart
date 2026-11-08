@@ -32,6 +32,7 @@ void main() {
       expect(preset.controlRadius, 8);
       expect(preset.surfaceRadius, 10);
       expect(preset.buttonMinimumSize, const Size(0, 48));
+      expect(preset.inputFocusedBorderWidth, 1.5);
     });
   });
 }

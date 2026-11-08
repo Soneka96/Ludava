@@ -3,12 +3,75 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
+import 'package:ludava_app/shared/theme/ludava_style_preset.dart';
+import 'package:ludava_app/shared/theme/ludava_style_presets.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
+import 'package:ludava_app/shared/theme/ludava_theme_factory.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
+import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
   group('Class InlineValueEditor draft and apply behavior', () {
+    testWidgets(
+      'Class InlineValueEditor uses supplied focused borders in normal and error states',
+      (tester) async {
+        const alternateWidth = 2.75;
+        final alternateTheme = _themeWithFocusedBorderWidth(alternateWidth);
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              field: _field(maximumValue: 50),
+              currentValue: 10,
+              onApply: _success,
+            ),
+            theme: alternateTheme,
+          ),
+        );
+
+        await tester.tap(_inputFinder);
+        await tester.pump();
+        var decorator = tester.widget<InputDecorator>(
+          find.descendant(
+            of: _inputFinder,
+            matching: find.byType(InputDecorator),
+          ),
+        );
+        expect(decorator.isFocused, isTrue);
+        var focusedBorder =
+            decorator.decoration.focusedBorder! as OutlineInputBorder;
+        expect(focusedBorder.borderSide.width, alternateWidth);
+        expect(
+          focusedBorder.borderSide.color,
+          alternateTheme.extension<LudavaThemeTokens>()!.focus,
+        );
+        expect(tester.getSize(find.byType(InlineValueEditor)).height, 48);
+
+        await tester.enterText(_inputFinder, '51');
+        await tester.pump();
+        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.pump();
+        await tester.tap(_inputFinder);
+        await tester.pump();
+        decorator = tester.widget<InputDecorator>(
+          find.descendant(
+            of: _inputFinder,
+            matching: find.byType(InputDecorator),
+          ),
+        );
+        expect(decorator.isFocused, isTrue);
+        final focusedErrorBorder =
+            decorator.decoration.focusedErrorBorder! as OutlineInputBorder;
+        expect(focusedErrorBorder.borderSide.width, alternateWidth);
+        expect(
+          focusedErrorBorder.borderSide.color,
+          alternateTheme.colorScheme.error,
+        );
+        expect(tester.getSize(find.byType(InlineValueEditor)).height, 48);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets(
       'Class InlineValueEditor uses body typography from an alternate supplied theme',
       (tester) async {
@@ -669,6 +732,26 @@ Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
     body: Center(child: SizedBox(width: 480, child: child)),
   ),
 );
+
+/// Builds a test theme whose style preset supplies the requested focus width.
+ThemeData _themeWithFocusedBorderWidth(double width) {
+  final comfortable = LudavaStylePresets.comfortable;
+  final style = LudavaStylePreset(
+    fontFamily: comfortable.fontFamily,
+    textTheme: comfortable.textTheme,
+    controlRadius: comfortable.controlRadius,
+    surfaceRadius: comfortable.surfaceRadius,
+    buttonPadding: comfortable.buttonPadding,
+    buttonMinimumSize: comfortable.buttonMinimumSize,
+    inputPadding: comfortable.inputPadding,
+    inputFocusedBorderWidth: width,
+  );
+  return LudavaThemeFactory.build(
+    colors: GraphiteTealTheme.colors,
+    style: style,
+    brightness: GraphiteTealTheme.brightness,
+  );
+}
 
 /// Creates a numeric trainer field with the requested inclusive range.
 GameField _field({

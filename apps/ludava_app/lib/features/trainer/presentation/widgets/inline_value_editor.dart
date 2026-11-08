@@ -97,21 +97,22 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
     final hasFeedback = _feedback != null;
-    final configuredBorder = theme.inputDecorationTheme.border;
+    final decorationTheme = theme.inputDecorationTheme;
     final normalBorder =
-        (configuredBorder is OutlineInputBorder
-                ? configuredBorder
-                : const OutlineInputBorder())
-            .copyWith(borderSide: BorderSide(color: tokens.borderDefault));
-    final feedbackBorder = normalBorder.copyWith(
-      borderSide: BorderSide(color: theme.colorScheme.error),
-    );
-    final focusedBorder = normalBorder.copyWith(
-      borderSide: BorderSide(
-        color: hasFeedback ? theme.colorScheme.error : tokens.focus,
-        width: 1.5,
-      ),
-    );
+        decorationTheme.enabledBorder ??
+        decorationTheme.border ??
+        OutlineInputBorder(borderSide: BorderSide(color: tokens.borderDefault));
+    final feedbackBorder =
+        decorationTheme.errorBorder ??
+        normalBorder.copyWith(
+          borderSide: BorderSide(color: theme.colorScheme.error),
+        );
+    final focusedBorder = hasFeedback
+        ? decorationTheme.focusedErrorBorder ?? feedbackBorder
+        : decorationTheme.focusedBorder ??
+              normalBorder.copyWith(
+                borderSide: BorderSide(color: tokens.focus),
+              );
     final input = SizedBox(
       height: LudavaDimensions.minimumInteractiveTarget,
       child: TextField(

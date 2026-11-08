@@ -14,6 +14,7 @@ void main() {
         buttonPadding: EdgeInsets.all(10),
         buttonMinimumSize: Size(0, 48),
         inputPadding: EdgeInsets.all(12),
+        inputFocusedBorderWidth: 1.5,
       );
 
       expect(preset.fontFamily, 'Test Sans');
@@ -23,6 +24,7 @@ void main() {
       expect(preset.buttonPadding, const EdgeInsets.all(10));
       expect(preset.buttonMinimumSize, const Size(0, 48));
       expect(preset.inputPadding, const EdgeInsets.all(12));
+      expect(preset.inputFocusedBorderWidth, 1.5);
     });
   });
 }

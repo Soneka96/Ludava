@@ -89,8 +89,9 @@ void main() {
     test(
       'Method LudavaThemeFactory.build() uses Comfortable control styles',
       () {
+        final colors = GraphiteTealTheme.colors;
         final theme = LudavaThemeFactory.build(
-          colors: GraphiteTealTheme.colors,
+          colors: colors,
           style: LudavaStylePresets.comfortable,
           brightness: GraphiteTealTheme.brightness,
         );
@@ -108,10 +109,20 @@ void main() {
         expect(outlined.padding!.resolve({}), style.buttonPadding);
         expect(shape.borderRadius, BorderRadius.circular(style.controlRadius));
         expect(input.contentPadding, style.inputPadding);
+        final focusedBorder = input.focusedBorder! as OutlineInputBorder;
+        final focusedErrorBorder =
+            input.focusedErrorBorder! as OutlineInputBorder;
         expect(
-          (input.focusedBorder! as OutlineInputBorder).borderRadius,
+          focusedBorder.borderRadius,
           BorderRadius.circular(style.controlRadius),
         );
+        expect(focusedBorder.borderSide.width, style.inputFocusedBorderWidth);
+        expect(focusedBorder.borderSide.color, colors.focus);
+        expect(
+          focusedErrorBorder.borderSide.width,
+          style.inputFocusedBorderWidth,
+        );
+        expect(focusedErrorBorder.borderSide.color, colors.error);
         expect(
           (theme.cardTheme.shape! as RoundedRectangleBorder).borderRadius,
           BorderRadius.circular(style.surfaceRadius),
