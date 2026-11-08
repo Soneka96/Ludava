@@ -28,7 +28,7 @@ The desktop package contains `Ludava.exe`, Flutter's runtime DLLs, `cnativeapi.d
 
 The Visual C++ runtime files are deployed next to the desktop executable. This is Microsoft's application-local deployment model for the runtime DLLs; see [Microsoft C++ deployment guidance](https://learn.microsoft.com/en-us/cpp/windows/deployment-in-visual-cpp). No separate Visual C++ Redistributable installation is needed on the Ally. Dart, Flutter, and the Visual Studio toolchain are not required there.
 
-The individual build scripts are also available for development: `tool/build_windows.ps1` builds the TUI executable and discovery DLL, and `tool/build_flutter_windows.ps1` builds Flutter release output. Use `tool/package_windows.ps1` for the portable distributions.
+The individual build scripts are also available for development. `tool/build_windows.ps1` builds the TUI executable and discovery DLL. Run `tool/build_flutter_windows.ps1` to build a standalone Flutter release bundle; it places `ludava_process_discovery.dll` beside `Ludava.exe` so SDK process discovery works from that folder. The output directory is printed by the script. Use `tool/package_windows.ps1` for both portable distributions; it reuses the native library from its isolated TUI build.
 
 ## Developer verification commands
 
@@ -59,6 +59,12 @@ dart test
 dart run bin/ludava.dart --help
 ```
 
+To verify the standalone Flutter Windows bundle independently, run:
+
+```powershell
+.\tool\build_flutter_windows.ps1
+```
+
 Package both Windows applications and exercise the extracted distributions with:
 
 ```powershell
@@ -73,7 +79,7 @@ The Windows workflow also runs workspace-boundary and changed-file format checks
 2. Copy the desktop ZIP, the TUI ZIP, or both to the Ally over USB, a removable drive, or your local network.
 3. Extract each package into its own folder. Keep the executable, DLLs, and `data` directory from that package together.
 4. For the graphical app, launch `Ludava.exe`. For the terminal app, open PowerShell in the extracted TUI folder and run `.\Ludava-TUI.exe`.
-5. Start RPCS3 and a game supported by a profile. One RPCS3 process is selected automatically; when multiple are found, choose the process running your game. Game, build, and process details remain available in tooltips or the process picker.
+5. Start RPCS3 and a game supported by a profile. If RPCS3 starts after Ludava, use Refresh to discover it. One process is selected automatically; when multiple are found, choose the process running your game. Game, build, and process details remain available in tooltips or the process picker.
 6. The desktop header has one icon-only Refresh action. It refreshes field values or rediscovers RPCS3 when no process is selected.
 7. Edit is offered only when the SDK reports a current eligible write target. Apply with ✓ or Enter; cancel with × or Escape. A successful write displays the verified read-back value. A same-session failure keeps the attempted draft and shows the error in a tooltip; a stale or disconnected target cancels editing.
 
