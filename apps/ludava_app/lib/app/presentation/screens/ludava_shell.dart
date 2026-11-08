@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
@@ -67,9 +68,6 @@ class LudavaShell extends StatelessWidget {
     super.key,
   });
 
-  /// Shared opacity for the shell's closing and close-failure overlays.
-  static const double _shutdownOverlayOpacity = 0.72;
-
   /// Renders the integrated window chrome and compact utility content.
   @override
   Widget build(BuildContext context) {
@@ -123,77 +121,15 @@ class LudavaShell extends StatelessWidget {
                 ),
               ),
             ),
-            if (isClosing)
-              Positioned.fill(child: _buildClosingOverlay(context))
-            else if (closeFailure case final failure?)
+            if (isBlocked)
               Positioned.fill(
-                child: _buildCloseFailureOverlay(context, failure),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Shows cleanup progress without obscuring the existing window shell.
-  Widget _buildClosingOverlay(BuildContext context) {
-    final theme = Theme.of(context);
-    return ColoredBox(
-      color: theme.colorScheme.scrim.withValues(alpha: _shutdownOverlayOpacity),
-      child: Center(
-        child: Semantics(
-          liveRegion: true,
-          label: 'Closing Ludava… Finishing cleanup',
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: theme.colorScheme.secondary),
-              const SizedBox(height: LudavaSpacing.md),
-              Text('Closing Ludava…', style: theme.textTheme.titleSmall),
-              const SizedBox(height: LudavaSpacing.xs),
-              Text('Finishing cleanup', style: theme.textTheme.bodySmall),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Keeps cleanup failures visible and gives Retry keyboard focus.
-  Widget _buildCloseFailureOverlay(BuildContext context, String failure) {
-    final theme = Theme.of(context);
-    return ColoredBox(
-      color: theme.colorScheme.scrim.withValues(alpha: _shutdownOverlayOpacity),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(LudavaSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Ludava could not close. App actions are disabled.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleSmall,
-              ),
-              const SizedBox(height: LudavaSpacing.sm),
-              Tooltip(
-                message: failure,
-                child: Text(
-                  failure,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall,
+                child: LudavaShutdownOverlay(
+                  isClosing: isClosing,
+                  closeFailure: closeFailure,
+                  onRetryClose: onClose,
                 ),
               ),
-              const SizedBox(height: LudavaSpacing.md),
-              FilledButton(
-                autofocus: true,
-                onPressed: onClose,
-                child: const Text('Retry close'),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );

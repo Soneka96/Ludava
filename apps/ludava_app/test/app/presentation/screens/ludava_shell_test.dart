@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
+import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
-import 'package:ludava_app/shared/theme/ludava_style_presets.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
-import 'package:ludava_app/shared/theme/ludava_theme_factory.dart';
-import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
@@ -312,114 +310,55 @@ void main() {
     );
 
     testWidgets(
-      'Class LudavaShell overlays closing and failure states at compact sizes',
+      'Class LudavaShell fills and blocks interaction with shutdown overlay',
       (tester) async {
-        final profile = GameProfileCatalog.profiles.first;
-        final field = profile.fields.values.first;
+        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
         final maximizeState = ValueNotifier(false);
         addTearDown(maximizeState.dispose);
-        final alternateTheme = LudavaThemeFactory.build(
-          colors: GraphiteTealTheme.colors.copyWith(canvas: Colors.purple),
-          style: LudavaStylePresets.comfortable,
-          brightness: GraphiteTealTheme.brightness,
-        );
-        final expectedScrim = alternateTheme.colorScheme.scrim.withValues(
-          alpha: 0.72,
-        );
         var refreshCalls = 0;
+        var closeCalls = 0;
 
         Widget buildShell({bool isClosing = false, String? closeFailure}) =>
             _wrap(
               LudavaShell(
-                session: TrainerSessionState(
-                  processIds: const [42],
-                  selectedProcessId: 42,
-                  processMetadata: Rpcs3ProcessMetadata(
-                    executablePath: r'C:\RPCS3\rpcs3.exe',
-                    startedAtUtc: DateTime.utc(2026),
-                  ),
-                  detection: GameDetectionResult(
-                    status: GameDetectionStatus.supportedGame,
-                    processId: 42,
-                    profile: profile,
-                    confidence: GameIdentityConfidence.confirmed,
-                    evidenceDescription: 'Confirmed test profile.',
-                  ),
-                  memoryBase: 0x1000,
-                  readResults: {
-                    field.id: GameReadResult(
-                      status: GameReadStatus.success,
-                      fieldId: field.id,
-                      value: 17,
-                    ),
-                  },
-                ),
-                editingFieldId: field.id,
+                session: TrainerSessionState(),
+                editingFieldId: null,
                 onEditField: (_) {},
                 onApplyField: _failedWrite,
                 onCancelEditing: () {},
                 onMinimize: () {},
                 onToggleMaximize: () {},
                 isMaximized: maximizeState,
-                onClose: () {},
+                onClose: () => closeCalls++,
                 isClosing: isClosing,
                 closeFailure: closeFailure,
                 onRefresh: () => refreshCalls++,
                 onSelectProcess: (_) {},
               ),
-              theme: alternateTheme,
             );
 
-        for (final size in const [Size(520, 360), Size(480, 340)]) {
-          tester.view.physicalSize = size;
-          tester.view.devicePixelRatio = 1;
-          await tester.pumpWidget(buildShell());
-          final rows = _fieldRowRects(tester, profile);
+        await tester.pumpWidget(buildShell(isClosing: true));
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
+        expect(
+          tester.getRect(find.byType(LudavaShutdownOverlay)),
+          Offset.zero & LudavaDimensions.minimumWindowSize,
+        );
+        await tester.tap(
+          find.byTooltip('Refresh values or rediscover RPCS3'),
+          warnIfMissed: false,
+        );
+        expect(refreshCalls, 0);
 
-          await tester.pumpWidget(buildShell(isClosing: true));
-          expect(find.text('Closing Ludava…'), findsOneWidget);
-          expect(find.text('Finishing cleanup'), findsOneWidget);
-          expect(find.byType(CircularProgressIndicator), findsOneWidget);
-          expect(
-            find.byWidgetPredicate(
-              (widget) => widget is ColoredBox && widget.color == expectedScrim,
-            ),
-            findsOneWidget,
-          );
-          expect(_fieldRowRects(tester, profile), rows);
-          expect(
-            tester.getRect(find.text('Closing Ludava…')).bottom,
-            lessThan(size.height),
-          );
-          await tester.tap(
-            find.byTooltip('Refresh values or rediscover RPCS3'),
-            warnIfMissed: false,
-          );
-          expect(refreshCalls, 0);
-
-          await tester.pumpWidget(
-            buildShell(
-              closeFailure: 'The native window rejected the close request.',
-            ),
-          );
-          expect(find.text('Retry close'), findsOneWidget);
-          expect(
-            find.byWidgetPredicate(
-              (widget) => widget is ColoredBox && widget.color == expectedScrim,
-            ),
-            findsOneWidget,
-          );
-          expect(_fieldRowRects(tester, profile), rows);
-          final retry = tester.getRect(find.text('Retry close'));
-          expect(retry.left, greaterThanOrEqualTo(0));
-          expect(retry.top, greaterThanOrEqualTo(0));
-          expect(retry.right, lessThanOrEqualTo(size.width));
-          expect(retry.bottom, lessThanOrEqualTo(size.height));
-          expect(tester.takeException(), isNull);
-        }
-
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          buildShell(closeFailure: 'Native close rejected.'),
+        );
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
+        await tester.tap(find.text('Retry close'));
+        expect(closeCalls, 1);
+        expect(tester.takeException(), isNull);
       },
     );
 

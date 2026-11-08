@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/ludava_app.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
+import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_controller.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_sdk_capability.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
@@ -136,9 +137,7 @@ void main() {
 
         await tester.tap(find.byTooltip('Close window'));
         await tester.pump();
-        expect(find.text('Closing Ludava…'), findsOneWidget);
-        expect(find.text('Finishing cleanup'), findsOneWidget);
-        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
         expect(inputFocusNode.hasFocus, isFalse);
         expect(windowController.closeCalls, 0);
         expect(controller.disposeCalls, 1);
@@ -171,7 +170,7 @@ void main() {
         expect(windowController.closeCalls, 1);
         expect(controller.disposeCalls, 1);
         expect(controller.sdkDisposed, isTrue);
-        expect(find.text('Closing Ludava…'), findsOneWidget);
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         expect(controller.refresh, throwsStateError);
@@ -214,14 +213,8 @@ void main() {
         await tester.pump();
         expect(closePlan.calls, 1);
         await tester.pump();
-        expect(
-          find.text('Ludava could not close. App actions are disabled.'),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Bad state: The native window rejected the close request.'),
-          findsOneWidget,
-        );
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
+        expect(find.text('Retry close'), findsOneWidget);
         expect(tester.takeException(), isA<StateError>());
         expect(tester.widget<TextField>(input).focusNode!.hasFocus, isFalse);
 
@@ -241,17 +234,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pump();
         expect(closePlan.calls, 2);
-        expect(find.text('Closing Ludava…'), findsOneWidget);
-        expect(find.text('Finishing cleanup'), findsOneWidget);
-        expect(find.byType(CircularProgressIndicator), findsOneWidget);
-        expect(
-          find.text('Ludava could not close. App actions are disabled.'),
-          findsNothing,
-        );
-        expect(
-          find.text('Bad state: The native window rejected the close request.'),
-          findsNothing,
-        );
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
         expect(find.text('Retry close'), findsNothing);
         expect(controller.disposeCalls, 1);
         expect(controller.sdkDisposed, isTrue);
@@ -283,10 +266,7 @@ void main() {
         expect(closePlan.calls, 2);
         expect(controller.disposeCalls, 1);
         expect(tester.takeException(), isA<StateError>());
-        expect(
-          find.text('Ludava could not close. App actions are disabled.'),
-          findsOneWidget,
-        );
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
         expect(find.text('Retry close'), findsOneWidget);
 
         await tester.sendKeyEvent(LogicalKeyboardKey.space);
@@ -385,10 +365,7 @@ void main() {
 
         expect(windowController.closeCalls, 1);
         expect(controller.disposeCalls, 1);
-        expect(
-          find.text('Ludava could not close. App actions are disabled.'),
-          findsOneWidget,
-        );
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
         expect(reportedErrors, hasLength(1));
         expect(reportedErrors.single.exception, isA<StateError>());
 
@@ -423,10 +400,7 @@ void main() {
 
         expect(closePlan.calls, 1);
         expect(controller.disposeCalls, 1);
-        expect(
-          find.text('Ludava could not close. App actions are disabled.'),
-          findsOneWidget,
-        );
+        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
         expect(reportedErrors, hasLength(1));
         expect(reportedErrors.single.exception, isA<StateError>());
         expect(tester.takeException(), isNull);
