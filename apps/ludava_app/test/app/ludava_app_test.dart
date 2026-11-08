@@ -239,11 +239,46 @@ void main() {
 
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
         expect(closePlan.calls, 2);
+        expect(find.text('Closing Ludava…'), findsOneWidget);
+        expect(find.text('Finishing cleanup'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(
+          find.text('Ludava could not close. App actions are disabled.'),
+          findsNothing,
+        );
+        expect(
+          find.text('Bad state: The native window rejected the close request.'),
+          findsNothing,
+        );
+        expect(find.text('Retry close'), findsNothing);
+        expect(controller.disposeCalls, 1);
+        expect(controller.sdkDisposed, isTrue);
+
+        final retryShell = tester.widget<LudavaShell>(find.byType(LudavaShell));
+        expect(retryShell.isClosing, isTrue);
+        expect(retryShell.closeFailure, isNull);
+        retryShell.onRefresh();
+        retryShell.onSelectProcess(42);
+        retryShell.onEditField(field);
+        expect(
+          retryShell.onApplyField(field.id, 100).status,
+          GameWriteStatus.none,
+        );
+        retryShell.onCancelEditing();
+        retryShell.onMinimize();
+        retryShell.onToggleMaximize();
         tester.widget<LudavaShell>(find.byType(LudavaShell)).onClose();
+        tester.widget<LudavaShell>(find.byType(LudavaShell)).onClose();
+        final nativeCloseDuringRetry = windowController.onCloseRequested!.call(
+          true,
+        );
         expect(closePlan.calls, 2);
         retryGate.complete();
         await tester.pump();
+        await tester.pump();
+        await nativeCloseDuringRetry;
         await tester.pump();
         expect(closePlan.calls, 2);
         expect(controller.disposeCalls, 1);
@@ -558,6 +593,7 @@ class _RejectingNativeWindowController extends LudavaWindowController {
   final _NativeClosePlan closePlan;
   int minimizeCalls = 0;
   int maximizeCalls = 0;
+  Future<void> Function(bool requestCancelled)? onCloseRequested;
 
   @override
   void minimize() => minimizeCalls++;
@@ -568,7 +604,9 @@ class _RejectingNativeWindowController extends LudavaWindowController {
   @override
   void configure({
     Future<void> Function(bool requestCancelled)? onCloseRequested,
-  }) {}
+  }) {
+    this.onCloseRequested = onCloseRequested;
+  }
 }
 
 /// Returns configured native-close results to exercise rejection and retry.

@@ -153,9 +153,10 @@ class _LudavaAppState extends State<LudavaApp> {
     if (activeClose != null) return activeClose;
     if (_shutdownState == _ShutdownState.closing) return Future<void>.value();
 
-    if (_shutdownState == _ShutdownState.running) {
-      setState(() => _shutdownState = _ShutdownState.closing);
-    }
+    setState(() {
+      _shutdownState = _ShutdownState.closing;
+      _closeFailure = null;
+    });
 
     final closeFuture =
         _disposeControllerAndCloseWindow(requestCancelled: requestCancelled)
