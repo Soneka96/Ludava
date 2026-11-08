@@ -84,22 +84,7 @@ class LudavaShell extends StatelessWidget {
                     children: [
                       TrainerGameHeader(session: session, onRefresh: onRefresh),
                       Expanded(
-                        child: SafeArea(
-                          child:
-                              session.detection?.status ==
-                                  GameDetectionStatus.supportedGame
-                              ? TrainerFieldsPanel(
-                                  session: session,
-                                  editingFieldId: editingFieldId,
-                                  onEditField: onEditField,
-                                  onApplyField: onApplyField,
-                                  onCancelEditing: onCancelEditing,
-                                )
-                              : SessionConnectionBody(
-                                  session: session,
-                                  onSelectProcess: onSelectProcess,
-                                ),
-                        ),
+                        child: SafeArea(child: _buildSessionBody(context)),
                       ),
                     ],
                   ),
@@ -111,4 +96,52 @@ class LudavaShell extends StatelessWidget {
       ),
     ),
   );
+
+  /// Shows connection guidance until the SDK resolves a usable memory base.
+  Widget _buildSessionBody(BuildContext context) {
+    final isReady =
+        session.detection?.status == GameDetectionStatus.supportedGame &&
+        session.memoryBase != null;
+    if (!isReady) {
+      return SessionConnectionBody(
+        session: session,
+        onSelectProcess: onSelectProcess,
+      );
+    }
+
+    final errorMessage = session.errorMessage;
+    return Column(
+      children: [
+        if (errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: LudavaSpacing.lg,
+              vertical: LudavaSpacing.xs,
+            ),
+            child: Tooltip(
+              message: errorMessage,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  errorMessage,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ),
+          ),
+        Expanded(
+          child: TrainerFieldsPanel(
+            session: session,
+            editingFieldId: editingFieldId,
+            onEditField: onEditField,
+            onApplyField: onApplyField,
+            onCancelEditing: onCancelEditing,
+          ),
+        ),
+      ],
+    );
+  }
 }

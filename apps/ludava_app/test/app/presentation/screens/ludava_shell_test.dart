@@ -130,6 +130,113 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'Class LudavaShell shows memory-base guidance for a supported game',
+      (tester) async {
+        final maximizeState = ValueNotifier(false);
+        addTearDown(maximizeState.dispose);
+        final profile = GameProfileCatalog.profiles.first;
+        final session = TrainerSessionState(
+          processIds: const [42],
+          selectedProcessId: 42,
+          detection: GameDetectionResult(
+            status: GameDetectionStatus.supportedGame,
+            processId: 42,
+            profile: profile,
+            confidence: GameIdentityConfidence.confirmed,
+            evidenceDescription: 'Test game identity.',
+          ),
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            LudavaShell(
+              session: session,
+              editingFieldId: null,
+              onEditField: (_) {},
+              onApplyField: _failedWrite,
+              onCancelEditing: () {},
+              onMinimize: () {},
+              onToggleMaximize: () {},
+              isMaximized: maximizeState,
+              onClose: () {},
+              onRefresh: () {},
+              onSelectProcess: (_) {},
+            ),
+          ),
+        );
+
+        expect(find.byType(SessionConnectionBody), findsOneWidget);
+        expect(find.byType(TrainerFieldsPanel), findsNothing);
+        expect(
+          find.text(
+            'The game was detected, but its session memory base is unavailable.',
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class LudavaShell shows SDK errors alongside supported fields',
+      (tester) async {
+        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final maximizeState = ValueNotifier(false);
+        addTearDown(maximizeState.dispose);
+        final profile = GameProfileCatalog.profiles.first;
+        final field = profile.fields.values.first;
+        const message = 'The SDK could not refresh the current game session.';
+
+        await tester.pumpWidget(
+          _wrap(
+            LudavaShell(
+              session: TrainerSessionState(
+                processIds: const [42],
+                selectedProcessId: 42,
+                detection: GameDetectionResult(
+                  status: GameDetectionStatus.supportedGame,
+                  processId: 42,
+                  profile: profile,
+                  confidence: GameIdentityConfidence.confirmed,
+                  evidenceDescription: 'Test game identity.',
+                ),
+                memoryBase: 0x1000,
+                readResults: {
+                  field.id: GameReadResult(
+                    status: GameReadStatus.success,
+                    fieldId: field.id,
+                    value: 17,
+                  ),
+                },
+                errorMessage: message,
+              ),
+              editingFieldId: null,
+              onEditField: (_) {},
+              onApplyField: _failedWrite,
+              onCancelEditing: () {},
+              onMinimize: () {},
+              onToggleMaximize: () {},
+              isMaximized: maximizeState,
+              onClose: () {},
+              onRefresh: () {},
+              onSelectProcess: (_) {},
+            ),
+          ),
+        );
+
+        expect(find.byType(TrainerFieldsPanel), findsOneWidget);
+        expect(find.byType(SessionConnectionBody), findsNothing);
+        expect(find.text(message), findsOneWidget);
+        expect(find.text(field.name), findsOneWidget);
+        expect(find.text('17'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('Class LudavaShell supports process choice at minimum size', (
       tester,
     ) async {

@@ -107,6 +107,30 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await controller.disposeSdk();
     });
+
+    testWidgets('Class LudavaApp retries a failed native close request', (
+      tester,
+    ) async {
+      final sdk = _createSdk(() => const []);
+      final controller = _AppTestTrainerController(sdk);
+      final windowController = _RecordingWindowController()
+        ..failNextClose = true;
+      await tester.pumpWidget(
+        LudavaApp(controller: controller, windowController: windowController),
+      );
+
+      final closeRequest = windowController.onCloseRequested!;
+      await expectLater(closeRequest(), throwsStateError);
+      expect(windowController.closeCalls, 1);
+
+      await closeRequest();
+
+      expect(windowController.closeCalls, 2);
+      expect(controller.disposeCalls, 1);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      await controller.disposeSdk();
+    });
   });
 }
 
@@ -147,6 +171,7 @@ class _RecordingWindowController extends LudavaWindowController {
 
   /// Number of native close operations received after cleanup.
   int closeCalls = 0;
+  bool failNextClose = false;
 
   /// Registers the test callback instead of configuring a native window.
   @override
@@ -158,6 +183,10 @@ class _RecordingWindowController extends LudavaWindowController {
   @override
   Future<void> close() async {
     closeCalls++;
+    if (failNextClose) {
+      failNextClose = false;
+      throw StateError('The native window rejected the close request.');
+    }
   }
 }
 
@@ -168,10 +197,14 @@ class _AppTestTrainerController extends TrainerController {
 
   final LudavaSdk _sdk;
   int disposeCalls = 0;
+  Future<void>? _disposeFuture;
 
   /// Records the app lifecycle cleanup request without disposing the test SDK.
   @override
-  Future<void> dispose() async {
+  Future<void> dispose() => _disposeFuture ??= _recordDisposal();
+
+  /// Records the first lifecycle cleanup request for an idempotent capability.
+  Future<void> _recordDisposal() async {
     disposeCalls++;
   }
 

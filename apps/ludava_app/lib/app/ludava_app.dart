@@ -96,8 +96,16 @@ class _LudavaAppState extends State<LudavaApp> {
   }
 
   /// Shares one cleanup future across repeated title-bar and native requests.
-  Future<void> _closeAfterDisposal() =>
-      _closeFuture ??= _disposeControllerAndCloseWindow();
+  Future<void> _closeAfterDisposal() {
+    final activeClose = _closeFuture;
+    if (activeClose != null) return activeClose;
+
+    final closeFuture = _disposeControllerAndCloseWindow().whenComplete(() {
+      _closeFuture = null;
+    });
+    _closeFuture = closeFuture;
+    return closeFuture;
+  }
 
   /// Awaits controller cleanup and then closes the native window.
   Future<void> _disposeControllerAndCloseWindow() async {
