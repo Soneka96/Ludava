@@ -1,5 +1,5 @@
 param(
-    [string]$BuildDirectory = 'build'
+    [string]$BuildDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,6 +14,9 @@ if ([System.IO.Path]::IsPathRooted($BuildDirectory) -or
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $flutterProject = Join-Path $projectRoot 'apps\ludava_app'
+if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
+    $BuildDirectory = "build\windows-release-$([guid]::NewGuid().ToString('N'))"
+}
 $flutterBuildDirectory = Join-Path $flutterProject $BuildDirectory
 $releaseDirectory = Join-Path $flutterBuildDirectory 'windows\x64\runner\Release'
 

@@ -1,3 +1,7 @@
+param(
+    [string]$OutputDirectory
+)
+
 $ErrorActionPreference = 'Stop'
 
 if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
@@ -5,7 +9,13 @@ if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
 }
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$outputDirectory = Join-Path $projectRoot 'build'
+$outputDirectory = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    Join-Path $projectRoot 'build'
+} elseif ([System.IO.Path]::IsPathRooted($OutputDirectory)) {
+    [System.IO.Path]::GetFullPath($OutputDirectory)
+} else {
+    Join-Path $projectRoot $OutputDirectory
+}
 $executablePath = Join-Path $outputDirectory 'Ludava-TUI.exe'
 $nativeLibraryPath = Join-Path $outputDirectory 'ludava_process_discovery.dll'
 $tuiEntrypoint = Join-Path $projectRoot 'apps\ludava_tui\bin\ludava.dart'

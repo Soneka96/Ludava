@@ -14,12 +14,13 @@ $flutterBuildDirectoryName = "build\windows-package-$runId"
 $flutterBuildDirectory = Join-Path $flutterProject $flutterBuildDirectoryName
 $flutterReleaseDirectory = Join-Path $flutterBuildDirectory 'windows\x64\runner\Release'
 $stagingDirectory = Join-Path $stagingParent $runId
+$tuiBuildDirectory = Join-Path $stagingDirectory 'tui-build'
 $tuiStage = Join-Path $stagingDirectory 'tui'
 $desktopStage = Join-Path $stagingDirectory 'desktop'
 $tuiZip = Join-Path $distributionDirectory 'Ludava-TUI-Windows-x64.zip'
 $desktopZip = Join-Path $distributionDirectory 'Ludava-Desktop-Windows-x64.zip'
-$tuiExecutable = Join-Path $buildDirectory 'Ludava-TUI.exe'
-$nativeLibrary = Join-Path $buildDirectory 'ludava_process_discovery.dll'
+$tuiExecutable = Join-Path $tuiBuildDirectory 'Ludava-TUI.exe'
+$nativeLibrary = Join-Path $tuiBuildDirectory 'ludava_process_discovery.dll'
 
 function Get-VisualCppRuntimeDirectory {
     $vswhereCandidates = @(
@@ -71,9 +72,10 @@ function Assert-PathIsWithinDirectory {
 
 New-Item -ItemType Directory -Force -Path $distributionDirectory | Out-Null
 New-Item -ItemType Directory -Force -Path $stagingParent | Out-Null
+New-Item -ItemType Directory -Force -Path $tuiBuildDirectory, $tuiStage, $desktopStage | Out-Null
 
 try {
-    & (Join-Path $PSScriptRoot 'build_windows.ps1')
+    & (Join-Path $PSScriptRoot 'build_windows.ps1') -OutputDirectory $tuiBuildDirectory
     & (Join-Path $PSScriptRoot 'build_flutter_windows.ps1') `
         -BuildDirectory $flutterBuildDirectoryName
 
@@ -86,7 +88,6 @@ try {
         throw "Flutter release output was not found at $flutterReleaseDirectory."
     }
 
-    New-Item -ItemType Directory -Force -Path $tuiStage, $desktopStage | Out-Null
     Copy-Item -LiteralPath $tuiExecutable -Destination $tuiStage
     Copy-Item -LiteralPath $nativeLibrary -Destination $tuiStage
 
