@@ -41,6 +41,7 @@ class TrainerFieldValue extends StatelessWidget {
       child: Text(
         TrainerValueFormatter.format(value),
         style: theme.textTheme.titleLarge?.copyWith(
+          fontSize: 14,
           color: theme.colorScheme.onSurface,
         ),
       ),

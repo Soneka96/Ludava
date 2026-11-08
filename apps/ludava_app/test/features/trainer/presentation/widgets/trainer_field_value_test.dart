@@ -37,6 +37,32 @@ void main() {
     });
 
     testWidgets(
+      'Class TrainerFieldValue scales down the maximum value in narrow rows',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            TrainerFieldValue(
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'bolts',
+                value: 4294967295,
+              ),
+              canRead: true,
+            ),
+            width: 80,
+          ),
+        );
+
+        expect(find.text('4,294,967,295'), findsOneWidget);
+        expect(
+          tester.getRect(find.text('4,294,967,295')).width,
+          lessThanOrEqualTo(80),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
       'Class TrainerFieldValue distinguishes unavailable and failed reads',
       (tester) async {
         await tester.pumpWidget(
@@ -76,9 +102,11 @@ void main() {
   });
 }
 
-Widget _wrap(Widget child) => MaterialApp(
+Widget _wrap(Widget child, {double width = 240}) => MaterialApp(
   theme: LudavaTheme.graphiteAndTeal,
   home: Scaffold(
-    body: Center(child: SizedBox(width: 240, child: child)),
+    body: Center(
+      child: SizedBox(width: width, child: child),
+    ),
   ),
 );

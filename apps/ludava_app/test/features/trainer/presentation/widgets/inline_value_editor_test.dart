@@ -40,6 +40,7 @@ void main() {
           input.controller!.selection,
           const TextSelection.collapsed(offset: 3),
         );
+        expect(input.style?.fontSize, 14);
         expect(
           input.style?.fontSize,
           LudavaTheme.graphiteAndTeal.textTheme.bodyMedium?.fontSize,

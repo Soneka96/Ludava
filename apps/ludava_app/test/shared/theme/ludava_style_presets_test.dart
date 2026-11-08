@@ -11,6 +11,8 @@ void main() {
 
       expect(preset.fontFamily, 'Segoe UI');
       expect(preset.textTheme.titleSmall?.fontSize, 14);
+      expect(preset.textTheme.titleLarge?.fontSize, 18);
+      expect(preset.textTheme.titleMedium?.fontSize, 16);
       expect(preset.textTheme.bodyMedium?.fontSize, 14);
       expect(preset.textTheme.labelMedium?.fontSize, 12);
       expect(preset.textTheme.headlineMedium?.fontSize, 24);
@@ -18,7 +20,6 @@ void main() {
         preset.textTheme.headlineMedium?.fontFeatures,
         contains(const FontFeature.tabularFigures()),
       );
-      expect(preset.textTheme.titleLarge?.fontSize, 14);
       expect(
         preset.textTheme.titleLarge?.fontFeatures,
         contains(const FontFeature.tabularFigures()),
