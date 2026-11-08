@@ -1,7 +1,10 @@
 import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_request.entity.dart';
 import 'package:ludava_sdk/features/trainer/application/diagnostics/diagnostic_game_memory_service.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
+import 'package:ludava_sdk/features/game_memory/data/datasources/windows_memory_api.dart';
 import 'package:ludava_sdk/features/game_memory/data/process_game_memory_operations.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_memory_base_candidate.entity.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
@@ -11,13 +14,129 @@ import 'package:test/test.dart';
 
 import '../../../../support/fake_windows_memory_api.dart';
 
+GameField _field({
+  VerificationStatus writeStatus = VerificationStatus.researchConfirmed,
+}) => GameField(
+  id: 'credits',
+  name: 'Credits',
+  guestOffset: 0x1000,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.experimental,
+  writeStatus: writeStatus,
+  minimumValue: 0,
+  maximumValue: 0xffffffff,
+);
+
+GameProfile _profile({
+  VerificationStatus writeStatus = VerificationStatus.researchConfirmed,
+  Map<String, GameField>? fields,
+}) => GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'TEST00001',
+  executable: 'SYNTHETIC.self',
+  executableHash: 'PPU-synthetic-hash',
+  readStatus: VerificationStatus.experimental,
+  writeStatus: writeStatus,
+  fields: fields ?? {'credits': _field()},
+);
+
+List<GameProfile> _profiles() => [_profile()];
+
+DiagnosticGameMemoryService _createService({
+  Iterable<GameProfile>? profiles,
+  WindowsMemoryApi? api,
+  bool? isWindows,
+  int? pointerSize,
+  ProcessGameMemoryOperations? memoryOperations,
+  List<int> Function()? discoverProcessIds,
+  Rpcs3ProcessMetadata Function(int processId)? readProcessMetadata,
+  Rpcs3MemoryBaseCandidate? Function(Rpcs3ProcessMetadata processMetadata)?
+  resolveMemoryBaseCandidate,
+  GameDetectionResult Function(
+    int processId,
+    Rpcs3ProcessMetadata processMetadata,
+  )?
+  detectGame,
+  Rpcs3GameIdentityLogDataSource? gameIdentityLogDataSource,
+}) => DiagnosticGameMemoryService(
+  profiles: profiles ?? _profiles(),
+  api: api,
+  isWindows: isWindows,
+  pointerSize: pointerSize,
+  memoryOperations: memoryOperations,
+  discoverProcessIds: discoverProcessIds,
+  readProcessMetadata: readProcessMetadata,
+  resolveMemoryBaseCandidate: resolveMemoryBaseCandidate,
+  detectGame: detectGame,
+  gameIdentityLogDataSource: gameIdentityLogDataSource,
+);
+
+final _metadata = Rpcs3ProcessMetadata(
+  executablePath: r'C:\RPCS3\rpcs3.exe',
+  startedAtUtc: DateTime.utc(2026, 11, 5),
+);
+
+GameDetectionResult _identity({
+  int processId = 42,
+  String? executableHash = 'PPU-synthetic-hash',
+}) => GameDetectionResult(
+  status: GameDetectionStatus.supportedGame,
+  processId: processId,
+  titleId: 'TEST00001',
+  gameTitle: 'Synthetic game',
+  executable: 'SYNTHETIC.self',
+  executableHash: executableHash,
+  confidence: GameIdentityConfidence.confirmed,
+  profile: _profile(),
+  evidenceDescription: 'Confirmed synthetic identity.',
+);
+
+final _confirmedIdentity = _identity();
+final _mismatchedIdentity = GameDetectionResult(
+  status: GameDetectionStatus.noActiveGame,
+  processId: 42,
+  confidence: GameIdentityConfidence.uncertain,
+  evidenceDescription: 'No active game in the synthetic session.',
+);
+final _wrongHashIdentity = _identity(
+  executableHash: 'PPU-wrong-synthetic-hash',
+);
+final _otherProcessIdentity = _identity(processId: 43);
+
+DiagnosticGameMemoryRequest _readRequest({
+  bool requireCurrentIdentity = false,
+}) => DiagnosticGameMemoryRequest(
+  gameId: 'synthetic-profile',
+  fieldId: 'credits',
+  processId: 42,
+  memoryBase: 0x300000000,
+  action: GameMemoryAction.read,
+  requireCurrentIdentity: requireCurrentIdentity,
+);
+
+DiagnosticGameMemoryRequest _writeRequest({
+  bool confirmed = true,
+  int value = 0x01020304,
+  String fieldId = 'credits',
+}) => DiagnosticGameMemoryRequest(
+  gameId: 'synthetic-profile',
+  fieldId: fieldId,
+  processId: 42,
+  memoryBase: 0x300000000,
+  action: GameMemoryAction.write,
+  value: value,
+  confirmed: confirmed,
+);
+
 void main() {
   group('Method execute() behaves correctly', () {
     test(
       'Method execute() reads a field without current identity evidence',
       () {
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           memoryOperations: ProcessGameMemoryOperations(
             api: api.adapter,
             isWindows: true,
@@ -38,7 +157,7 @@ void main() {
 
     test('Method execute() writes only after matching identity and base', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -63,7 +182,7 @@ void main() {
     test('Method execute() rejects a write without explicit confirmation', () {
       var discoveryCalls = 0;
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -82,7 +201,7 @@ void main() {
 
     test('Method execute() rejects a write when current identity differs', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -100,7 +219,7 @@ void main() {
       'Method execute() rejects a write when the confirmed PPU hash differs',
       () {
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -119,7 +238,7 @@ void main() {
       'Method execute() rejects identity evidence for a different process',
       () {
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -136,7 +255,7 @@ void main() {
 
     test('Method execute() rejects a write when the current base differs', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -159,7 +278,7 @@ void main() {
       'Method execute() rejects a required-identity read without a match',
       () {
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -176,7 +295,7 @@ void main() {
       'Method execute() preserves native memory errors as typed failures',
       () {
         final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -192,7 +311,7 @@ void main() {
 
     test('Method execute() reports handle cleanup failures separately', () {
       final api = FakeWindowsMemoryApi()..closeReturnValue = 0;
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -211,7 +330,7 @@ void main() {
       () {
         var discoveryCalls = 0;
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -221,8 +340,8 @@ void main() {
           },
         ).execute(
           const DiagnosticGameMemoryRequest(
-            gameId: 'rc2-collection',
-            fieldId: 'bolts',
+            gameId: 'synthetic-profile',
+            fieldId: 'credits',
             processId: 42,
             memoryBase: 0x300000000,
             action: GameMemoryAction.write,
@@ -242,7 +361,7 @@ void main() {
       () {
         var discoveryCalls = 0;
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -252,8 +371,8 @@ void main() {
           },
         ).execute(
           const DiagnosticGameMemoryRequest(
-            gameId: 'rc2-collection',
-            fieldId: 'bolts',
+            gameId: 'synthetic-profile',
+            fieldId: 'credits',
             processId: 0x100000000,
             memoryBase: 0x300000000,
             action: GameMemoryAction.read,
@@ -269,7 +388,7 @@ void main() {
     test('Method execute() rejects an unsupported action before discovery', () {
       var discoveryCalls = 0;
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -279,8 +398,8 @@ void main() {
         },
       ).execute(
         const DiagnosticGameMemoryRequest(
-          gameId: 'rc2-collection',
-          fieldId: 'bolts',
+          gameId: 'synthetic-profile',
+          fieldId: 'credits',
           processId: 42,
           memoryBase: 0x300000000,
           action: GameMemoryAction.none,
@@ -295,7 +414,7 @@ void main() {
     test('Method execute() returns unknown-game status before discovery', () {
       var discoveryCalls = 0;
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -306,7 +425,7 @@ void main() {
       ).execute(
         const DiagnosticGameMemoryRequest(
           gameId: 'unknown',
-          fieldId: 'bolts',
+          fieldId: 'credits',
           processId: 42,
           memoryBase: 0x300000000,
           action: GameMemoryAction.read,
@@ -322,7 +441,7 @@ void main() {
     test('Method execute() rejects an unknown field before discovery', () {
       var discoveryCalls = 0;
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -332,7 +451,7 @@ void main() {
         },
       ).execute(
         const DiagnosticGameMemoryRequest(
-          gameId: 'rc2-collection',
+          gameId: 'synthetic-profile',
           fieldId: 'missing',
           processId: 42,
           memoryBase: 0x300000000,
@@ -346,10 +465,10 @@ void main() {
       expect(api.openCalls, 0);
     });
 
-    test('Method execute() rejects an unwritable field before discovery', () {
+    test('Method execute() rejects a missing write field before discovery', () {
       var discoveryCalls = 0;
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -366,12 +485,57 @@ void main() {
       expect(api.writeCalls, 0);
     });
 
+    test('Method execute() rejects a read-only field before discovery', () {
+      var discoveryCalls = 0;
+      final api = FakeWindowsMemoryApi();
+      final profile = _profile(
+        fields: {'credits': _field(writeStatus: VerificationStatus.none)},
+      );
+      final result = _createService(
+        profiles: [profile],
+        api: api.adapter,
+        isWindows: true,
+        pointerSize: 8,
+        discoverProcessIds: () {
+          discoveryCalls++;
+          return const [];
+        },
+      ).execute(_writeRequest());
+
+      expect(result.status, DiagnosticGameMemoryStatus.memoryOperationFailed);
+      expect(result.writeResult?.status, GameWriteStatus.unsupportedField);
+      expect(discoveryCalls, 0);
+      expect(api.openCalls, 0);
+      expect(api.writeCalls, 0);
+    });
+
+    test('Method execute() rejects a read-only profile before discovery', () {
+      var discoveryCalls = 0;
+      final api = FakeWindowsMemoryApi();
+      final result = _createService(
+        profiles: [_profile(writeStatus: VerificationStatus.none)],
+        api: api.adapter,
+        isWindows: true,
+        pointerSize: 8,
+        discoverProcessIds: () {
+          discoveryCalls++;
+          return const [];
+        },
+      ).execute(_writeRequest());
+
+      expect(result.status, DiagnosticGameMemoryStatus.memoryOperationFailed);
+      expect(result.writeResult?.status, GameWriteStatus.unsupportedProfile);
+      expect(discoveryCalls, 0);
+      expect(api.openCalls, 0);
+      expect(api.writeCalls, 0);
+    });
+
     test(
       'Method execute() rejects a nonpositive process ID before discovery',
       () {
         var discoveryCalls = 0;
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -381,8 +545,8 @@ void main() {
           },
         ).execute(
           const DiagnosticGameMemoryRequest(
-            gameId: 'rc2-collection',
-            fieldId: 'bolts',
+            gameId: 'synthetic-profile',
+            fieldId: 'credits',
             processId: 0,
             memoryBase: 0x300000000,
             action: GameMemoryAction.read,
@@ -397,7 +561,7 @@ void main() {
 
     test('Method execute() requires identity before a requested read', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -417,7 +581,7 @@ void main() {
       'Method execute() classifies identity-check exceptions for writes',
       () {
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -436,7 +600,7 @@ void main() {
       'Method execute() classifies unsupported identity checks for writes',
       () {
         final api = FakeWindowsMemoryApi();
-        final result = DiagnosticGameMemoryService(
+        final result = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -453,7 +617,7 @@ void main() {
 
     test('Method execute() classifies a missing current memory base', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -470,7 +634,7 @@ void main() {
 
     test('Method execute() classifies memory-base resolver exceptions', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -489,7 +653,7 @@ void main() {
 
     test('Method execute() classifies unsupported memory-base checks', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -508,7 +672,7 @@ void main() {
 
     test('Method execute() reports a failed preliminary write read', () {
       final api = FakeWindowsMemoryApi()..readReturnValue = 0;
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -530,7 +694,7 @@ void main() {
 
     test('Method execute() reports mismatched write read-back', () {
       final api = FakeWindowsMemoryApi();
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -554,7 +718,7 @@ void main() {
 
     test('Method execute() returns a typed read failure without fake zero', () {
       final api = FakeWindowsMemoryApi()..readReturnValue = 0;
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -570,7 +734,7 @@ void main() {
     });
 
     test('Method execute() preserves unsupported-platform errors', () {
-      final result = DiagnosticGameMemoryService(
+      final result = _createService(
         isWindows: false,
         pointerSize: 8,
         discoverProcessIds: () => const [],
@@ -590,7 +754,7 @@ void main() {
         var detectionCalls = 0;
         var baseResolutionCalls = 0;
         final api = FakeWindowsMemoryApi();
-        final service = DiagnosticGameMemoryService(
+        final service = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -642,7 +806,7 @@ void main() {
         var metadataCalls = 0;
         var detectionCalls = 0;
         final api = FakeWindowsMemoryApi();
-        service = DiagnosticGameMemoryService(
+        service = _createService(
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -673,76 +837,3 @@ void main() {
     );
   });
 }
-
-final _metadata = Rpcs3ProcessMetadata(
-  executablePath: r'C:\RPCS3\rpcs3.exe',
-  startedAtUtc: DateTime.utc(2026, 11, 5),
-);
-
-final _confirmedIdentity = GameDetectionResult(
-  status: GameDetectionStatus.supportedGame,
-  processId: 42,
-  titleId: 'BCUS98282',
-  gameTitle: 'Ratchet & Clank 2',
-  executable: 'RC2.ppu.self',
-  executableHash: 'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9',
-  confidence: GameIdentityConfidence.confirmed,
-  profile: GameProfileCatalog.find('rc2-collection'),
-  evidenceDescription: 'Confirmed test identity.',
-);
-
-final _mismatchedIdentity = GameDetectionResult(
-  status: GameDetectionStatus.noActiveGame,
-  processId: 42,
-  confidence: GameIdentityConfidence.uncertain,
-  evidenceDescription: 'No active game in the test session.',
-);
-
-final _wrongHashIdentity = GameDetectionResult(
-  status: GameDetectionStatus.supportedGame,
-  processId: 42,
-  titleId: 'BCUS98282',
-  gameTitle: 'Ratchet & Clank 2',
-  executable: 'RC2.ppu.self',
-  executableHash: 'PPU-wrong-hash',
-  confidence: GameIdentityConfidence.confirmed,
-  profile: GameProfileCatalog.find('rc2-collection'),
-  evidenceDescription: 'Confirmed identity with a different test hash.',
-);
-
-final _otherProcessIdentity = GameDetectionResult(
-  status: GameDetectionStatus.supportedGame,
-  processId: 43,
-  titleId: 'BCUS98282',
-  gameTitle: 'Ratchet & Clank 2',
-  executable: 'RC2.ppu.self',
-  executableHash: 'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9',
-  confidence: GameIdentityConfidence.confirmed,
-  profile: GameProfileCatalog.find('rc2-collection'),
-  evidenceDescription: 'Confirmed identity for another test process.',
-);
-
-DiagnosticGameMemoryRequest _readRequest({
-  bool requireCurrentIdentity = false,
-}) => DiagnosticGameMemoryRequest(
-  gameId: 'rc2-collection',
-  fieldId: 'bolts',
-  processId: 42,
-  memoryBase: 0x300000000,
-  action: GameMemoryAction.read,
-  requireCurrentIdentity: requireCurrentIdentity,
-);
-
-DiagnosticGameMemoryRequest _writeRequest({
-  bool confirmed = true,
-  int value = 0x01020304,
-  String fieldId = 'bolts',
-}) => DiagnosticGameMemoryRequest(
-  gameId: 'rc2-collection',
-  fieldId: fieldId,
-  processId: 42,
-  memoryBase: 0x300000000,
-  action: GameMemoryAction.write,
-  value: value,
-  confirmed: confirmed,
-);

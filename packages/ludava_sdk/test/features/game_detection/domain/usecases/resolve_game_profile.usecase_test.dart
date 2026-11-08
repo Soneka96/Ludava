@@ -1,480 +1,56 @@
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/tools_of_destruction_bcus98127_profile.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/params/resolve_game_profile.params.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/resolve_game_profile.usecase.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
-void main() {
-  group('Method execute() behaves correctly', () {
-    test(
-      'Method execute() matches Deadlocked from its observed standalone identity',
-      () {
-        final profile = DeadlockedPs3Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: profile.buildId,
-            gameTitle: profile.gameName,
-            executable: profile.executable,
-            executableHash: profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.supportedGame);
-        expect(result.profile, same(profile));
-        expect(result.confidence, GameIdentityConfidence.confirmed);
-        expect(result.availableFields.map((field) => field.id), ['bolts']);
-      },
+GameField _field({String id = 'credits', int guestOffset = 0x1000}) =>
+    GameField(
+      id: id,
+      name: id,
+      guestOffset: guestOffset,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      readStatus: VerificationStatus.experimental,
     );
 
-    test('Method execute() normalizes the measured Deadlocked identity', () {
-      final profile = DeadlockedPs3Profile.profile;
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: ' npua80646 ',
-          executable: ' eboot.bin ',
-          executableHash: ' ${profile.executableHash!.toLowerCase()} ',
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
+GameProfile _profile({
+  String id = 'synthetic-alpha',
+  String gameName = 'Synthetic Alpha',
+  String buildId = 'TEST00001',
+  String executable = 'ALPHA.self',
+  String? executableHash = 'PPU-synthetic-alpha',
+  Map<String, GameField>? fields,
+}) => GameProfile(
+  id: id,
+  gameName: gameName,
+  buildId: buildId,
+  executable: executable,
+  executableHash: executableHash,
+  readStatus: VerificationStatus.experimental,
+  fields: fields ?? {'credits': _field()},
+);
 
-      expect(result.status, GameDetectionStatus.supportedGame);
-      expect(result.profile, same(profile));
-      expect(result.confidence, GameIdentityConfidence.confirmed);
-    });
+List<GameProfile> _profiles() => [
+  _profile(),
+  _profile(
+    id: 'synthetic-beta',
+    gameName: 'Synthetic Beta',
+    executable: 'BETA.self',
+    executableHash: 'PPU-synthetic-beta',
+  ),
+];
 
-    test(
-      'Method execute() rejects Deadlocked identity with the Collection title ID',
-      () {
-        final profile = DeadlockedPs3Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: 'BCUS98282',
-            executable: profile.executable,
-            executableHash: profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test(
-      'Method execute() rejects Deadlocked when its executable name differs',
-      () {
-        final profile = DeadlockedPs3Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: profile.buildId,
-            executable: 'RC2.ppu.self',
-            executableHash: profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test(
-      'Method execute() keeps Deadlocked ambiguous without its executable name',
-      () {
-        final profile = DeadlockedPs3Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: profile.buildId,
-            executable: null,
-            executableHash: profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test('Method execute() rejects Deadlocked when its PPU hash differs', () {
-      final profile = DeadlockedPs3Profile.profile;
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: profile.buildId,
-          executable: profile.executable,
-          executableHash: Rc2CollectionProfile.profile.executableHash,
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.ambiguous);
-      expect(result.profile, isNull);
-      expect(result.confidence, GameIdentityConfidence.uncertain);
-    });
-
-    test(
-      'Method execute() leaves Deadlocked ambiguous when its PPU hash is missing',
-      () {
-        final profile = DeadlockedPs3Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: profile.buildId,
-            executable: profile.executable,
-            executableHash: null,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test('Method execute() matches RC2 from its measured PPU hash', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: 'BCUS98282',
-          executable: 'RC2.ppu.self',
-          executableHash: Rc2CollectionProfile.profile.executableHash,
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.supportedGame);
-      expect(result.profile, same(Rc2CollectionProfile.profile));
-      expect(result.confidence, GameIdentityConfidence.confirmed);
-      expect(
-        result.executableHash,
-        Rc2CollectionProfile.profile.executableHash,
-      );
-      expect(result.availableFields.map((field) => field.id), ['bolts']);
-    });
-
-    test(
-      'Method execute() matches Tools of Destruction from its measured PPU hash',
-      () {
-        final profile = ToolsOfDestructionBcus98127Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: profile.buildId,
-            executable: profile.executable,
-            executableHash: profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.supportedGame);
-        expect(result.profile, same(profile));
-        expect(result.confidence, GameIdentityConfidence.confirmed);
-        expect(result.availableFields.map((field) => field.id), [
-          'bolts',
-          'raritanium',
-        ]);
-      },
-    );
-
-    test(
-      'Method execute() rejects Tools of Destruction with another PPU hash',
-      () {
-        final profile = ToolsOfDestructionBcus98127Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: profile.buildId,
-            executable: profile.executable,
-            executableHash: DeadlockedPs3Profile.profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test(
-      'Method execute() keeps Tools of Destruction ambiguous without its PPU hash',
-      () {
-        final profile = ToolsOfDestructionBcus98127Profile.profile;
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: profile.buildId,
-            executable: profile.executable,
-            executableHash: null,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test('Method execute() matches each game from its measured PPU hash', () {
-      final profiles = [
-        Rc1CollectionProfile.profile,
-        Rc2CollectionProfile.profile,
-        Rc3CollectionProfile.profile,
-      ];
-
-      for (final profile in profiles) {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: 'BCUS98282',
-            executable: profile.executable,
-            executableHash: profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.supportedGame);
-        expect(result.profile, same(profile));
-        expect(result.confidence, GameIdentityConfidence.confirmed);
-      }
-    });
-
-    test('Method execute() leaves the shared Collection ID ambiguous', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: 'BCUS98282',
-          executable: null,
-          executableHash: null,
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.ambiguous);
-      expect(result.profile, isNull);
-      expect(result.confidence, GameIdentityConfidence.uncertain);
-      expect(result.gameTitle, 'Ratchet & Clank Collection');
-    });
-
-    test('Method execute() keeps RC1 ambiguous without its measured hash', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: 'BCUS98282',
-          executable: Rc1CollectionProfile.profile.executable,
-          executableHash: null,
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.ambiguous);
-      expect(result.profile, isNull);
-      expect(result.confidence, GameIdentityConfidence.uncertain);
-      expect(Rc1CollectionProfile.profile.executableHash, isNotNull);
-    });
-
-    test('Method execute() keeps RC3 ambiguous without its measured hash', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: 'BCUS98282',
-          executable: Rc3CollectionProfile.profile.executable,
-          executableHash: null,
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.ambiguous);
-      expect(result.profile, isNull);
-      expect(result.confidence, GameIdentityConfidence.uncertain);
-      expect(Rc3CollectionProfile.profile.executableHash, isNotNull);
-    });
-
-    test(
-      'Method execute() reports a confirmed unknown title as unsupported',
-      () {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: 'UNKNOWN123',
-            gameTitle: 'Unregistered game',
-            executable: 'GAME.self',
-            executableHash: 'PPU-unknown',
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.unsupportedGame);
-        expect(result.profile, isNull);
-        expect(result.gameTitle, 'Unregistered game');
-        expect(result.availableFields, isEmpty);
-      },
-    );
-
-    test('Method execute() does not match uncertain identity signals', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: 'BCUS98282',
-          executable: 'RC2.ppu.self',
-          executableHash: Rc2CollectionProfile.profile.executableHash,
-          confidence: GameIdentityConfidence.uncertain,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.ambiguous);
-      expect(result.profile, isNull);
-      expect(result.confidence, GameIdentityConfidence.uncertain);
-    });
-
-    test('Method execute() leaves missing or blank title IDs ambiguous', () {
-      for (final titleId in [null, '  ']) {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: titleId,
-            executable: 'RC2.ppu.self',
-            executableHash: Rc2CollectionProfile.profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-      }
-    });
-
-    test('Method execute() normalizes confirmed identity values', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: ' bcus98282 ',
-          executable: ' rc2.PPU.SELF ',
-          executableHash: ' ppu-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9 ',
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.supportedGame);
-      expect(result.profile, same(Rc2CollectionProfile.profile));
-    });
-
-    test(
-      'Method execute() leaves the shared title ID ambiguous for an unknown hash',
-      () {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: 'BCUS98282',
-            executable: 'RC2.ppu.self',
-            executableHash: 'PPU-unknown',
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test(
-      'Method execute() keeps a matching hash ambiguous without an executable name',
-      () {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            titleId: 'BCUS98282',
-            executable: null,
-            executableHash: Rc2CollectionProfile.profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.ambiguous);
-        expect(result.profile, isNull);
-        expect(result.confidence, GameIdentityConfidence.uncertain);
-      },
-    );
-
-    test('Method execute() rejects a hash paired with another executable', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: 'BCUS98282',
-          executable: 'RC1.ppu.self',
-          executableHash: Rc2CollectionProfile.profile.executableHash,
-          confidence: GameIdentityConfidence.confirmed,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.ambiguous);
-      expect(result.profile, isNull);
-      expect(result.confidence, GameIdentityConfidence.uncertain);
-    });
-
-    test('Method execute() records a deliberate manual profile selection', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          titleId: 'BCUS98282',
-          gameTitle: 'Ratchet & Clank 2',
-          executable: 'RC2.ppu.self',
-          executableHash: Rc2CollectionProfile.profile.executableHash,
-          confidence: GameIdentityConfidence.manuallySelected,
-          manualProfileId: Rc3CollectionProfile.id,
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.supportedGame);
-      expect(result.profile, same(Rc3CollectionProfile.profile));
-      expect(result.confidence, GameIdentityConfidence.manuallySelected);
-      expect(result.titleId, Rc3CollectionProfile.profile.buildId);
-      expect(result.gameTitle, 'Ratchet & Clank 3');
-      expect(result.executable, 'RC3.ppu.self');
-    });
-
-    test('Method execute() rejects an unknown manual profile selection', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(
-          confidence: GameIdentityConfidence.manuallySelected,
-          manualProfileId: 'not-registered',
-        ),
-      );
-
-      expect(result.status, GameDetectionStatus.failed);
-      expect(result.profile, isNull);
-      expect(result.confidence, GameIdentityConfidence.manuallySelected);
-    });
-
-    test('Method execute() rejects a missing manual profile selection', () {
-      final result = ResolveGameProfileUseCase().execute(
-        _params(confidence: GameIdentityConfidence.manuallySelected),
-      );
-
-      expect(result.status, GameDetectionStatus.failed);
-      expect(result.profile, isNull);
-    });
-
-    test('Method execute() rejects invalid process identifiers', () {
-      for (final processId in [0, -1]) {
-        final result = ResolveGameProfileUseCase().execute(
-          _params(
-            processId: processId,
-            titleId: 'BCUS98282',
-            executable: 'RC2.ppu.self',
-            executableHash: Rc2CollectionProfile.profile.executableHash,
-            confidence: GameIdentityConfidence.confirmed,
-          ),
-        );
-
-        expect(result.status, GameDetectionStatus.failed);
-        expect(result.processId, isNull);
-        expect(result.profile, isNull);
-      }
-    });
-  });
-}
+ResolveGameProfileUseCase _createResolver({Iterable<GameProfile>? profiles}) =>
+    ResolveGameProfileUseCase(profiles: profiles ?? _profiles());
 
 ResolveGameProfileParams _params({
   int? processId = 42,
-  String? titleId = 'BCUS98282',
-  String? gameTitle = 'Ratchet & Clank Collection',
-  String? executable,
-  String? executableHash,
+  String? titleId = 'TEST00001',
+  String? gameTitle = 'Synthetic title',
+  String? executable = 'ALPHA.self',
+  String? executableHash = 'PPU-synthetic-alpha',
   GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
   String? manualProfileId,
 }) => ResolveGameProfileParams(
@@ -485,5 +61,180 @@ ResolveGameProfileParams _params({
   executableHash: executableHash,
   confidence: confidence,
   manualProfileId: manualProfileId,
-  evidenceDescription: 'Current RPCS3 identity evidence.',
+  evidenceDescription: 'Synthetic current-process identity evidence.',
 );
+
+void main() {
+  group('Method execute() behaves correctly', () {
+    test('Method execute() matches normalized title, executable, and hash', () {
+      final profiles = _profiles();
+      final result = _createResolver(profiles: profiles).execute(
+        _params(
+          titleId: ' test00001 ',
+          executable: ' alpha.SELF ',
+          executableHash: ' ppu-synthetic-alpha ',
+        ),
+      );
+
+      expect(result.status, GameDetectionStatus.supportedGame);
+      expect(result.profile, same(profiles.first));
+      expect(result.confidence, GameIdentityConfidence.confirmed);
+      expect(result.availableFields.map((field) => field.id), ['credits']);
+    });
+
+    test('Method execute() disambiguates profiles sharing a title id', () {
+      final profiles = _profiles();
+      final result = _createResolver(profiles: profiles).execute(
+        _params(executable: 'BETA.self', executableHash: 'PPU-synthetic-beta'),
+      );
+
+      expect(result.status, GameDetectionStatus.supportedGame);
+      expect(result.profile, same(profiles[1]));
+    });
+
+    test(
+      'Method execute() leaves a shared title ambiguous without an executable',
+      () {
+        final result = _createResolver().execute(
+          _params(executable: null, executableHash: null),
+        );
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+        expect(result.confidence, GameIdentityConfidence.uncertain);
+      },
+    );
+
+    test('Method execute() leaves a shared title ambiguous without a hash', () {
+      final result = _createResolver().execute(_params(executableHash: null));
+
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.uncertain);
+    });
+
+    test('Method execute() rejects a mismatched executable hash', () {
+      final result = _createResolver().execute(
+        _params(executableHash: 'PPU-unregistered-hash'),
+      );
+
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.uncertain);
+    });
+
+    test('Method execute() rejects a hash paired with another executable', () {
+      final result = _createResolver().execute(
+        _params(executable: 'BETA.self'),
+      );
+
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+    });
+
+    test(
+      'Method execute() reports an unknown confirmed title as unsupported',
+      () {
+        final result = _createResolver().execute(
+          _params(
+            titleId: 'UNKNOWN001',
+            gameTitle: 'Synthetic unregistered title',
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.unsupportedGame);
+        expect(result.profile, isNull);
+        expect(result.gameTitle, 'Synthetic unregistered title');
+        expect(result.availableFields, isEmpty);
+      },
+    );
+
+    test('Method execute() leaves missing or blank title ids ambiguous', () {
+      for (final titleId in [null, '  ']) {
+        final result = _createResolver().execute(_params(titleId: titleId));
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+      }
+    });
+
+    test('Method execute() does not match uncertain identity evidence', () {
+      final result = _createResolver().execute(
+        _params(confidence: GameIdentityConfidence.uncertain),
+      );
+
+      expect(result.status, GameDetectionStatus.ambiguous);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.uncertain);
+    });
+
+    test(
+      'Method execute() reports ambiguous when injected identities collide',
+      () {
+        final profile = _profile();
+        final duplicate = _profile(
+          id: 'synthetic-duplicate',
+          gameName: 'Synthetic Duplicate',
+        );
+        final result = _createResolver(
+          profiles: [profile, duplicate],
+        ).execute(_params());
+
+        expect(result.status, GameDetectionStatus.ambiguous);
+        expect(result.profile, isNull);
+      },
+    );
+
+    test(
+      'Method execute() records a manual selection from the injected profiles',
+      () {
+        final profiles = _profiles();
+        final result = _createResolver(profiles: profiles).execute(
+          _params(
+            confidence: GameIdentityConfidence.manuallySelected,
+            manualProfileId: profiles[1].id,
+          ),
+        );
+
+        expect(result.status, GameDetectionStatus.supportedGame);
+        expect(result.profile, same(profiles[1]));
+        expect(result.confidence, GameIdentityConfidence.manuallySelected);
+        expect(result.titleId, profiles[1].buildId);
+        expect(result.gameTitle, profiles[1].gameName);
+        expect(result.executable, profiles[1].executable);
+      },
+    );
+
+    test('Method execute() rejects an unknown manual selection', () {
+      final result = _createResolver().execute(
+        _params(
+          confidence: GameIdentityConfidence.manuallySelected,
+          manualProfileId: 'not-injected',
+        ),
+      );
+
+      expect(result.status, GameDetectionStatus.failed);
+      expect(result.profile, isNull);
+      expect(result.confidence, GameIdentityConfidence.manuallySelected);
+    });
+
+    test('Method execute() rejects a missing manual selection', () {
+      final result = _createResolver().execute(
+        _params(confidence: GameIdentityConfidence.manuallySelected),
+      );
+
+      expect(result.status, GameDetectionStatus.failed);
+      expect(result.profile, isNull);
+    });
+
+    test('Method execute() rejects invalid process identifiers', () {
+      for (final processId in [0, -1]) {
+        final result = _createResolver().execute(_params(processId: processId));
+
+        expect(result.status, GameDetectionStatus.failed);
+        expect(result.processId, isNull);
+        expect(result.profile, isNull);
+      }
+    });
+  });
+}
