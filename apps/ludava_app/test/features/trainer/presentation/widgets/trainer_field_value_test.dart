@@ -27,14 +27,50 @@ void main() {
       expect(value.style?.fontSize, 14);
       expect(
         value.style?.fontSize,
-        LudavaTheme.graphiteAndTeal.textTheme.bodyMedium?.fontSize,
+        LudavaTheme.graphiteAndTeal.textTheme.titleSmall?.fontSize,
       );
+      expect(value.style?.fontWeight, FontWeight.w600);
       expect(
         value.style?.fontFeatures,
         contains(const FontFeature.tabularFigures()),
       );
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'Class TrainerFieldValue uses typography from an alternate supplied theme',
+      (tester) async {
+        final alternateTheme = LudavaTheme.graphiteAndTeal.copyWith(
+          textTheme: LudavaTheme.graphiteAndTeal.textTheme.copyWith(
+            titleSmall: LudavaTheme.graphiteAndTeal.textTheme.titleSmall
+                ?.copyWith(fontSize: 19),
+          ),
+        );
+        await tester.pumpWidget(
+          _wrap(
+            const TrainerFieldValue(
+              readResult: GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'bolts',
+                value: 42,
+              ),
+              canRead: true,
+            ),
+            theme: alternateTheme,
+          ),
+        );
+
+        expect(find.text('42'), findsOneWidget);
+        final value = tester.widget<Text>(find.text('42'));
+        expect(value.style?.fontSize, 19);
+        expect(value.style?.fontSize, isNot(14));
+        expect(
+          value.style?.fontFeatures,
+          contains(const FontFeature.tabularFigures()),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets(
       'Class TrainerFieldValue scales down the maximum value in narrow rows',
@@ -102,11 +138,12 @@ void main() {
   });
 }
 
-Widget _wrap(Widget child, {double width = 240}) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(
-    body: Center(
-      child: SizedBox(width: width, child: child),
-    ),
-  ),
-);
+Widget _wrap(Widget child, {double width = 240, ThemeData? theme}) =>
+    MaterialApp(
+      theme: theme ?? LudavaTheme.graphiteAndTeal,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(width: width, child: child),
+        ),
+      ),
+    );

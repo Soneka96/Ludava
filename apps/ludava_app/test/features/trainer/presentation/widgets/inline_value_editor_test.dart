@@ -10,6 +10,24 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 void main() {
   group('Class InlineValueEditor draft and apply behavior', () {
     testWidgets(
+      'Class InlineValueEditor uses body typography from an alternate supplied theme',
+      (tester) async {
+        final alternateTheme = LudavaTheme.graphiteAndTeal.copyWith(
+          textTheme: LudavaTheme.graphiteAndTeal.textTheme.copyWith(
+            bodyMedium: LudavaTheme.graphiteAndTeal.textTheme.bodyMedium
+                ?.copyWith(fontSize: 19),
+          ),
+        );
+        await tester.pumpWidget(
+          _wrap(_editor(onApply: _success), theme: alternateTheme),
+        );
+
+        expect(tester.widget<TextField>(_inputFinder).style?.fontSize, 19);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
       'Class InlineValueEditor renders fixed inline actions and draft',
       (tester) async {
         await tester.pumpWidget(_wrap(_editor(onApply: _success)));
@@ -645,8 +663,8 @@ InlineValueEditor _editor({
 );
 
 /// Wraps the editor in the shipped theme and a full-width test surface.
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
+Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
+  theme: theme ?? LudavaTheme.graphiteAndTeal,
   home: Scaffold(
     body: Center(child: SizedBox(width: 480, child: child)),
   ),

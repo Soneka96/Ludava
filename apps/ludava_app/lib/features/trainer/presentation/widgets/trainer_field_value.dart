@@ -40,8 +40,7 @@ class TrainerFieldValue extends StatelessWidget {
       alignment: Alignment.centerRight,
       child: Text(
         TrainerValueFormatter.format(value),
-        style: theme.textTheme.titleLarge?.copyWith(
-          fontSize: 14,
+        style: theme.textTheme.titleSmall?.copyWith(
           color: theme.colorScheme.onSurface,
         ),
       ),
