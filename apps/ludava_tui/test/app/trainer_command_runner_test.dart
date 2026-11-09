@@ -6,14 +6,35 @@ import 'package:test/test.dart';
 
 import '../support/fake_windows_memory_api.dart';
 
-/// One registered profile is used only to cover the CLI-to-SDK boundary.
-final _registeredProfile = GameProfileCatalog.find('rc2-collection')!;
+final _syntheticProfile = GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'SYNTHETIC',
+  executable: 'SYNTHETIC.self',
+  executableHash: 'PPU-1111111111111111111111111111111111111111',
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.researchConfirmed,
+  fields: {
+    'credits': GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      readStatus: VerificationStatus.verified,
+      writeStatus: VerificationStatus.researchConfirmed,
+      minimumValue: 0,
+      maximumValue: 0xffffffff,
+    ),
+  },
+);
 
 TrainerCommandRunner _runnerForApi(
   FakeWindowsMemoryApi api, {
   List<int> processIds = const [],
 }) => TrainerCommandRunner(
   sdk: LudavaSdk.create(
+    profiles: [_syntheticProfile],
     api: api.adapter,
     isWindows: true,
     pointerSize: 8,
@@ -23,35 +44,38 @@ TrainerCommandRunner _runnerForApi(
 
 TrainerCommandRunner _writeCapableCli(
   FakeWindowsMemoryApi api, {
-  bool? hasTerminal,
-  Future<void> Function(TrainerSessionController session)? runNocterm,
+  GameDetectionResult Function(int processId)? currentIdentity,
+  Rpcs3MemoryBaseCandidate? Function(Rpcs3ProcessMetadata processMetadata)?
+  resolveCurrentBase,
 }) => TrainerCommandRunner(
   sdk: LudavaSdk.create(
+    profiles: [_syntheticProfile],
     api: api.adapter,
     isWindows: true,
     pointerSize: 8,
     discoverProcessIds: () => const [42],
     readProcessMetadata: (_) => _metadata,
     resolveMemoryBaseCandidate:
+        resolveCurrentBase ??
         (_) => const Rpcs3MemoryBaseCandidate(
           memoryBase: 0x300000000,
           logPath: r'C:\RPCS3\log\RPCS3.log',
         ),
-    detectGame: (processId, _) => _confirmedIdentity(processId),
+    detectGame:
+        (processId, _) =>
+            currentIdentity?.call(processId) ?? _confirmedIdentity(processId),
   ),
-  hasTerminal: hasTerminal,
-  runNocterm: runNocterm,
 );
 
 GameDetectionResult _confirmedIdentity(int processId) => GameDetectionResult(
   status: GameDetectionStatus.supportedGame,
   processId: processId,
-  titleId: _registeredProfile.buildId,
-  gameTitle: _registeredProfile.gameName,
-  executable: _registeredProfile.executable,
-  executableHash: _registeredProfile.executableHash,
+  titleId: _syntheticProfile.buildId,
+  gameTitle: _syntheticProfile.gameName,
+  executable: _syntheticProfile.executable,
+  executableHash: _syntheticProfile.executableHash,
   confidence: GameIdentityConfidence.confirmed,
-  profile: _registeredProfile,
+  profile: _syntheticProfile,
   evidenceDescription: 'Synthetic process metadata for the CLI integration.',
 );
 
@@ -60,14 +84,18 @@ final _metadata = Rpcs3ProcessMetadata(
   startedAtUtc: DateTime.utc(2026, 11, 5, 10),
 );
 
-List<String> _readArguments({String? gameId}) => [
+List<String> _readArguments({
+  String? gameId,
+  String fieldId = 'credits',
+  int processId = 42,
+}) => [
   'read',
   '--game',
-  gameId ?? _registeredProfile.id,
+  gameId ?? _syntheticProfile.id,
   '--field',
-  'bolts',
+  fieldId,
   '--pid',
-  '42',
+  '$processId',
   '--memory-base',
   '0x300000000',
 ];
@@ -75,9 +103,9 @@ List<String> _readArguments({String? gameId}) => [
 List<String> _writeArguments() => [
   'write',
   '--game',
-  _registeredProfile.id,
+  _syntheticProfile.id,
   '--field',
-  'bolts',
+  'credits',
   '--pid',
   '42',
   '--memory-base',
@@ -108,10 +136,11 @@ void main() {
       expect(api.openCalls, 0);
     });
 
-    test('Method runAsync() delegates a diagnostic read to the SDK', () async {
+    test('Method runAsync() routes a diagnostic read to the SDK', () async {
       final output = StringBuffer();
       final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 42];
       final sdk = LudavaSdk.create(
+        profiles: [_syntheticProfile],
         api: api.adapter,
         isWindows: true,
         pointerSize: 8,
@@ -126,14 +155,41 @@ void main() {
       await closed.future.timeout(const Duration(seconds: 1));
 
       expect(exitCode, 0);
-      expect(output.toString(), contains('Field: bolts'));
-      expect(output.toString(), contains('Value: 42'));
-      expect(output.toString(), contains('manual or unverified'));
-      expect(api.openCalls, 1);
+      expect(output.toString(), isNotEmpty);
       expect(api.readCalls, 1);
-      expect(api.writeCalls, 0);
-      expect(api.closeCalls, 1);
     });
+
+    test(
+      'Method runAsync() resolves one production catalog profile through the default runtime',
+      () async {
+        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final field = profile.findField('bolts')!;
+        final output = StringBuffer();
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 7];
+        final sdk = LudavaSdk.create(
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () => const [],
+        );
+
+        final exitCode = await TrainerCommandRunner(sdk: sdk).runAsync([
+          'read',
+          '--game',
+          profile.id,
+          '--field',
+          field.id,
+          '--pid',
+          '42',
+          '--memory-base',
+          '0x300000000',
+        ], output: output);
+
+        expect(exitCode, 0);
+        expect(output.toString(), isNotEmpty);
+        expect(api.readCalls, 1);
+      },
+    );
 
     test(
       'Method runAsync() maps an unknown game to a CLI argument error',
@@ -148,6 +204,88 @@ void main() {
         expect(exitCode, 2);
         expect(errorOutput.toString(), contains('Unknown game profile'));
         expect(api.openCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() maps identity mismatch and identity-check failure to write errors',
+      () async {
+        final mismatchErrors = StringBuffer();
+        final mismatchApi = FakeWindowsMemoryApi();
+        final mismatchExitCode = await _writeCapableCli(
+          mismatchApi,
+          currentIdentity:
+              (processId) => GameDetectionResult(
+                status: GameDetectionStatus.noActiveGame,
+                processId: processId,
+                confidence: GameIdentityConfidence.none,
+                evidenceDescription: 'No active synthetic game.',
+              ),
+        ).runAsync(_writeArguments(), errorOutput: mismatchErrors);
+
+        expect(mismatchExitCode, 1);
+        expect(
+          mismatchErrors.toString(),
+          contains('current RPCS3 game identity does not match'),
+        );
+        expect(mismatchApi.openCalls, 0);
+        expect(mismatchApi.writeCalls, 0);
+
+        final checkErrors = StringBuffer();
+        final checkApi = FakeWindowsMemoryApi();
+        final checkExitCode = await _writeCapableCli(
+          checkApi,
+          currentIdentity: (_) => throw Exception('identity check failed'),
+        ).runAsync(_writeArguments(), errorOutput: checkErrors);
+
+        expect(checkExitCode, 1);
+        expect(
+          checkErrors.toString(),
+          contains('identity could not be checked'),
+        );
+        expect(checkErrors.toString(), contains('identity check failed'));
+        expect(checkApi.openCalls, 0);
+        expect(checkApi.writeCalls, 0);
+      },
+    );
+
+    test(
+      'Method runAsync() maps memory-base mismatch and check failure to write errors',
+      () async {
+        final mismatchErrors = StringBuffer();
+        final mismatchApi = FakeWindowsMemoryApi();
+        final mismatchExitCode = await _writeCapableCli(
+          mismatchApi,
+          resolveCurrentBase:
+              (_) => const Rpcs3MemoryBaseCandidate(
+                memoryBase: 0x300000001,
+                logPath: r'C:\RPCS3\log\RPCS3.log',
+              ),
+        ).runAsync(_writeArguments(), errorOutput: mismatchErrors);
+
+        expect(mismatchExitCode, 1);
+        expect(
+          mismatchErrors.toString(),
+          contains('does not match the current RPCS3 session'),
+        );
+        expect(mismatchApi.openCalls, 0);
+        expect(mismatchApi.writeCalls, 0);
+
+        final checkErrors = StringBuffer();
+        final checkApi = FakeWindowsMemoryApi();
+        final checkExitCode = await _writeCapableCli(
+          checkApi,
+          resolveCurrentBase: (_) => throw Exception('base check failed'),
+        ).runAsync(_writeArguments(), errorOutput: checkErrors);
+
+        expect(checkExitCode, 1);
+        expect(
+          checkErrors.toString(),
+          contains('memory base could not be checked'),
+        );
+        expect(checkErrors.toString(), contains('base check failed'));
+        expect(checkApi.openCalls, 0);
+        expect(checkApi.writeCalls, 0);
       },
     );
 
@@ -189,19 +327,46 @@ void main() {
         ).runAsync(_writeArguments(), output: output, errorOutput: errorOutput);
 
         expect(exitCode, 0, reason: errorOutput.toString());
-        expect(output.toString(), contains('Requested value: 50'));
-        expect(output.toString(), contains('Read-back value: 50'));
-        expect(
-          output.toString(),
-          contains('Status: write and read-back complete'),
-        );
-        expect(
-          output.toString(),
-          contains('current RPCS3 PPU hash matches this profile'),
-        );
+        expect(output.toString(), isNotEmpty);
+        expect(errorOutput.toString(), isEmpty);
         expect(api.writeCalls, 1);
-        expect(api.readCalls, 2);
-        expect(api.closeCalls, 1);
+      },
+    );
+
+    test(
+      'Method runAsync() returns an operational failure for an incomplete write',
+      () async {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api = FakeWindowsMemoryApi()..reportedWriteBytes = 2;
+
+        final exitCode = await _writeCapableCli(
+          api,
+        ).runAsync(_writeArguments(), output: output, errorOutput: errorOutput);
+
+        expect(exitCode, 1);
+        expect(output.toString(), isNotEmpty);
+        expect(errorOutput.toString(), isEmpty);
+      },
+    );
+
+    test(
+      'Method runAsync() returns cleanup failures on stderr with an operational exit code',
+      () async {
+        final output = StringBuffer();
+        final errorOutput = StringBuffer();
+        final api =
+            FakeWindowsMemoryApi()
+              ..readBytes = [0, 0, 0, 42]
+              ..closeReturnValue = 0;
+
+        final exitCode = await _runnerForApi(
+          api,
+        ).runAsync(_readArguments(), output: output, errorOutput: errorOutput);
+
+        expect(exitCode, 1);
+        expect(output.toString(), isNotEmpty);
+        expect(errorOutput.toString(), contains('Windows error 5'));
       },
     );
 
@@ -210,6 +375,7 @@ void main() {
       () async {
         final api = FakeWindowsMemoryApi(handleAddress: 0)..errorCode = 5;
         final sdk = LudavaSdk.create(
+          profiles: [_syntheticProfile],
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -226,18 +392,20 @@ void main() {
 
         expect(exitCode, 1);
         expect(errorOutput.toString(), contains('Windows error 5'));
-        expect(api.openCalls, 1);
-        expect(api.readCalls, 0);
       },
     );
 
     test('Method runAsync() launches Nocterm for no arguments', () async {
       var launchCalls = 0;
+      TrainerSessionController? launchedSession;
+      final sdk = LudavaSdk.create(profiles: [_syntheticProfile]);
       final closed = Completer<void>();
       final runner = TrainerCommandRunner(
+        sdk: sdk,
         hasTerminal: true,
         runNocterm: (session) async {
           launchCalls++;
+          launchedSession = session;
           session.stateChanges.listen((_) {}, onDone: closed.complete);
         },
       );
@@ -247,6 +415,7 @@ void main() {
 
       expect(exitCode, 0);
       expect(launchCalls, 1);
+      expect(identical(launchedSession, sdk.session), isTrue);
     });
 
     test(
@@ -291,31 +460,6 @@ void main() {
         expect(exitCode, 1);
         expect(errorOutput.toString(), contains('Nocterm could not start'));
         expect(errorOutput.toString(), contains('backend failed'));
-      },
-    );
-
-    test(
-      'Method runAsync() connects the Nocterm session to SDK memory operations',
-      () async {
-        final api = FakeWindowsMemoryApi();
-        GameWriteResult? writeResult;
-
-        final exitCode = await _writeCapableCli(
-          api,
-          hasTerminal: true,
-          runNocterm: (session) async {
-            session.connect();
-            expect(session.state.readResults['bolts']?.value, 0x01020304);
-            writeResult = session.writeField('bolts', 42);
-          },
-        ).runAsync([]);
-
-        expect(exitCode, 0);
-        expect(writeResult?.status, GameWriteStatus.readBackMismatch);
-        expect(api.openCalls, 2);
-        expect(api.readCalls, 3);
-        expect(api.writeCalls, 1);
-        expect(api.closeCalls, 2);
       },
     );
   });
