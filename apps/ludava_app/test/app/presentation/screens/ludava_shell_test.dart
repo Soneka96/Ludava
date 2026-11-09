@@ -8,6 +8,27 @@ import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+GameField _field() => GameField(
+  id: 'credits',
+  name: 'Credits',
+  guestOffset: 0x1000,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.researchConfirmed,
+  minimumValue: 0,
+  maximumValue: 0xffffffff,
+);
+
+Widget _wrap(Widget child, {ThemeData? theme}) =>
+    MaterialApp(theme: theme ?? LudavaTheme.graphiteAndTeal, home: child);
+
+GameWriteResult _failedWrite(String fieldId, int value) => GameWriteResult(
+  status: GameWriteStatus.writeFailed,
+  fieldId: fieldId,
+  requestedValue: value,
+);
+
 void main() {
   group('Class LudavaShell composition behavior', () {
     testWidgets('Class LudavaShell caps centered content on wide windows', (
@@ -47,7 +68,7 @@ void main() {
       'Class LudavaShell composes its session body and window actions',
       (tester) async {
         final session = TrainerSessionState();
-        final field = GameProfileCatalog.profiles.first.fields.values.first;
+        final field = _field();
         var selectedProcessId = 0;
         GameField? editedField;
         String? appliedFieldId;
@@ -238,12 +259,3 @@ void main() {
     });
   });
 }
-
-Widget _wrap(Widget child, {ThemeData? theme}) =>
-    MaterialApp(theme: theme ?? LudavaTheme.graphiteAndTeal, home: child);
-
-GameWriteResult _failedWrite(String fieldId, int value) => GameWriteResult(
-  status: GameWriteStatus.writeFailed,
-  fieldId: fieldId,
-  requestedValue: value,
-);

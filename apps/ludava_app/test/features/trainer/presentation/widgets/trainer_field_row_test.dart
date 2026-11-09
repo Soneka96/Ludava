@@ -8,6 +8,39 @@ import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
+GameField _field({
+  VerificationStatus writeStatus = VerificationStatus.verified,
+}) => GameField(
+  id: 'credits',
+  name: 'Credits',
+  guestOffset: 0,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.verified,
+  writeStatus: writeStatus,
+  minimumValue: 0,
+  maximumValue: 4294967295,
+);
+
+GameReadResult _read(int value) => GameReadResult(
+  status: GameReadStatus.success,
+  fieldId: 'credits',
+  value: value,
+);
+
+/// Returns a successful fake write with a matching read-back value.
+GameWriteResult _success(int value) => GameWriteResult(
+  status: GameWriteStatus.success,
+  fieldId: 'credits',
+  requestedValue: value,
+  readBackValue: value,
+);
+
 void main() {
   group('Class TrainerFieldRow presentation behavior', () {
     testWidgets(
@@ -35,28 +68,28 @@ void main() {
           ),
         );
 
-        expect(find.text('Bolts'), findsOneWidget);
+        expect(find.text('Credits'), findsOneWidget);
         expect(find.text('Writable'), findsNothing);
         expect(find.text('4,294,967,295'), findsOneWidget);
         expect(
           tester
-              .getSize(find.byKey(const ValueKey('trainer-field-row-bolts')))
+              .getSize(find.byKey(const ValueKey('trainer-field-row-credits')))
               .height,
           LudavaDimensions.minimumInteractiveTarget,
         );
         final row = tester.getRect(
-          find.byKey(const ValueKey('trainer-field-row-bolts')),
+          find.byKey(const ValueKey('trainer-field-row-credits')),
         );
-        expect(tester.getRect(find.text('Bolts')).center.dy, row.center.dy);
+        expect(tester.getRect(find.text('Credits')).center.dy, row.center.dy);
         expect(
           tester.getRect(find.text('4,294,967,295')).center.dy,
           row.center.dy,
         );
         expect(
-          tester.getRect(find.byTooltip('Edit Bolts')).center.dy,
+          tester.getRect(find.byTooltip('Edit Credits')).center.dy,
           row.center.dy,
         );
-        await tester.tap(find.byTooltip('Edit Bolts'));
+        await tester.tap(find.byTooltip('Edit Credits'));
         expect(editCalls, 1);
         expect(tester.takeException(), isNull);
       },
@@ -86,10 +119,10 @@ void main() {
         ),
       );
 
-      expect(find.text('Bolts'), findsOneWidget);
+      expect(find.text('Credits'), findsOneWidget);
       expect(find.text('Unavailable'), findsOneWidget);
       expect(find.text('Read-only'), findsNothing);
-      expect(find.byTooltip('Edit Bolts'), findsNothing);
+      expect(find.byTooltip('Edit Credits'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -117,10 +150,10 @@ void main() {
         ),
       );
 
-      expect(find.byTooltip('Edit Bolts'), findsNothing);
+      expect(find.byTooltip('Edit Credits'), findsNothing);
       expect(
         tester
-            .getSize(find.byKey(const ValueKey('trainer-field-row-bolts')))
+            .getSize(find.byKey(const ValueKey('trainer-field-row-credits')))
             .height,
         LudavaDimensions.minimumInteractiveTarget,
       );
@@ -166,7 +199,7 @@ void main() {
         );
 
         expect(
-          tester.widget<Text>(find.text('Bolts')).style?.color,
+          tester.widget<Text>(find.text('Credits')).style?.color,
           colors.textPrimary,
         );
         expect(
@@ -178,36 +211,3 @@ void main() {
     );
   });
 }
-
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
-
-GameField _field({
-  VerificationStatus writeStatus = VerificationStatus.verified,
-}) => GameField(
-  id: 'bolts',
-  name: 'Bolts',
-  guestOffset: 0,
-  valueType: MemoryValueType.unsigned32,
-  byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: writeStatus,
-  minimumValue: 0,
-  maximumValue: 4294967295,
-);
-
-GameReadResult _read(int value) => GameReadResult(
-  status: GameReadStatus.success,
-  fieldId: 'bolts',
-  value: value,
-);
-
-/// Returns a successful fake write with a matching read-back value.
-GameWriteResult _success(int value) => GameWriteResult(
-  status: GameWriteStatus.success,
-  fieldId: 'bolts',
-  requestedValue: value,
-  readBackValue: value,
-);

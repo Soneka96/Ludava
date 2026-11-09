@@ -12,6 +12,142 @@ import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+LudavaSessionBody _body(
+  TrainerSessionState session, {
+  String? editingFieldId,
+}) => LudavaSessionBody(
+  session: session,
+  editingFieldId: editingFieldId,
+  onSelectProcess: (_) {},
+  onEditField: (_) {},
+  onApplyField: _failedWrite,
+  onCancelEditing: () {},
+);
+
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
+List<Rect> _fieldRowRects(WidgetTester tester, GameProfile profile) => profile
+    .fields
+    .keys
+    .map(
+      (fieldId) =>
+          tester.getRect(find.byKey(ValueKey('trainer-field-row-$fieldId'))),
+    )
+    .toList(growable: false);
+
+Finder _feedbackRegion() =>
+    find.byKey(const ValueKey('session-feedback-region'));
+
+String _editorText(WidgetTester tester, Finder input) =>
+    tester.widget<TextField>(input).controller!.text;
+
+TrainerSessionState _readySession({
+  int processId = 42,
+  int readValue = 17,
+  int? memoryBase = 0x100000,
+  GameDetectionStatus status = GameDetectionStatus.supportedGame,
+  String? errorMessage,
+}) {
+  final profile = _testProfile();
+  return TrainerSessionState(
+    processIds: [processId],
+    selectedProcessId: processId,
+    processMetadata: Rpcs3ProcessMetadata(
+      executablePath: r'C:\RPCS3\rpcs3.exe',
+      startedAtUtc: DateTime.utc(2026, 11, 6, 10),
+    ),
+    detection: GameDetectionResult(
+      status: status,
+      processId: processId,
+      titleId: profile.buildId,
+      gameTitle: profile.gameName,
+      executable: profile.executable,
+      executableHash: 'session-body-test-hash',
+      confidence: GameIdentityConfidence.confirmed,
+      profile: status == GameDetectionStatus.supportedGame ? profile : null,
+      evidenceDescription: 'Synthetic session-body state.',
+    ),
+    memoryBase: memoryBase,
+    readResults: {
+      'credits': GameReadResult(
+        status: GameReadStatus.success,
+        fieldId: 'credits',
+        value: readValue,
+      ),
+    },
+    errorMessage: errorMessage,
+  );
+}
+
+GameProfile _testProfile() => GameProfile(
+  id: 'session-body-test',
+  gameName: 'Test Trainer',
+  buildId: 'TST00001',
+  executable: 'test-trainer.self',
+  executableHash: 'session-body-test-hash',
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.verified,
+  fields: {
+    'credits': GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      readStatus: VerificationStatus.verified,
+      writeStatus: VerificationStatus.verified,
+      minimumValue: 0,
+      maximumValue: 0xffffffff,
+    ),
+  },
+);
+
+GameWriteResult _failedWrite(String fieldId, int value) => GameWriteResult(
+  status: GameWriteStatus.writeFailed,
+  fieldId: fieldId,
+  requestedValue: value,
+);
+
+class _FakeTrainerSdk implements TrainerSdkCapability {
+  /// Creates a controllable session source for widget and controller tests.
+  _FakeTrainerSdk(this._state);
+
+  final StreamController<TrainerSessionState> _states =
+      StreamController<TrainerSessionState>.broadcast(sync: true);
+  TrainerSessionState _state;
+
+  @override
+  TrainerSessionState get state => _state;
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => _states.stream;
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => _state.processIds.contains(processId);
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      _failedWrite(fieldId, value);
+
+  @override
+  Future<void> dispose() => _states.close();
+
+  /// Publishes [state] as a new SDK snapshot to the controller.
+  void publish(TrainerSessionState state) {
+    _state = state;
+    _states.add(state);
+  }
+}
+
 void main() {
   group('Class LudavaSessionBody session composition behavior', () {
     testWidgets(
@@ -226,140 +362,4 @@ void main() {
       },
     );
   });
-}
-
-LudavaSessionBody _body(
-  TrainerSessionState session, {
-  String? editingFieldId,
-}) => LudavaSessionBody(
-  session: session,
-  editingFieldId: editingFieldId,
-  onSelectProcess: (_) {},
-  onEditField: (_) {},
-  onApplyField: _failedWrite,
-  onCancelEditing: () {},
-);
-
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
-
-List<Rect> _fieldRowRects(WidgetTester tester, GameProfile profile) => profile
-    .fields
-    .keys
-    .map(
-      (fieldId) =>
-          tester.getRect(find.byKey(ValueKey('trainer-field-row-$fieldId'))),
-    )
-    .toList(growable: false);
-
-Finder _feedbackRegion() =>
-    find.byKey(const ValueKey('session-feedback-region'));
-
-String _editorText(WidgetTester tester, Finder input) =>
-    tester.widget<TextField>(input).controller!.text;
-
-TrainerSessionState _readySession({
-  int processId = 42,
-  int readValue = 17,
-  int? memoryBase = 0x100000,
-  GameDetectionStatus status = GameDetectionStatus.supportedGame,
-  String? errorMessage,
-}) {
-  final profile = _testProfile();
-  return TrainerSessionState(
-    processIds: [processId],
-    selectedProcessId: processId,
-    processMetadata: Rpcs3ProcessMetadata(
-      executablePath: r'C:\RPCS3\rpcs3.exe',
-      startedAtUtc: DateTime.utc(2026, 11, 6, 10),
-    ),
-    detection: GameDetectionResult(
-      status: status,
-      processId: processId,
-      titleId: profile.buildId,
-      gameTitle: profile.gameName,
-      executable: profile.executable,
-      executableHash: 'session-body-test-hash',
-      confidence: GameIdentityConfidence.confirmed,
-      profile: status == GameDetectionStatus.supportedGame ? profile : null,
-      evidenceDescription: 'Synthetic session-body state.',
-    ),
-    memoryBase: memoryBase,
-    readResults: {
-      'bolts': GameReadResult(
-        status: GameReadStatus.success,
-        fieldId: 'bolts',
-        value: readValue,
-      ),
-    },
-    errorMessage: errorMessage,
-  );
-}
-
-GameProfile _testProfile() => GameProfile(
-  id: 'session-body-test',
-  gameName: 'Test Trainer',
-  buildId: 'TST00001',
-  executable: 'test-trainer.self',
-  executableHash: 'session-body-test-hash',
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.verified,
-  fields: {
-    'bolts': GameField(
-      id: 'bolts',
-      name: 'Bolts',
-      guestOffset: 0x1000,
-      valueType: MemoryValueType.unsigned32,
-      byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.verified,
-      writeStatus: VerificationStatus.verified,
-      minimumValue: 0,
-      maximumValue: 0xffffffff,
-    ),
-  },
-);
-
-GameWriteResult _failedWrite(String fieldId, int value) => GameWriteResult(
-  status: GameWriteStatus.writeFailed,
-  fieldId: fieldId,
-  requestedValue: value,
-);
-
-class _FakeTrainerSdk implements TrainerSdkCapability {
-  /// Creates a controllable session source for widget and controller tests.
-  _FakeTrainerSdk(this._state);
-
-  final StreamController<TrainerSessionState> _states =
-      StreamController<TrainerSessionState>.broadcast(sync: true);
-  TrainerSessionState _state;
-
-  @override
-  TrainerSessionState get state => _state;
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => _states.stream;
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => _state.processIds.contains(processId);
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      _failedWrite(fieldId, value);
-
-  @override
-  Future<void> dispose() => _states.close();
-
-  /// Publishes [state] as a new SDK snapshot to the controller.
-  void publish(TrainerSessionState state) {
-    _state = state;
-    _states.add(state);
-  }
 }

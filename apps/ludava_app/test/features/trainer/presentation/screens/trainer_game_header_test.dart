@@ -6,13 +6,58 @@ import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+GameProfile _profile() => GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'SYNTHETIC',
+  executable: 'SYNTHETIC.self',
+  executableHash: 'PPU-synthetic-hash',
+  readStatus: VerificationStatus.experimental,
+);
+
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
+/// Configures a widget test at the approved minimum desktop dimensions.
+void _setMinimumWindowSize(WidgetTester tester) {
+  tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+/// Builds a session snapshot with the requested detection outcome.
+TrainerSessionState _state({
+  required GameDetectionStatus status,
+  required int processId,
+  GameProfile? profile,
+  String? gameTitle,
+  int? memoryBase,
+}) => TrainerSessionState(
+  processIds: [processId],
+  selectedProcessId: processId,
+  detection: GameDetectionResult(
+    status: status,
+    processId: processId,
+    gameTitle: gameTitle,
+    profile: profile,
+    confidence: status == GameDetectionStatus.supportedGame
+        ? GameIdentityConfidence.confirmed
+        : GameIdentityConfidence.none,
+    evidenceDescription: 'Test detection evidence.',
+  ),
+  memoryBase: memoryBase,
+);
+
 void main() {
   group('Class TrainerGameHeader session display behavior', () {
     testWidgets(
       'Class TrainerGameHeader renders one accessible refresh control with readiness',
       (tester) async {
         _setMinimumWindowSize(tester);
-        final profile = GameProfileCatalog.profiles.first;
+        final profile = _profile();
         final state = _state(
           status: GameDetectionStatus.supportedGame,
           processId: 321,
@@ -154,7 +199,7 @@ void main() {
         );
         expect(find.text('Not detected'), findsOneWidget);
 
-        final profile = GameProfileCatalog.profiles.first;
+        final profile = _profile();
         await tester.pumpWidget(
           _wrap(
             TrainerGameHeader(
@@ -241,38 +286,3 @@ void main() {
 }
 
 /// Builds the header under the shipped semantic theme.
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
-
-/// Configures a widget test at the approved minimum desktop dimensions.
-void _setMinimumWindowSize(WidgetTester tester) {
-  tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-}
-
-/// Builds a session snapshot with the requested detection outcome.
-TrainerSessionState _state({
-  required GameDetectionStatus status,
-  required int processId,
-  GameProfile? profile,
-  String? gameTitle,
-  int? memoryBase,
-}) => TrainerSessionState(
-  processIds: [processId],
-  selectedProcessId: processId,
-  detection: GameDetectionResult(
-    status: status,
-    processId: processId,
-    gameTitle: gameTitle,
-    profile: profile,
-    confidence: status == GameDetectionStatus.supportedGame
-        ? GameIdentityConfidence.confirmed
-        : GameIdentityConfidence.none,
-    evidenceDescription: 'Test detection evidence.',
-  ),
-  memoryBase: memoryBase,
-);

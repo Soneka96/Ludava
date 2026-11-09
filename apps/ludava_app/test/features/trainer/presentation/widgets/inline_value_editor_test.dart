@@ -11,6 +11,87 @@ import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+InlineValueEditor _editor({
+  GameField? field,
+  int? currentValue = 17,
+  GameWriteResult? writeResult,
+  required GameWriteResult Function(int value) onApply,
+  VoidCallback? onCancel,
+  VoidCallback? onApplied,
+  Key? key,
+}) => InlineValueEditor(
+  key: key,
+  field: field ?? _field(maximumValue: 0xffffffff),
+  currentValue: currentValue,
+  writeResult: writeResult,
+  onApply: onApply,
+  onCancel: onCancel ?? () {},
+  onApplied: onApplied ?? () {},
+);
+
+/// Wraps the editor in the shipped theme and a full-width test surface.
+Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
+  theme: theme ?? LudavaTheme.graphiteAndTeal,
+  home: Scaffold(
+    body: Center(child: SizedBox(width: 480, child: child)),
+  ),
+);
+
+/// Builds a test theme whose style preset supplies the requested focus width.
+ThemeData _themeWithFocusedBorderWidth(double width) {
+  final comfortable = LudavaStylePresets.comfortable;
+  final style = LudavaStylePreset(
+    fontFamily: comfortable.fontFamily,
+    textTheme: comfortable.textTheme,
+    controlRadius: comfortable.controlRadius,
+    surfaceRadius: comfortable.surfaceRadius,
+    buttonPadding: comfortable.buttonPadding,
+    buttonMinimumSize: comfortable.buttonMinimumSize,
+    inputPadding: comfortable.inputPadding,
+    inputFocusedBorderWidth: width,
+  );
+  return LudavaThemeFactory.build(
+    colors: GraphiteTealTheme.colors,
+    style: style,
+    brightness: GraphiteTealTheme.brightness,
+  );
+}
+
+/// Creates a numeric trainer field with the requested inclusive range.
+GameField _field({
+  String id = 'credits',
+  required int? maximumValue,
+  int? minimumValue = 0,
+}) => GameField(
+  id: id,
+  name: 'Credits',
+  guestOffset: 0,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.verified,
+  minimumValue: minimumValue,
+  maximumValue: maximumValue,
+);
+
+/// Returns a successful fake write with a matching read-back value.
+GameWriteResult _success(int value) => GameWriteResult(
+  status: GameWriteStatus.success,
+  fieldId: 'credits',
+  requestedValue: value,
+  readBackValue: value,
+);
+
+/// Finds the field input owned by the inline editor.
+Finder get _inputFinder =>
+    find.byKey(const ValueKey('inline-editor-input-credits'));
+
+/// Reads the unsigned draft text without grouping separators.
+String _editorText(WidgetTester tester, {String fieldId = 'credits'}) => tester
+    .widget<TextField>(find.byKey(ValueKey('inline-editor-input-$fieldId')))
+    .controller!
+    .text;
+
 void main() {
   group('Class InlineValueEditor draft and apply behavior', () {
     testWidgets(
@@ -49,7 +130,7 @@ void main() {
 
         await tester.enterText(_inputFinder, '51');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
         await tester.tap(_inputFinder);
         await tester.pump();
@@ -96,8 +177,8 @@ void main() {
         await tester.pumpWidget(_wrap(_editor(onApply: _success)));
 
         expect(_editorText(tester), '17');
-        expect(find.byTooltip('Apply Bolts'), findsOneWidget);
-        expect(find.byTooltip('Cancel editing Bolts'), findsOneWidget);
+        expect(find.byTooltip('Apply Credits'), findsOneWidget);
+        expect(find.byTooltip('Cancel editing Credits'), findsOneWidget);
         expect(find.text('Current value: 17'), findsNothing);
         expect(find.text('Allowed:'), findsNothing);
         expect(find.text('Enter Apply'), findsNothing);
@@ -224,7 +305,7 @@ void main() {
           ),
         );
 
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
         expect(writeCalls, 0);
@@ -258,7 +339,7 @@ void main() {
         await tester.pump();
         expect(writeCalls, 0);
 
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
         expect(writeCalls, 1);
@@ -315,7 +396,7 @@ void main() {
         );
         await tester.enterText(_inputFinder, '33');
         await tester.pump();
-        await tester.tap(find.byTooltip('Cancel editing Bolts'));
+        await tester.tap(find.byTooltip('Cancel editing Credits'));
         await tester.pump();
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await tester.pump();
@@ -336,7 +417,7 @@ void main() {
                 writeCalls++;
                 return GameWriteResult(
                   status: GameWriteStatus.writeFailed,
-                  fieldId: 'bolts',
+                  fieldId: 'credits',
                   requestedValue: value,
                 );
               },
@@ -379,7 +460,7 @@ void main() {
         );
         await tester.enterText(_inputFinder, '51');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
         expect(writeCalls, 0);
@@ -397,7 +478,7 @@ void main() {
         expect(tokens.error, LudavaTheme.graphiteAndTeal.colorScheme.error);
         await tester.enterText(_inputFinder, '');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
         expect(writeCalls, 0);
         expect(find.byTooltip('Enter a whole number.'), findsOneWidget);
@@ -413,7 +494,7 @@ void main() {
             _editor(
               onApply: (value) => GameWriteResult(
                 status: GameWriteStatus.writeFailed,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 requestedValue: value,
                 errorCode: 5,
               ),
@@ -422,7 +503,7 @@ void main() {
         );
         await tester.enterText(_inputFinder, '42');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
         expect(_editorText(tester), '42');
@@ -451,7 +532,7 @@ void main() {
         );
         await tester.enterText(_inputFinder, '42');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
         expect(_editorText(tester), '42');
@@ -542,7 +623,7 @@ void main() {
                 key: ValueKey('failure-${status.name}'),
                 onApply: (value) => GameWriteResult(
                   status: status,
-                  fieldId: 'bolts',
+                  fieldId: 'credits',
                   requestedValue: value,
                   readBackValue: status == GameWriteStatus.readBackMismatch
                       ? 41
@@ -554,7 +635,7 @@ void main() {
           );
           await tester.enterText(_inputFinder, '42');
           await tester.pump();
-          await tester.tap(find.byTooltip('Apply Bolts'));
+          await tester.tap(find.byTooltip('Apply Credits'));
           await tester.pump();
 
           expect(find.byTooltip(expectedTooltip), findsOneWidget);
@@ -582,7 +663,7 @@ void main() {
                 appliedValues.add(requested);
                 return GameWriteResult(
                   status: GameWriteStatus.writeFailed,
-                  fieldId: 'bolts',
+                  fieldId: 'credits',
                   requestedValue: requested,
                 );
               },
@@ -591,7 +672,7 @@ void main() {
         );
         await tester.enterText(_inputFinder, '$value');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
       }
 
@@ -628,7 +709,7 @@ void main() {
           _wrap(
             _editor(
               key: editorKey,
-              field: _field(id: 'bolts', maximumValue: 20),
+              field: _field(id: 'credits', maximumValue: 20),
               currentValue: 17,
               onApply: _success,
             ),
@@ -636,7 +717,7 @@ void main() {
         );
         await tester.enterText(_inputFinder, '42');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Bolts'));
+        await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
         expect(find.byTooltip('Enter a value from 0 to 20.'), findsOneWidget);
 
@@ -707,83 +788,3 @@ void main() {
 }
 
 /// Creates a fixed inline editor with overridable interaction callbacks.
-InlineValueEditor _editor({
-  GameField? field,
-  int? currentValue = 17,
-  GameWriteResult? writeResult,
-  required GameWriteResult Function(int value) onApply,
-  VoidCallback? onCancel,
-  VoidCallback? onApplied,
-  Key? key,
-}) => InlineValueEditor(
-  key: key,
-  field: field ?? _field(maximumValue: 0xffffffff),
-  currentValue: currentValue,
-  writeResult: writeResult,
-  onApply: onApply,
-  onCancel: onCancel ?? () {},
-  onApplied: onApplied ?? () {},
-);
-
-/// Wraps the editor in the shipped theme and a full-width test surface.
-Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
-  theme: theme ?? LudavaTheme.graphiteAndTeal,
-  home: Scaffold(
-    body: Center(child: SizedBox(width: 480, child: child)),
-  ),
-);
-
-/// Builds a test theme whose style preset supplies the requested focus width.
-ThemeData _themeWithFocusedBorderWidth(double width) {
-  final comfortable = LudavaStylePresets.comfortable;
-  final style = LudavaStylePreset(
-    fontFamily: comfortable.fontFamily,
-    textTheme: comfortable.textTheme,
-    controlRadius: comfortable.controlRadius,
-    surfaceRadius: comfortable.surfaceRadius,
-    buttonPadding: comfortable.buttonPadding,
-    buttonMinimumSize: comfortable.buttonMinimumSize,
-    inputPadding: comfortable.inputPadding,
-    inputFocusedBorderWidth: width,
-  );
-  return LudavaThemeFactory.build(
-    colors: GraphiteTealTheme.colors,
-    style: style,
-    brightness: GraphiteTealTheme.brightness,
-  );
-}
-
-/// Creates a numeric trainer field with the requested inclusive range.
-GameField _field({
-  String id = 'bolts',
-  required int? maximumValue,
-  int? minimumValue = 0,
-}) => GameField(
-  id: id,
-  name: 'Bolts',
-  guestOffset: 0,
-  valueType: MemoryValueType.unsigned32,
-  byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.verified,
-  minimumValue: minimumValue,
-  maximumValue: maximumValue,
-);
-
-/// Returns a successful fake write with a matching read-back value.
-GameWriteResult _success(int value) => GameWriteResult(
-  status: GameWriteStatus.success,
-  fieldId: 'bolts',
-  requestedValue: value,
-  readBackValue: value,
-);
-
-/// Finds the field input owned by the inline editor.
-Finder get _inputFinder =>
-    find.byKey(const ValueKey('inline-editor-input-bolts'));
-
-/// Reads the unsigned draft text without grouping separators.
-String _editorText(WidgetTester tester, {String fieldId = 'bolts'}) => tester
-    .widget<TextField>(find.byKey(ValueKey('inline-editor-input-$fieldId')))
-    .controller!
-    .text;

@@ -6,6 +6,45 @@ import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_proces
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+GameProfile _profile() => GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'SYNTHETIC',
+  executable: 'SYNTHETIC.self',
+  executableHash: 'PPU-synthetic-hash',
+  readStatus: VerificationStatus.experimental,
+);
+
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
+TrainerSessionState _session(
+  GameDetectionStatus status, {
+  String? gameTitle,
+  String? evidence,
+  bool withProfile = false,
+  int? memoryBase,
+}) {
+  final profile = withProfile ? _profile() : null;
+  return TrainerSessionState(
+    processIds: const [42],
+    selectedProcessId: 42,
+    detection: GameDetectionResult(
+      status: status,
+      processId: 42,
+      gameTitle: gameTitle,
+      profile: profile,
+      confidence: status == GameDetectionStatus.supportedGame
+          ? GameIdentityConfidence.confirmed
+          : GameIdentityConfidence.none,
+      evidenceDescription: evidence ?? 'Test evidence.',
+    ),
+    memoryBase: memoryBase,
+  );
+}
+
 void main() {
   group('Class SessionConnectionBody session guidance behavior', () {
     testWidgets('Class SessionConnectionBody guides the missing RPCS3 state', (
@@ -348,34 +387,4 @@ void main() {
       },
     );
   });
-}
-
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
-
-TrainerSessionState _session(
-  GameDetectionStatus status, {
-  String? gameTitle,
-  String? evidence,
-  bool withProfile = false,
-  int? memoryBase,
-}) {
-  final profile = withProfile ? GameProfileCatalog.profiles.first : null;
-  return TrainerSessionState(
-    processIds: const [42],
-    selectedProcessId: 42,
-    detection: GameDetectionResult(
-      status: status,
-      processId: 42,
-      gameTitle: gameTitle,
-      profile: profile,
-      confidence: status == GameDetectionStatus.supportedGame
-          ? GameIdentityConfidence.confirmed
-          : GameIdentityConfidence.none,
-      evidenceDescription: evidence ?? 'Test evidence.',
-    ),
-    memoryBase: memoryBase,
-  );
 }

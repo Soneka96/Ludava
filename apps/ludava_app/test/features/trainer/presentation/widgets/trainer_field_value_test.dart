@@ -4,6 +4,16 @@ import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_v
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+Widget _wrap(Widget child, {double width = 240, ThemeData? theme}) =>
+    MaterialApp(
+      theme: theme ?? LudavaTheme.graphiteAndTeal,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(width: width, child: child),
+        ),
+      ),
+    );
+
 void main() {
   group('Class TrainerFieldValue presentation behavior', () {
     testWidgets('Class TrainerFieldValue formats the maximum unsigned value', (
@@ -14,7 +24,7 @@ void main() {
           TrainerFieldValue(
             readResult: const GameReadResult(
               status: GameReadStatus.success,
-              fieldId: 'bolts',
+              fieldId: 'credits',
               value: 4294967295,
             ),
             canRead: true,
@@ -51,7 +61,7 @@ void main() {
             const TrainerFieldValue(
               readResult: GameReadResult(
                 status: GameReadStatus.success,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 value: 42,
               ),
               canRead: true,
@@ -80,7 +90,7 @@ void main() {
             TrainerFieldValue(
               readResult: const GameReadResult(
                 status: GameReadStatus.success,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 value: 4294967295,
               ),
               canRead: true,
@@ -111,7 +121,7 @@ void main() {
             const TrainerFieldValue(
               readResult: GameReadResult(
                 status: GameReadStatus.readFailed,
-                fieldId: 'bolts',
+                fieldId: 'credits',
               ),
               canRead: true,
             ),
@@ -124,7 +134,7 @@ void main() {
             const TrainerFieldValue(
               readResult: GameReadResult(
                 status: GameReadStatus.success,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 value: 17,
               ),
               canRead: false,
@@ -137,13 +147,3 @@ void main() {
     );
   });
 }
-
-Widget _wrap(Widget child, {double width = 240, ThemeData? theme}) =>
-    MaterialApp(
-      theme: theme ?? LudavaTheme.graphiteAndTeal,
-      home: Scaffold(
-        body: Center(
-          child: SizedBox(width: width, child: child),
-        ),
-      ),
-    );

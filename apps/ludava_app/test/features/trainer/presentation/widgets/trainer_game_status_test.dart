@@ -5,6 +5,38 @@ import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+GameProfile _profile() => GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'SYNTHETIC',
+  executable: 'SYNTHETIC.self',
+  readStatus: VerificationStatus.experimental,
+);
+
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
+TrainerSessionState _session({
+  required GameDetectionStatus status,
+  GameProfile? profile,
+  int? memoryBase,
+}) => TrainerSessionState(
+  processIds: const [42],
+  selectedProcessId: 42,
+  detection: GameDetectionResult(
+    status: status,
+    processId: 42,
+    profile: profile,
+    confidence: status == GameDetectionStatus.supportedGame
+        ? GameIdentityConfidence.confirmed
+        : GameIdentityConfidence.none,
+    evidenceDescription: 'Test detection evidence.',
+  ),
+  memoryBase: memoryBase,
+);
+
 void main() {
   group('Class TrainerGameStatus readiness behavior', () {
     testWidgets('Class TrainerGameStatus marks a ready game as successful', (
@@ -15,7 +47,7 @@ void main() {
           TrainerGameStatus(
             session: _session(
               status: GameDetectionStatus.supportedGame,
-              profile: GameProfileCatalog.profiles.first,
+              profile: _profile(),
               memoryBase: 0x1000,
             ),
           ),
@@ -70,27 +102,3 @@ void main() {
     });
   });
 }
-
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
-
-TrainerSessionState _session({
-  required GameDetectionStatus status,
-  GameProfile? profile,
-  int? memoryBase,
-}) => TrainerSessionState(
-  processIds: const [42],
-  selectedProcessId: 42,
-  detection: GameDetectionResult(
-    status: status,
-    processId: 42,
-    profile: profile,
-    confidence: status == GameDetectionStatus.supportedGame
-        ? GameIdentityConfidence.confirmed
-        : GameIdentityConfidence.none,
-    evidenceDescription: 'Test detection evidence.',
-  ),
-  memoryBase: memoryBase,
-);

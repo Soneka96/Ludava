@@ -6,6 +6,13 @@ import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
+void _noOp(int processId) {}
+
 void main() {
   group('Class Rpcs3ProcessChoice selection behavior', () {
     testWidgets(
@@ -91,10 +98,3 @@ void main() {
     );
   });
 }
-
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
-
-void _noOp(int processId) {}

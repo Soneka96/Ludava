@@ -5,6 +5,11 @@ import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 
+Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
+  theme: theme ?? LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
 void main() {
   group('Class Rpcs3ConnectionGuidance presentation behavior', () {
     testWidgets(
@@ -143,8 +148,3 @@ void main() {
     );
   });
 }
-
-Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
-  theme: theme ?? LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);

@@ -4,12 +4,47 @@ import 'package:ludava_app/features/trainer/presentation/widgets/trainer_game_id
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+GameProfile _profile() => GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'SYNTHETIC',
+  executable: 'SYNTHETIC.self',
+  readStatus: VerificationStatus.experimental,
+);
+
+/// Builds the identity snapshot for the requested detection state.
+TrainerSessionState _session({
+  required GameDetectionStatus status,
+  required int processId,
+  GameProfile? profile,
+  String? title,
+}) => TrainerSessionState(
+  processIds: [processId],
+  selectedProcessId: processId,
+  detection: GameDetectionResult(
+    status: status,
+    processId: processId,
+    profile: profile,
+    gameTitle: title,
+    confidence: status == GameDetectionStatus.supportedGame
+        ? GameIdentityConfidence.confirmed
+        : GameIdentityConfidence.none,
+    evidenceDescription: 'Test detection evidence.',
+  ),
+);
+
+/// Builds the identity widget under the shipped theme.
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
 void main() {
   group('Class TrainerGameIdentity presentation behavior', () {
     testWidgets(
       'Class TrainerGameIdentity hides build and PID details in its tooltip',
       (tester) async {
-        final profile = GameProfileCatalog.profiles.first;
+        final profile = _profile();
         final session = _session(
           status: GameDetectionStatus.supportedGame,
           processId: 321,
@@ -60,30 +95,3 @@ void main() {
     );
   });
 }
-
-/// Builds the identity snapshot for the requested detection state.
-TrainerSessionState _session({
-  required GameDetectionStatus status,
-  required int processId,
-  GameProfile? profile,
-  String? title,
-}) => TrainerSessionState(
-  processIds: [processId],
-  selectedProcessId: processId,
-  detection: GameDetectionResult(
-    status: status,
-    processId: processId,
-    profile: profile,
-    gameTitle: title,
-    confidence: status == GameDetectionStatus.supportedGame
-        ? GameIdentityConfidence.confirmed
-        : GameIdentityConfidence.none,
-    evidenceDescription: 'Test detection evidence.',
-  ),
-);
-
-/// Builds the identity widget under the shipped theme.
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
