@@ -112,7 +112,6 @@ void main() {
         final deniedSessions = [
           TrainerSessionState(),
           _session(profileReadStatus: VerificationStatus.none),
-          _session(profileWriteStatus: VerificationStatus.none),
           _session(fieldReadStatus: VerificationStatus.none),
           _session(fieldWriteStatus: VerificationStatus.none),
           _session(omitMinimum: true),
@@ -160,6 +159,21 @@ void main() {
             _session(readStatus: GameReadStatus.readFailed),
             _field(_session(readStatus: GameReadStatus.readFailed)),
           ),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'Method TrainerWriteEligibility.isWriteEligible() denies an approved field when the profile is not approved',
+      () {
+        final session = _session(profileWriteStatus: VerificationStatus.none);
+        final field = _field(session);
+
+        expect(field.canWrite, isTrue);
+        expect(session.profile!.canWrite, isFalse);
+        expect(
+          TrainerWriteEligibility.isWriteEligible(session, field),
           isFalse,
         );
       },

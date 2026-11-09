@@ -105,7 +105,6 @@ void main() {
             reason: '${profile.id}.${field.id} has an inverted range',
           );
           if (field.canWrite) {
-            expect(profile.canWrite, isTrue, reason: profile.id);
             expect(field.minimumValue, isNotNull, reason: profile.id);
             expect(field.maximumValue, isNotNull, reason: profile.id);
           }
