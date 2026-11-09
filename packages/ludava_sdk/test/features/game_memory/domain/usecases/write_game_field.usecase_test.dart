@@ -1,6 +1,5 @@
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_read_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_write_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/repositories/Igame_memory.repository.dart';
@@ -9,17 +8,118 @@ import 'package:ludava_sdk/features/game_memory/domain/usecases/write_game_field
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
+class _WriteGameFieldTestRepository implements IGameMemoryRepository {
+  int readCalls = 0;
+  int writeCalls = 0;
+  int? lastReadAddress;
+  int? lastReadByteCount;
+  int? lastWriteAddress;
+  List<int>? writtenBytes;
+
+  _WriteGameFieldTestRepository({
+    MemoryReadResult? readResult,
+    List<MemoryReadResult>? readResults,
+    MemoryWriteResult? writeResult,
+  }) : _readResults =
+           readResults ??
+           [
+             readResult ??
+                 MemoryReadResult(
+                   status: MemoryReadStatus.complete,
+                   bytes: [0, 0, 0, 42],
+                   bytesRead: 4,
+                   requestedBytes: 4,
+                 ),
+           ],
+       _writeResult =
+           writeResult ??
+           const MemoryWriteResult(
+             status: MemoryWriteStatus.complete,
+             bytesWritten: 4,
+             requestedBytes: 4,
+           );
+
+  final List<MemoryReadResult> _readResults;
+  final MemoryWriteResult _writeResult;
+
+  static WriteGameFieldParams params({
+    VerificationStatus profileStatus = VerificationStatus.researchConfirmed,
+    VerificationStatus fieldStatus = VerificationStatus.researchConfirmed,
+    int? minimumValue = 0,
+    int? maximumValue = 100,
+    int value = 42,
+    int memoryBase = 0x300000000,
+    bool confirmed = true,
+  }) => WriteGameFieldParams(
+    profile: GameProfile(
+      id: 'synthetic-profile',
+      gameName: 'Test game',
+      buildId: 'TEST',
+      executable: 'test.exe',
+      readStatus: VerificationStatus.verified,
+      writeStatus: profileStatus,
+      fields: {
+        'credits': GameField(
+          id: 'credits',
+          name: 'Credits',
+          guestOffset: 0x1234,
+          valueType: MemoryValueType.unsigned32,
+          byteOrder: ByteOrder.big,
+          readStatus: VerificationStatus.verified,
+          writeStatus: fieldStatus,
+          minimumValue: minimumValue,
+          maximumValue: maximumValue,
+        ),
+      },
+    ),
+    fieldId: 'credits',
+    memoryBase: memoryBase,
+    value: value,
+    confirmed: confirmed,
+  );
+
+  @override
+  MemoryReadResult read(int address, int byteCount) {
+    final index = readCalls;
+    readCalls++;
+    lastReadAddress = address;
+    lastReadByteCount = byteCount;
+    return _readResults[index < _readResults.length
+        ? index
+        : _readResults.length - 1];
+  }
+
+  @override
+  MemoryWriteResult write(int address, List<int> bytes) {
+    writeCalls++;
+    lastWriteAddress = address;
+    writtenBytes = List.unmodifiable(bytes);
+    return _writeResult;
+  }
+}
+
+MemoryReadResult _completeRead(int value) => MemoryReadResult(
+  status: MemoryReadStatus.complete,
+  bytes: [
+    (value >> 24) & 0xff,
+    (value >> 16) & 0xff,
+    (value >> 8) & 0xff,
+    value & 0xff,
+  ],
+  bytesRead: 4,
+  requestedBytes: 4,
+);
+
 void main() {
   group('Method execute() behaves correctly', () {
     test(
-      'Method execute() requires explicit confirmation before reading Deadlocked memory',
+      'Method execute() requires explicit confirmation before reading memory',
       () {
         final repository = _WriteGameFieldTestRepository();
         final result = WriteGameFieldUseCase(repository).execute(
-          WriteGameFieldParams(
-            profile: DeadlockedPs3Profile.profile,
-            fieldId: 'bolts',
+          _WriteGameFieldTestRepository.params(
             memoryBase: 0x310000000,
+            maximumValue: 1000,
             value: 123,
             confirmed: false,
           ),
@@ -32,16 +132,15 @@ void main() {
     );
 
     test(
-      'Method execute() writes Deadlocked Bolts through the guarded read-back path',
+      'Method execute() writes a synthetic field through the guarded read-back path',
       () {
         final repository = _WriteGameFieldTestRepository(
           readResults: [_completeRead(4903), _completeRead(4904)],
         );
         final result = WriteGameFieldUseCase(repository).execute(
-          WriteGameFieldParams(
-            profile: DeadlockedPs3Profile.profile,
-            fieldId: 'bolts',
+          _WriteGameFieldTestRepository.params(
             memoryBase: 0x300000000,
+            maximumValue: 5000,
             value: 4904,
             confirmed: true,
           ),
@@ -51,8 +150,8 @@ void main() {
         expect(result.readBackValue, 4904);
         expect(repository.readCalls, 2);
         expect(repository.writeCalls, 1);
-        expect(repository.lastReadAddress, 0x3009c32e8);
-        expect(repository.lastWriteAddress, 0x3009c32e8);
+        expect(repository.lastReadAddress, 0x300001234);
+        expect(repository.lastWriteAddress, 0x300001234);
         expect(repository.lastReadByteCount, 4);
         expect(repository.writtenBytes, [0, 0, 0x13, 0x28]);
       },
@@ -476,9 +575,9 @@ void main() {
       expect(result.requestedValue, 42);
       expect(result.readBackValue, 42);
       expect(repository.writtenBytes, [0, 0, 0, 42]);
-      expect(repository.lastWriteAddress, 0x301329e80);
+      expect(repository.lastWriteAddress, 0x300001234);
       expect(repository.readCalls, 2);
-      expect(repository.lastReadAddress, 0x301329e80);
+      expect(repository.lastReadAddress, 0x300001234);
       expect(repository.lastReadByteCount, 4);
     });
 
@@ -519,105 +618,3 @@ void main() {
     });
   });
 }
-
-class _WriteGameFieldTestRepository implements IGameMemoryRepository {
-  int readCalls = 0;
-  int writeCalls = 0;
-  int? lastReadAddress;
-  int? lastReadByteCount;
-  int? lastWriteAddress;
-  List<int>? writtenBytes;
-
-  _WriteGameFieldTestRepository({
-    MemoryReadResult? readResult,
-    List<MemoryReadResult>? readResults,
-    MemoryWriteResult? writeResult,
-  }) : _readResults =
-           readResults ??
-           [
-             readResult ??
-                 MemoryReadResult(
-                   status: MemoryReadStatus.complete,
-                   bytes: [0, 0, 0, 42],
-                   bytesRead: 4,
-                   requestedBytes: 4,
-                 ),
-           ],
-       _writeResult =
-           writeResult ??
-           const MemoryWriteResult(
-             status: MemoryWriteStatus.complete,
-             bytesWritten: 4,
-             requestedBytes: 4,
-           );
-
-  final List<MemoryReadResult> _readResults;
-  final MemoryWriteResult _writeResult;
-
-  static WriteGameFieldParams params({
-    VerificationStatus profileStatus = VerificationStatus.researchConfirmed,
-    VerificationStatus fieldStatus = VerificationStatus.researchConfirmed,
-    int? minimumValue = 0,
-    int? maximumValue = 100,
-    int value = 42,
-    int memoryBase = 0x300000000,
-    bool confirmed = true,
-  }) => WriteGameFieldParams(
-    profile: GameProfile(
-      id: 'rc2-test',
-      gameName: 'Test game',
-      buildId: 'TEST',
-      executable: 'test.exe',
-      readStatus: VerificationStatus.verified,
-      writeStatus: profileStatus,
-      fields: {
-        'bolts': GameField(
-          id: 'bolts',
-          name: 'Bolts',
-          guestOffset: 0x1329e80,
-          valueType: MemoryValueType.unsigned32,
-          byteOrder: ByteOrder.big,
-          readStatus: VerificationStatus.verified,
-          writeStatus: fieldStatus,
-          minimumValue: minimumValue,
-          maximumValue: maximumValue,
-        ),
-      },
-    ),
-    fieldId: 'bolts',
-    memoryBase: memoryBase,
-    value: value,
-    confirmed: confirmed,
-  );
-
-  @override
-  MemoryReadResult read(int address, int byteCount) {
-    final index = readCalls;
-    readCalls++;
-    lastReadAddress = address;
-    lastReadByteCount = byteCount;
-    return _readResults[index < _readResults.length
-        ? index
-        : _readResults.length - 1];
-  }
-
-  @override
-  MemoryWriteResult write(int address, List<int> bytes) {
-    writeCalls++;
-    lastWriteAddress = address;
-    writtenBytes = List.unmodifiable(bytes);
-    return _writeResult;
-  }
-}
-
-MemoryReadResult _completeRead(int value) => MemoryReadResult(
-  status: MemoryReadStatus.complete,
-  bytes: [
-    (value >> 24) & 0xff,
-    (value >> 16) & 0xff,
-    (value >> 8) & 0xff,
-    value & 0xff,
-  ],
-  bytesRead: 4,
-  requestedBytes: 4,
-);

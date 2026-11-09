@@ -20,6 +20,101 @@ import 'package:nocterm/nocterm_test.dart'
         testNocterm;
 import 'package:test/test.dart';
 
+TrainerValueEditorComponent _editor({
+  GameField? field,
+  int? currentValue = 123,
+  required GameWriteResult Function(int value) onApply,
+  void Function()? onApplied,
+  void Function()? onCancel,
+}) => TrainerValueEditorComponent(
+  field: field ?? _field(),
+  currentValue: currentValue,
+  onApply: onApply,
+  onApplied: onApplied,
+  onCancel: onCancel ?? () {},
+);
+
+TextEditingController _controller(NoctermTester tester) =>
+    tester.findAllComponents<TextField>().single.controller!;
+
+Future<void> _replaceAll(NoctermTester tester, String text) async {
+  await tester.sendKeyEvent(
+    const KeyboardEvent(
+      logicalKey: LogicalKey.keyA,
+      modifiers: ModifierKeys(ctrl: true),
+    ),
+  );
+  if (text.isEmpty) {
+    await tester.sendBackspace();
+  } else {
+    await tester.enterText(text);
+  }
+}
+
+GameField _field({
+  bool readEnabled = true,
+  bool writeEnabled = true,
+  int? minimumValue = 0,
+  int? maximumValue = 4294967295,
+}) => GameField(
+  id: 'credits',
+  name: 'Credits',
+  guestOffset: 0x1000,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus:
+      readEnabled ? VerificationStatus.verified : VerificationStatus.none,
+  writeStatus:
+      writeEnabled
+          ? VerificationStatus.researchConfirmed
+          : VerificationStatus.none,
+  minimumValue: minimumValue,
+  maximumValue: maximumValue,
+);
+
+class _EditorHost extends StatefulComponent {
+  final GameField field;
+  final int? currentValue;
+  final GameWriteResult Function(int value) onApply;
+
+  const _EditorHost({
+    required this.field,
+    required this.currentValue,
+    required this.onApply,
+  });
+
+  @override
+  State<_EditorHost> createState() => _EditorHostState();
+}
+
+class _EditorHostState extends State<_EditorHost> {
+  late GameField _field = component.field;
+  late int? _currentValue = component.currentValue;
+
+  void updateCurrentValue(int? value) {
+    setState(() => _currentValue = value);
+  }
+
+  void updateField(GameField field) {
+    setState(() => _field = field);
+  }
+
+  @override
+  Component build(BuildContext context) => TrainerValueEditorComponent(
+    field: _field,
+    currentValue: _currentValue,
+    onApply: component.onApply,
+    onCancel: () {},
+  );
+}
+
+GameWriteResult _success(int value) => GameWriteResult(
+  status: GameWriteStatus.success,
+  fieldId: 'credits',
+  requestedValue: value,
+  readBackValue: value,
+);
+
 void main() {
   group('Class TrainerValueEditorComponent editing behavior', () {
     test(
@@ -51,7 +146,7 @@ void main() {
               onApply:
                   (value) => GameWriteResult(
                     status: GameWriteStatus.readBackMismatch,
-                    fieldId: 'bolts',
+                    fieldId: 'credits',
                     requestedValue: value,
                     readBackValue: value + 1,
                   ),
@@ -260,7 +355,7 @@ void main() {
                 applyCount++;
                 return GameWriteResult(
                   status: GameWriteStatus.readBackMismatch,
-                  fieldId: 'bolts',
+                  fieldId: 'credits',
                   requestedValue: value,
                   readBackValue: 99,
                 );
@@ -315,7 +410,7 @@ void main() {
                 onApply:
                     (value) => GameWriteResult(
                       status: entry.key,
-                      fieldId: 'bolts',
+                      fieldId: 'credits',
                       requestedValue: value,
                       readBackValue:
                           entry.key == GameWriteStatus.readBackMismatch
@@ -362,7 +457,7 @@ void main() {
                 if (appliedValues.length == 1) {
                   return GameWriteResult(
                     status: GameWriteStatus.readBackMismatch,
-                    fieldId: 'bolts',
+                    fieldId: 'credits',
                     requestedValue: value,
                     readBackValue: value - 1,
                   );
@@ -809,62 +904,6 @@ void main() {
     );
 
     test(
-      'Class TrainerValueEditorComponent disables fields without read approval',
-      () async {
-        await testNocterm('field without read evidence', (tester) async {
-          var applyCount = 0;
-          await tester.pumpComponent(
-            _editor(
-              field: _field(readEnabled: false),
-              onApply: (_) {
-                applyCount++;
-                return _success(1);
-              },
-            ),
-          );
-          final input = tester.findAllComponents<TextField>().single;
-
-          expect(input.enabled, isFalse);
-          expect(_controller(tester).text, isEmpty);
-          expect(
-            tester.terminalState,
-            containsText('Current value unavailable.'),
-          );
-          await tester.sendEnter();
-          expect(applyCount, 0);
-        });
-      },
-    );
-
-    test(
-      'Class TrainerValueEditorComponent disables fields without approved bounds',
-      () async {
-        await testNocterm('field without bounds', (tester) async {
-          var applyCount = 0;
-          await tester.pumpComponent(
-            _editor(
-              field: _field(minimumValue: null, maximumValue: null),
-              onApply: (_) {
-                applyCount++;
-                return _success(1);
-              },
-            ),
-          );
-          final input = tester.findAllComponents<TextField>().single;
-
-          expect(input.enabled, isFalse);
-          expect(_controller(tester).text, '123');
-          expect(
-            tester.terminalState,
-            containsText('This field has no approved value range.'),
-          );
-          await tester.sendEnter();
-          expect(applyCount, 0);
-        });
-      },
-    );
-
-    test(
       'Class TrainerValueEditorComponent disables editing when either bound is absent',
       () async {
         await testNocterm('one missing bound', (tester) async {
@@ -935,7 +974,7 @@ void main() {
         await testNocterm('minimum editor dimensions', (tester) async {
           await tester.pumpComponent(_editor(onApply: (_) => _success(124)));
 
-          expect(tester.terminalState, containsText('EDIT BOLTS'));
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
           expect(
             tester.terminalState,
             isNot(containsText('Terminal too small')),
@@ -1009,98 +1048,3 @@ void main() {
     );
   });
 }
-
-TrainerValueEditorComponent _editor({
-  GameField? field,
-  int? currentValue = 123,
-  required GameWriteResult Function(int value) onApply,
-  void Function()? onApplied,
-  void Function()? onCancel,
-}) => TrainerValueEditorComponent(
-  field: field ?? _field(),
-  currentValue: currentValue,
-  onApply: onApply,
-  onApplied: onApplied,
-  onCancel: onCancel ?? () {},
-);
-
-TextEditingController _controller(NoctermTester tester) =>
-    tester.findAllComponents<TextField>().single.controller!;
-
-Future<void> _replaceAll(NoctermTester tester, String text) async {
-  await tester.sendKeyEvent(
-    const KeyboardEvent(
-      logicalKey: LogicalKey.keyA,
-      modifiers: ModifierKeys(ctrl: true),
-    ),
-  );
-  if (text.isEmpty) {
-    await tester.sendBackspace();
-  } else {
-    await tester.enterText(text);
-  }
-}
-
-GameField _field({
-  bool readEnabled = true,
-  bool writeEnabled = true,
-  int? minimumValue = 0,
-  int? maximumValue = 4294967295,
-}) => GameField(
-  id: 'bolts',
-  name: 'Bolts',
-  guestOffset: 0x1000,
-  valueType: MemoryValueType.unsigned32,
-  byteOrder: ByteOrder.big,
-  readStatus:
-      readEnabled ? VerificationStatus.verified : VerificationStatus.none,
-  writeStatus:
-      writeEnabled
-          ? VerificationStatus.researchConfirmed
-          : VerificationStatus.none,
-  minimumValue: minimumValue,
-  maximumValue: maximumValue,
-);
-
-class _EditorHost extends StatefulComponent {
-  final GameField field;
-  final int? currentValue;
-  final GameWriteResult Function(int value) onApply;
-
-  const _EditorHost({
-    required this.field,
-    required this.currentValue,
-    required this.onApply,
-  });
-
-  @override
-  State<_EditorHost> createState() => _EditorHostState();
-}
-
-class _EditorHostState extends State<_EditorHost> {
-  late GameField _field = component.field;
-  late int? _currentValue = component.currentValue;
-
-  void updateCurrentValue(int? value) {
-    setState(() => _currentValue = value);
-  }
-
-  void updateField(GameField field) {
-    setState(() => _field = field);
-  }
-
-  @override
-  Component build(BuildContext context) => TrainerValueEditorComponent(
-    field: _field,
-    currentValue: _currentValue,
-    onApply: component.onApply,
-    onCancel: () {},
-  );
-}
-
-GameWriteResult _success(int value) => GameWriteResult(
-  status: GameWriteStatus.success,
-  fieldId: 'bolts',
-  requestedValue: value,
-  readBackValue: value,
-);

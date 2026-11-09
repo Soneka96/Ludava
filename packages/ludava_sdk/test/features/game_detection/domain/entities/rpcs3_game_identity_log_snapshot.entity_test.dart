@@ -2,17 +2,32 @@ import 'package:ludava_sdk/features/game_detection/domain/entities/rpcs3_game_id
 import 'package:ludava_sdk/features/game_detection/domain/entities/rpcs3_game_identity_log_snapshot.entity.dart';
 import 'package:test/test.dart';
 
+Rpcs3GameIdentityLogSnapshot _snapshot({
+  List<String> titles = const ['Synthetic Collection'],
+  List<String> serials = const ['TEST00001'],
+  List<String> bootPaths = const [],
+  List<Rpcs3GameIdentityLogEvent> events = const [],
+}) => Rpcs3GameIdentityLogSnapshot(
+  titles: titles,
+  serials: serials,
+  bootPaths: bootPaths,
+  events: events,
+  logPath: r'C:\RPCS3\log\RPCS3.log',
+  logModifiedAtUtc: DateTime.utc(2026, 11, 5, 12),
+  processStartedAtUtc: DateTime.utc(2026, 11, 5, 11),
+);
+
 void main() {
   group('Class Rpcs3GameIdentityLogSnapshot construction', () {
     test(
       'Class Rpcs3GameIdentityLogSnapshot takes immutable list snapshots',
       () {
-        final titles = ['Collection'];
-        final serials = ['BCUS98282'];
+        final titles = ['Synthetic Collection'];
+        final serials = ['TEST00001'];
         final bootPaths = [r'D:\Games\EBOOT.BIN'];
         final events = [
           const Rpcs3GameIdentityLogEvent(
-            executable: 'RC2.ppu.self',
+            executable: 'BETA.self',
             executableHash: 'PPU-measured-hash',
           ),
         ];
@@ -26,12 +41,12 @@ void main() {
           processStartedAtUtc: DateTime.utc(2026, 11, 5, 11),
         );
         titles.add('Another game');
-        serials.add('NPUA80644');
+        serials.add('TEST00002');
         bootPaths.add(r'D:\Other\EBOOT.BIN');
         events.add(const Rpcs3GameIdentityLogEvent(processFinished: true));
 
-        expect(snapshot.titles, ['Collection']);
-        expect(snapshot.serials, ['BCUS98282']);
+        expect(snapshot.titles, ['Synthetic Collection']);
+        expect(snapshot.serials, ['TEST00001']);
         expect(snapshot.bootPaths, [r'D:\Games\EBOOT.BIN']);
         expect(snapshot.events, hasLength(1));
         expect(snapshot.events.single.executableHash, 'PPU-measured-hash');
@@ -39,7 +54,7 @@ void main() {
           () => snapshot.titles.add('Another game'),
           throwsUnsupportedError,
         );
-        expect(() => snapshot.serials.add('NPUA80644'), throwsUnsupportedError);
+        expect(() => snapshot.serials.add('TEST00002'), throwsUnsupportedError);
         expect(
           () => snapshot.bootPaths.add(r'D:\Other\EBOOT.BIN'),
           throwsUnsupportedError,
@@ -88,7 +103,10 @@ void main() {
     );
 
     test('Property hasConflictingIdentity returns false for one identity', () {
-      expect(_snapshot(titles: ['Collection']).hasConflictingIdentity, isFalse);
+      expect(
+        _snapshot(titles: ['Synthetic Collection']).hasConflictingIdentity,
+        isFalse,
+      );
     });
 
     test(
@@ -105,7 +123,7 @@ void main() {
       'Property hasConflictingIdentity returns true for multiple serials',
       () {
         expect(
-          _snapshot(serials: ['BCUS98282', 'NPUA80644']).hasConflictingIdentity,
+          _snapshot(serials: ['TEST00001', 'TEST00002']).hasConflictingIdentity,
           isTrue,
         );
       },
@@ -129,7 +147,7 @@ void main() {
         expect(
           _snapshot(
             titles: ['First', 'Second'],
-            serials: ['BCUS98282', 'NPUA80644'],
+            serials: ['TEST00001', 'TEST00002'],
           ).hasConflictingIdentity,
           isTrue,
         );
@@ -137,18 +155,3 @@ void main() {
     );
   });
 }
-
-Rpcs3GameIdentityLogSnapshot _snapshot({
-  List<String> titles = const ['Collection'],
-  List<String> serials = const ['BCUS98282'],
-  List<String> bootPaths = const [],
-  List<Rpcs3GameIdentityLogEvent> events = const [],
-}) => Rpcs3GameIdentityLogSnapshot(
-  titles: titles,
-  serials: serials,
-  bootPaths: bootPaths,
-  events: events,
-  logPath: r'C:\RPCS3\log\RPCS3.log',
-  logModifiedAtUtc: DateTime.utc(2026, 11, 5, 12),
-  processStartedAtUtc: DateTime.utc(2026, 11, 5, 11),
-);

@@ -5,6 +5,64 @@ import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_pr
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_process_metadata_api.dart';
 import 'package:test/test.dart';
 
+WindowsProcessMetadataDataSource _dataSource(
+  _FakeWindowsProcessMetadataApi fake, {
+  bool isWindows = true,
+  int pointerSize = 8,
+}) => WindowsProcessMetadataDataSource(
+  api: fake.adapter,
+  isWindows: isWindows,
+  pointerSize: pointerSize,
+);
+
+class _FakeWindowsProcessMetadataApi {
+  final String executablePath = r'C:\RPCS3\rpcs3.exe';
+  final DateTime startedAtUtc = DateTime.utc(2026, 11, 5, 10);
+  int handleAddress = 0x1234;
+  int imageResult = 1;
+  int timesResult = 1;
+  int closeResult = 1;
+  int errorCode = 5;
+  int closeErrorCode = 6;
+  int openCalls = 0;
+  int closeCalls = 0;
+  int? requestedAccess;
+  int? openedProcessId;
+  int? pathLengthOverride;
+  bool throwOnImageLookup = false;
+
+  WindowsProcessMetadataApi get adapter => WindowsProcessMetadataApi(
+    openProcess: (access, _, processId) {
+      openCalls++;
+      requestedAccess = access;
+      openedProcessId = processId;
+      return Pointer<Void>.fromAddress(handleAddress);
+    },
+    queryFullProcessImageNameW: (_, flags, buffer, pathLength) {
+      if (throwOnImageLookup) throw StateError('fake lookup failure');
+      if (flags != 0 || imageResult == 0) return imageResult;
+      final codeUnits = executablePath.codeUnits;
+      pathLength.value = pathLengthOverride ?? codeUnits.length;
+      for (var index = 0; index < codeUnits.length; index++) {
+        buffer[index] = codeUnits[index];
+      }
+      return 1;
+    },
+    getProcessTimes: (_, creationTime, __, ___, ____) {
+      if (timesResult == 0) return timesResult;
+      creationTime.value =
+          (startedAtUtc.millisecondsSinceEpoch + 11644473600000) * 10000;
+      return 1;
+    },
+    closeHandle: (_) {
+      closeCalls++;
+      if (closeResult == 0) errorCode = closeErrorCode;
+      return closeResult;
+    },
+    getLastError: () => errorCode,
+  );
+}
+
 void main() {
   group('Method read() behaves correctly', () {
     test('Method read() returns the executable and process start time', () {
@@ -129,62 +187,4 @@ void main() {
       expect(api.closeCalls, 1);
     });
   });
-}
-
-WindowsProcessMetadataDataSource _dataSource(
-  _FakeWindowsProcessMetadataApi fake, {
-  bool isWindows = true,
-  int pointerSize = 8,
-}) => WindowsProcessMetadataDataSource(
-  api: fake.adapter,
-  isWindows: isWindows,
-  pointerSize: pointerSize,
-);
-
-class _FakeWindowsProcessMetadataApi {
-  final String executablePath = r'C:\RPCS3\rpcs3.exe';
-  final DateTime startedAtUtc = DateTime.utc(2026, 11, 5, 10);
-  int handleAddress = 0x1234;
-  int imageResult = 1;
-  int timesResult = 1;
-  int closeResult = 1;
-  int errorCode = 5;
-  int closeErrorCode = 6;
-  int openCalls = 0;
-  int closeCalls = 0;
-  int? requestedAccess;
-  int? openedProcessId;
-  int? pathLengthOverride;
-  bool throwOnImageLookup = false;
-
-  WindowsProcessMetadataApi get adapter => WindowsProcessMetadataApi(
-    openProcess: (access, _, processId) {
-      openCalls++;
-      requestedAccess = access;
-      openedProcessId = processId;
-      return Pointer<Void>.fromAddress(handleAddress);
-    },
-    queryFullProcessImageNameW: (_, flags, buffer, pathLength) {
-      if (throwOnImageLookup) throw StateError('fake lookup failure');
-      if (flags != 0 || imageResult == 0) return imageResult;
-      final codeUnits = executablePath.codeUnits;
-      pathLength.value = pathLengthOverride ?? codeUnits.length;
-      for (var index = 0; index < codeUnits.length; index++) {
-        buffer[index] = codeUnits[index];
-      }
-      return 1;
-    },
-    getProcessTimes: (_, creationTime, __, ___, ____) {
-      if (timesResult == 0) return timesResult;
-      creationTime.value =
-          (startedAtUtc.millisecondsSinceEpoch + 11644473600000) * 10000;
-      return 1;
-    },
-    closeHandle: (_) {
-      closeCalls++;
-      if (closeResult == 0) errorCode = closeErrorCode;
-      return closeResult;
-    },
-    getLastError: () => errorCode,
-  );
 }

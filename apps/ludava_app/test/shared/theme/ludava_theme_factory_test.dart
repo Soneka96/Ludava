@@ -7,6 +7,13 @@ import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+Color _stateOverlayColor(Color color, double opacity) => Color.fromARGB(
+  (opacity * 255).round(),
+  (color.r * 255).round().clamp(0, 255).toInt(),
+  (color.g * 255).round().clamp(0, 255).toInt(),
+  (color.b * 255).round().clamp(0, 255).toInt(),
+);
+
 void main() {
   group('Method LudavaThemeFactory.build() behaves correctly', () {
     test(
@@ -240,9 +247,3 @@ void main() {
 }
 
 /// Resolves a Material state opacity through its 8-bit color alpha channel.
-Color _stateOverlayColor(Color color, double opacity) => Color.fromARGB(
-  (opacity * 255).round(),
-  (color.r * 255).round().clamp(0, 255).toInt(),
-  (color.g * 255).round().clamp(0, 255).toInt(),
-  (color.b * 255).round().clamp(0, 255).toInt(),
-);

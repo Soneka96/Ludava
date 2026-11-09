@@ -6,6 +6,101 @@ import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_pr
 import 'package:ludava_sdk/features/rpcs3_connection/data/models/windows_process_discovery_call_result.model.dart';
 import 'package:test/test.dart';
 
+WindowsProcessDiscoveryDataSource _dataSource(
+  _FakeWindowsProcessDiscoveryApi fake, {
+  bool isWindows = true,
+  int pointerSize = 8,
+}) => WindowsProcessDiscoveryDataSource(
+  api: fake.adapter,
+  isWindows: isWindows,
+  pointerSize: pointerSize,
+);
+
+class _ProcessInfo {
+  final int processId;
+  final String executable;
+
+  const _ProcessInfo(this.processId, this.executable);
+}
+
+class _FakeWindowsProcessDiscoveryApi {
+  final List<_ProcessInfo> processes;
+  int snapshotAddress = 0x1234;
+  int snapshotError = 5;
+  int firstError = 18;
+  int nextError = 18;
+  int closeError = 6;
+  int closeResult = 1;
+  int snapshotCalls = 0;
+  int closeCalls = 0;
+  int? snapshotFlags;
+  int? snapshotProcessId;
+  int? entrySize;
+  int _index = -1;
+  bool failFirst = false;
+
+  _FakeWindowsProcessDiscoveryApi(this.processes);
+
+  WindowsProcessDiscoveryApi get adapter => WindowsProcessDiscoveryApi(
+    createToolhelp32Snapshot: (flags, processId) {
+      snapshotCalls++;
+      snapshotFlags = flags;
+      snapshotProcessId = processId;
+      return WindowsProcessDiscoveryCallResult<Pointer<Void>>(
+        value: Pointer<Void>.fromAddress(snapshotAddress),
+        errorCode:
+            snapshotAddress == 0 || snapshotAddress == -1 ? snapshotError : 0,
+      );
+    },
+    process32FirstW: (_, entry) {
+      entrySize = entry.ref.dwSize;
+      if (processes.isEmpty || failFirst) {
+        return WindowsProcessDiscoveryCallResult<bool>(
+          value: false,
+          errorCode: firstError,
+        );
+      }
+      _index = 0;
+      _writeEntry(entry);
+      return const WindowsProcessDiscoveryCallResult<bool>(
+        value: true,
+        errorCode: 0,
+      );
+    },
+    process32NextW: (_, entry) {
+      _index++;
+      if (_index >= processes.length) {
+        return WindowsProcessDiscoveryCallResult<bool>(
+          value: false,
+          errorCode: nextError,
+        );
+      }
+      _writeEntry(entry);
+      return const WindowsProcessDiscoveryCallResult<bool>(
+        value: true,
+        errorCode: 0,
+      );
+    },
+    closeHandle: (_) {
+      closeCalls++;
+      return WindowsProcessDiscoveryCallResult<bool>(
+        value: closeResult != 0,
+        errorCode: closeResult == 0 ? closeError : 0,
+      );
+    },
+  );
+
+  void _writeEntry(Pointer<ProcessEntry32W> entry) {
+    final process = processes[_index];
+    entry.ref.th32ProcessID = process.processId;
+    final codeUnits = process.executable.codeUnits;
+    for (var index = 0; index < codeUnits.length && index < 259; index++) {
+      entry.ref.szExeFile[index] = codeUnits[index];
+    }
+    entry.ref.szExeFile[codeUnits.length < 260 ? codeUnits.length : 259] = 0;
+  }
+}
+
 void main() {
   group('Method findRpcs3ProcessIds() behaves correctly', () {
     test(
@@ -270,99 +365,4 @@ void main() {
       expect(() => processIds.add(52), throwsUnsupportedError);
     });
   });
-}
-
-WindowsProcessDiscoveryDataSource _dataSource(
-  _FakeWindowsProcessDiscoveryApi fake, {
-  bool isWindows = true,
-  int pointerSize = 8,
-}) => WindowsProcessDiscoveryDataSource(
-  api: fake.adapter,
-  isWindows: isWindows,
-  pointerSize: pointerSize,
-);
-
-class _ProcessInfo {
-  final int processId;
-  final String executable;
-
-  const _ProcessInfo(this.processId, this.executable);
-}
-
-class _FakeWindowsProcessDiscoveryApi {
-  final List<_ProcessInfo> processes;
-  int snapshotAddress = 0x1234;
-  int snapshotError = 5;
-  int firstError = 18;
-  int nextError = 18;
-  int closeError = 6;
-  int closeResult = 1;
-  int snapshotCalls = 0;
-  int closeCalls = 0;
-  int? snapshotFlags;
-  int? snapshotProcessId;
-  int? entrySize;
-  int _index = -1;
-  bool failFirst = false;
-
-  _FakeWindowsProcessDiscoveryApi(this.processes);
-
-  WindowsProcessDiscoveryApi get adapter => WindowsProcessDiscoveryApi(
-    createToolhelp32Snapshot: (flags, processId) {
-      snapshotCalls++;
-      snapshotFlags = flags;
-      snapshotProcessId = processId;
-      return WindowsProcessDiscoveryCallResult<Pointer<Void>>(
-        value: Pointer<Void>.fromAddress(snapshotAddress),
-        errorCode:
-            snapshotAddress == 0 || snapshotAddress == -1 ? snapshotError : 0,
-      );
-    },
-    process32FirstW: (_, entry) {
-      entrySize = entry.ref.dwSize;
-      if (processes.isEmpty || failFirst) {
-        return WindowsProcessDiscoveryCallResult<bool>(
-          value: false,
-          errorCode: firstError,
-        );
-      }
-      _index = 0;
-      _writeEntry(entry);
-      return const WindowsProcessDiscoveryCallResult<bool>(
-        value: true,
-        errorCode: 0,
-      );
-    },
-    process32NextW: (_, entry) {
-      _index++;
-      if (_index >= processes.length) {
-        return WindowsProcessDiscoveryCallResult<bool>(
-          value: false,
-          errorCode: nextError,
-        );
-      }
-      _writeEntry(entry);
-      return const WindowsProcessDiscoveryCallResult<bool>(
-        value: true,
-        errorCode: 0,
-      );
-    },
-    closeHandle: (_) {
-      closeCalls++;
-      return WindowsProcessDiscoveryCallResult<bool>(
-        value: closeResult != 0,
-        errorCode: closeResult == 0 ? closeError : 0,
-      );
-    },
-  );
-
-  void _writeEntry(Pointer<ProcessEntry32W> entry) {
-    final process = processes[_index];
-    entry.ref.th32ProcessID = process.processId;
-    final codeUnits = process.executable.codeUnits;
-    for (var index = 0; index < codeUnits.length && index < 259; index++) {
-      entry.ref.szExeFile[index] = codeUnits[index];
-    }
-    entry.ref.szExeFile[codeUnits.length < 260 ? codeUnits.length : 259] = 0;
-  }
 }

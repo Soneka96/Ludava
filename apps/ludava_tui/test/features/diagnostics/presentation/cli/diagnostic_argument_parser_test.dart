@@ -28,9 +28,9 @@ void main() {
         final arguments = DiagnosticArgumentParser.parse([
           'read',
           '--game',
-          'rc2-collection',
+          'synthetic-profile',
           '--field',
-          'bolts',
+          'credits',
           '--pid',
           '42',
           '--memory-base',
@@ -38,8 +38,8 @@ void main() {
         ]);
 
         expect(arguments.action, GameMemoryAction.read);
-        expect(arguments.gameId, 'rc2-collection');
-        expect(arguments.fieldId, 'bolts');
+        expect(arguments.gameId, 'synthetic-profile');
+        expect(arguments.fieldId, 'credits');
         expect(arguments.processId, 42);
         expect(arguments.memoryBase, 0x300000000);
         expect(arguments.value, isNull);
@@ -54,9 +54,9 @@ void main() {
         final arguments = DiagnosticArgumentParser.parse([
           'read',
           '--game',
-          'rc2-collection',
+          'synthetic-profile',
           '--field',
-          'bolts',
+          'credits',
           '--pid',
           '42',
           '--memory-base',
@@ -76,9 +76,9 @@ void main() {
         '--pid',
         '42',
         '--field',
-        'bolts',
+        'credits',
         '--game',
-        'rc2-collection',
+        'synthetic-profile',
         '--value',
         '55',
         '--confirm-write',
@@ -96,11 +96,11 @@ void main() {
         [
           'read',
           '--game',
-          'rc2-collection',
+          'synthetic-profile',
           '--game',
           'other',
           '--field',
-          'bolts',
+          'credits',
           '--pid',
           '42',
           '--memory-base',
@@ -109,9 +109,9 @@ void main() {
         [
           'read',
           '--game',
-          'rc2-collection',
+          'synthetic-profile',
           '--field',
-          'bolts',
+          'credits',
           '--pid',
           '42',
           '--memory-base',
@@ -137,9 +137,9 @@ void main() {
           () => DiagnosticArgumentParser.parse([
             'write',
             '--game',
-            'rc2-collection',
+            'synthetic-profile',
             '--field',
-            'bolts',
+            'credits',
             '--pid',
             '42',
             '--memory-base',
@@ -154,9 +154,9 @@ void main() {
     test('Method parse() rejects empty game and field identifiers', () {
       final validOptions = [
         '--game',
-        'rc2-collection',
+        'synthetic-profile',
         '--field',
-        'bolts',
+        'credits',
         '--pid',
         '42',
         '--memory-base',
@@ -180,7 +180,13 @@ void main() {
     });
 
     test('Method parse() rejects malformed pid base and values', () {
-      final common = ['read', '--game', 'rc2-collection', '--field', 'bolts'];
+      final common = [
+        'read',
+        '--game',
+        'synthetic-profile',
+        '--field',
+        'credits',
+      ];
       for (final options in [
         ['--pid', '0', '--memory-base', '0x1'],
         ['--pid', '4294967296', '--memory-base', '0x1'],
@@ -196,9 +202,9 @@ void main() {
         () => DiagnosticArgumentParser.parse([
           'write',
           '--game',
-          'rc2-collection',
+          'synthetic-profile',
           '--field',
-          'bolts',
+          'credits',
           '--pid',
           '42',
           '--memory-base',
@@ -222,9 +228,9 @@ void main() {
       final baseArguments = [
         'read',
         '--game',
-        'rc2-collection',
+        'synthetic-profile',
         '--field',
-        'bolts',
+        'credits',
         '--pid',
         '42',
       ];
@@ -247,9 +253,9 @@ void main() {
           () => DiagnosticArgumentParser.parse([
             'write',
             '--game',
-            'rc2-collection',
+            'synthetic-profile',
             '--field',
-            'bolts',
+            'credits',
             '--pid',
             '42',
             '--memory-base',
@@ -263,9 +269,9 @@ void main() {
           () => DiagnosticArgumentParser.parse([
             'read',
             '--game',
-            'rc2-collection',
+            'synthetic-profile',
             '--field',
-            'bolts',
+            'credits',
             '--pid',
             '42',
             '--memory-base',
@@ -282,9 +288,9 @@ void main() {
         () => DiagnosticArgumentParser.parse([
           'write',
           '--game',
-          'rc2-collection',
+          'synthetic-profile',
           '--field',
-          'bolts',
+          'credits',
           '--pid',
           '42',
           '--memory-base',
@@ -300,9 +306,9 @@ void main() {
         () => DiagnosticArgumentParser.parse([
           'read',
           '--game',
-          'rc2-collection',
+          'synthetic-profile',
           '--field',
-          'bolts',
+          'credits',
           '--pid',
           '42',
           '--memory-base',

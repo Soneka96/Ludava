@@ -8,82 +8,6 @@ import 'package:ludava_sdk/features/trainer/application/trainer_write_eligibilit
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
-void main() {
-  group('Method TrainerWriteEligibility.hasValidTarget() behaves correctly', () {
-    test(
-      'Method TrainerWriteEligibility.hasValidTarget() accepts approved target evidence',
-      () {
-        final session = _session();
-
-        expect(
-          TrainerWriteEligibility.hasValidTarget(session, _field(session)),
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      'Method TrainerWriteEligibility.hasValidTarget() rejects missing approval or target evidence',
-      () {
-        final deniedSessions = [
-          TrainerSessionState(),
-          _session(profileReadStatus: VerificationStatus.none),
-          _session(profileWriteStatus: VerificationStatus.none),
-          _session(fieldReadStatus: VerificationStatus.none),
-          _session(fieldWriteStatus: VerificationStatus.none),
-          _session(omitMinimum: true),
-          _session(omitMaximum: true),
-          _session(selected: false),
-          _session(processIsDiscovered: false),
-          _session(includeMetadata: false),
-          _session(detectionProcessId: 43),
-          _session(hasMemoryBase: false),
-          _session(confidence: GameIdentityConfidence.manuallySelected),
-        ];
-        final field = _field(_session());
-
-        for (final session in deniedSessions) {
-          expect(
-            TrainerWriteEligibility.hasValidTarget(session, field),
-            isFalse,
-          );
-        }
-        expect(
-          TrainerWriteEligibility.hasValidTarget(_session(), _orphanField()),
-          isFalse,
-        );
-      },
-    );
-  });
-
-  group('Method TrainerWriteEligibility.isWriteEligible() behaves correctly', () {
-    test(
-      'Method TrainerWriteEligibility.isWriteEligible() requires a successful current read',
-      () {
-        final session = _session();
-        final field = _field(session);
-
-        expect(TrainerWriteEligibility.isWriteEligible(session, field), isTrue);
-        expect(
-          TrainerWriteEligibility.isWriteEligible(
-            _session(includeRead: false),
-            _field(_session(includeRead: false)),
-          ),
-          isFalse,
-        );
-        expect(
-          TrainerWriteEligibility.isWriteEligible(
-            _session(readStatus: GameReadStatus.readFailed),
-            _field(_session(readStatus: GameReadStatus.readFailed)),
-          ),
-          isFalse,
-        );
-      },
-    );
-  });
-}
-
-/// Builds a synthetic confirmed session with configurable eligibility evidence.
 TrainerSessionState _session({
   VerificationStatus profileReadStatus = VerificationStatus.verified,
   VerificationStatus profileWriteStatus = VerificationStatus.verified,
@@ -101,8 +25,8 @@ TrainerSessionState _session({
   bool includeRead = true,
 }) {
   final field = GameField(
-    id: 'bolts',
-    name: 'Bolts',
+    id: 'credits',
+    name: 'Credits',
     guestOffset: 0,
     valueType: MemoryValueType.unsigned32,
     byteOrder: ByteOrder.big,
@@ -118,10 +42,10 @@ TrainerSessionState _session({
     executable: 'test.self',
     readStatus: profileReadStatus,
     writeStatus: profileWriteStatus,
-    fields: {'bolts': field},
+    fields: {'credits': field},
   );
   return TrainerSessionState(
-    processIds: selected && processIsDiscovered ? const [42] : const [],
+    processIds: processIsDiscovered ? const [42] : const [],
     selectedProcessId: selected ? 42 : null,
     processMetadata:
         includeMetadata
@@ -132,7 +56,7 @@ TrainerSessionState _session({
             : null,
     detection: GameDetectionResult(
       status: GameDetectionStatus.supportedGame,
-      processId: detectionProcessId ?? (selected ? 42 : null),
+      processId: detectionProcessId ?? 42,
       profile: profile,
       confidence: confidence,
       evidenceDescription: 'Synthetic test identity evidence.',
@@ -141,9 +65,9 @@ TrainerSessionState _session({
     readResults:
         includeRead
             ? {
-              'bolts': GameReadResult(
+              'credits': GameReadResult(
                 status: readStatus,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 value: readStatus == GameReadStatus.success ? 1 : null,
               ),
             }
@@ -155,10 +79,10 @@ TrainerSessionState _session({
 GameField _field(TrainerSessionState session) =>
     session.profile!.fields.values.first;
 
-/// Creates a separately allocated field to model a stale or foreign target.
-GameField _orphanField() => GameField(
-  id: 'bolts',
-  name: 'Bolts',
+/// Creates a valid field without attaching it to a profile.
+GameField _standaloneField() => GameField(
+  id: 'credits',
+  name: 'Credits',
   guestOffset: 0,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
@@ -167,3 +91,201 @@ GameField _orphanField() => GameField(
   minimumValue: 0,
   maximumValue: 4294967295,
 );
+
+void _expectInvalidTarget(String scenario, TrainerSessionState session) {
+  expect(
+    TrainerWriteEligibility.hasValidTarget(session, _field(session)),
+    isFalse,
+    reason: scenario,
+  );
+}
+
+void main() {
+  group('Method TrainerWriteEligibility.hasValidTarget() behaves correctly', () {
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() accepts approved target evidence',
+      () {
+        final session = _session();
+
+        expect(
+          TrainerWriteEligibility.hasValidTarget(session, _field(session)),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved profile reads',
+      () => _expectInvalidTarget(
+        'profile read approval is missing',
+        _session(profileReadStatus: VerificationStatus.none),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved profile writes',
+      () => _expectInvalidTarget(
+        'profile write approval is missing',
+        _session(profileWriteStatus: VerificationStatus.none),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved field reads',
+      () => _expectInvalidTarget(
+        'field read approval is missing',
+        _session(fieldReadStatus: VerificationStatus.none),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved field writes',
+      () => _expectInvalidTarget(
+        'field write approval is missing',
+        _session(fieldWriteStatus: VerificationStatus.none),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects a missing minimum bound',
+      () => _expectInvalidTarget(
+        'minimum value bound is missing',
+        _session(omitMinimum: true),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects a missing maximum bound',
+      () => _expectInvalidTarget(
+        'maximum value bound is missing',
+        _session(omitMaximum: true),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects a missing selected process',
+      () => _expectInvalidTarget(
+        'selected process is missing while discovery and detection remain valid',
+        _session(selected: false),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects a process absent from discovery',
+      () => _expectInvalidTarget(
+        'selected process is absent from discovered process ids',
+        _session(processIsDiscovered: false),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects missing process metadata',
+      () => _expectInvalidTarget(
+        'selected process metadata is missing',
+        _session(includeMetadata: false),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects detection for another process',
+      () => _expectInvalidTarget(
+        'detection process id differs from the selected process',
+        _session(detectionProcessId: 43),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects a missing memory base',
+      () => _expectInvalidTarget(
+        'session memory base is missing',
+        _session(hasMemoryBase: false),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects unconfirmed identity confidence',
+      () => _expectInvalidTarget(
+        'identity confidence is only manually selected',
+        _session(confidence: GameIdentityConfidence.manuallySelected),
+      ),
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects a valid field when there is no active profile',
+      () {
+        final session = TrainerSessionState();
+
+        expect(
+          TrainerWriteEligibility.hasValidTarget(session, _standaloneField()),
+          isFalse,
+          reason: 'session has no active profile for the standalone field',
+        );
+      },
+    );
+
+    test(
+      'Method TrainerWriteEligibility.hasValidTarget() rejects a field owned by another profile',
+      () {
+        final session = _session();
+        final foreignField = _field(_session());
+
+        expect(
+          TrainerWriteEligibility.hasValidTarget(session, foreignField),
+          isFalse,
+          reason: 'field belongs to a different profile instance',
+        );
+      },
+    );
+  });
+
+  group('Method TrainerWriteEligibility.isWriteEligible() behaves correctly', () {
+    test(
+      'Method TrainerWriteEligibility.isWriteEligible() requires a successful current read',
+      () {
+        final session = _session();
+        final field = _field(session);
+
+        expect(TrainerWriteEligibility.isWriteEligible(session, field), isTrue);
+        final missingReadSession = _session(includeRead: false);
+        final missingReadField = _field(missingReadSession);
+        expect(
+          TrainerWriteEligibility.isWriteEligible(
+            missingReadSession,
+            missingReadField,
+          ),
+          isFalse,
+          reason: 'current read is missing for an otherwise valid target',
+        );
+        final failedReadSession = _session(
+          readStatus: GameReadStatus.readFailed,
+        );
+        final failedReadField = _field(failedReadSession);
+        expect(
+          TrainerWriteEligibility.isWriteEligible(
+            failedReadSession,
+            failedReadField,
+          ),
+          isFalse,
+          reason: 'current read failed for an otherwise valid target',
+        );
+      },
+    );
+
+    test(
+      'Method TrainerWriteEligibility.isWriteEligible() denies an approved field when the profile is not approved',
+      () {
+        final session = _session(profileWriteStatus: VerificationStatus.none);
+        final field = _field(session);
+
+        expect(field.canWrite, isTrue);
+        expect(session.profile!.canWrite, isFalse);
+        expect(
+          TrainerWriteEligibility.isWriteEligible(session, field),
+          isFalse,
+        );
+      },
+    );
+  });
+}
+
+/// Builds a synthetic confirmed session with configurable eligibility evidence.

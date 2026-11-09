@@ -8,6 +8,20 @@ import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/rpcs3_memo
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
 import 'package:test/test.dart';
 
+Rpcs3ProcessMetadata _processMetadata() => Rpcs3ProcessMetadata(
+  executablePath: r'C:\RPCS3\rpcs3.exe',
+  startedAtUtc: DateTime.utc(2026, 11, 5, 10),
+);
+
+Rpcs3MemoryBaseResolverDataSource _resolver(
+  Map<String, String> logs, {
+  DateTime? modifiedAt,
+}) => Rpcs3MemoryBaseResolverDataSource(
+  fileExists: logs.containsKey,
+  lastModifiedUtc: (_) => modifiedAt ?? DateTime.utc(2026, 11, 5, 10, 1),
+  readAsString: (path) => logs[path]!,
+);
+
 void main() {
   group('Method resolveCandidate() behaves correctly', () {
     test('Method resolveCandidate() parses a fresh RPCS3 base candidate', () {
@@ -225,17 +239,3 @@ void main() {
     });
   });
 }
-
-Rpcs3ProcessMetadata _processMetadata() => Rpcs3ProcessMetadata(
-  executablePath: r'C:\RPCS3\rpcs3.exe',
-  startedAtUtc: DateTime.utc(2026, 11, 5, 10),
-);
-
-Rpcs3MemoryBaseResolverDataSource _resolver(
-  Map<String, String> logs, {
-  DateTime? modifiedAt,
-}) => Rpcs3MemoryBaseResolverDataSource(
-  fileExists: logs.containsKey,
-  lastModifiedUtc: (_) => modifiedAt ?? DateTime.utc(2026, 11, 5, 10, 1),
-  readAsString: (path) => logs[path]!,
-);

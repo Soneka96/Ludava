@@ -18,8 +18,9 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Coordinates safe diagnostic reads and writes without frontend dependencies.
 class DiagnosticGameMemoryService {
-  /// Creates the service with optional boundaries for deterministic callers.
+  /// Creates the service with optional profile and platform test boundaries.
   DiagnosticGameMemoryService({
+    Iterable<GameProfile>? profiles,
     WindowsMemoryApi? api,
     bool? isWindows,
     int? pointerSize,
@@ -34,7 +35,11 @@ class DiagnosticGameMemoryService {
     )?
     detectGame,
     Rpcs3GameIdentityLogDataSource? gameIdentityLogDataSource,
-  }) : _memoryOperations =
+  }) : _profiles = Map<String, GameProfile>.unmodifiable({
+         for (final profile in profiles ?? GameProfileCatalog.profiles)
+           profile.id: profile,
+       }),
+       _memoryOperations =
            memoryOperations ??
            ProcessGameMemoryOperations(
              api: api,
@@ -48,6 +53,9 @@ class DiagnosticGameMemoryService {
        _gameIdentityLogDataSource = gameIdentityLogDataSource;
 
   final ProcessGameMemoryOperations _memoryOperations;
+
+  /// Immutable profile view used to resolve diagnostic game identifiers.
+  final Map<String, GameProfile> _profiles;
   final List<int> Function()? _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId)? _readProcessMetadata;
   final Rpcs3MemoryBaseCandidate? Function(
@@ -86,7 +94,7 @@ class DiagnosticGameMemoryService {
       );
     }
 
-    final profile = GameProfileCatalog.find(request.gameId);
+    final profile = _profiles[request.gameId];
     if (profile == null) {
       return const DiagnosticGameMemoryResult(
         status: DiagnosticGameMemoryStatus.unknownGame,

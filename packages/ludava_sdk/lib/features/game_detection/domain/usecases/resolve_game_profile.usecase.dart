@@ -6,7 +6,16 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Resolves a confirmed title, executable name, and measured hash to a profile.
 class ResolveGameProfileUseCase {
-  /// Resolves [params] against Ludava's registered game profiles.
+  /// Creates the resolver with [profiles], defaulting to registered profiles.
+  ResolveGameProfileUseCase({Iterable<GameProfile>? profiles})
+    : _profiles = List<GameProfile>.unmodifiable(
+        profiles ?? GameProfileCatalog.profiles,
+      );
+
+  /// Immutable profile view used for automatic matching and manual selection.
+  final List<GameProfile> _profiles;
+
+  /// Resolves [params] against this resolver's configured profile view.
   GameDetectionResult execute(ResolveGameProfileParams params) {
     final processId = params.processId;
     if (processId != null && processId <= 0) {
@@ -19,10 +28,7 @@ class ResolveGameProfileUseCase {
     }
 
     if (params.confidence == GameIdentityConfidence.manuallySelected) {
-      final profile =
-          params.manualProfileId == null
-              ? null
-              : GameProfileCatalog.find(params.manualProfileId!);
+      final profile = _findProfile(params.manualProfileId);
       if (profile == null) {
         return _result(
           params,
@@ -59,7 +65,7 @@ class ResolveGameProfileUseCase {
       );
     }
 
-    final candidates = GameProfileCatalog.profiles
+    final candidates = _profiles
         .where((profile) => _normalize(profile.buildId) == titleId)
         .toList(growable: false);
     if (candidates.isEmpty) {
@@ -108,6 +114,16 @@ class ResolveGameProfileUseCase {
     );
   }
 
+  /// Finds a profile in the same catalog view used by automatic matching.
+  GameProfile? _findProfile(String? profileId) {
+    if (profileId == null) return null;
+    for (final profile in _profiles) {
+      if (profile.id == profileId) return profile;
+    }
+    return null;
+  }
+
+  /// Builds a detection result while retaining unoverridden evidence.
   GameDetectionResult _result(
     ResolveGameProfileParams params, {
     required GameDetectionStatus status,
@@ -133,6 +149,7 @@ class ResolveGameProfileUseCase {
     evidenceDescription: evidenceDescription ?? params.evidenceDescription,
   );
 
+  /// Trims an identity value and normalizes it for case-insensitive matching.
   String? _normalize(String? value) {
     final normalized = value?.trim().toLowerCase();
     return normalized == null || normalized.isEmpty ? null : normalized;

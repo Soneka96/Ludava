@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:ludava_sdk/features/game_detection/domain/entities/rpcs3_game_identity_log_snapshot.entity.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/params/resolve_game_profile.params.dart';
 import 'package:ludava_sdk/features/game_detection/domain/usecases/resolve_game_profile.usecase.dart';
 import 'package:ludava_sdk/features/rpcs3_connection/domain/entities/rpcs3_process_metadata.entity.dart';
@@ -9,21 +11,27 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Coordinates RPCS3 session evidence and resolves the current supported game.
 class Rpcs3GameDetectionWorkflow {
-  /// Creates the workflow with process and current-session log readers.
+  /// Creates the workflow with process, log, and optional profile boundaries.
   Rpcs3GameDetectionWorkflow({
+    Iterable<GameProfile>? profiles,
     required List<int> Function() discoverProcessIds,
     required Rpcs3ProcessMetadata Function(int processId) readProcessMetadata,
     required List<Rpcs3GameIdentityLogSnapshot> Function(
       Rpcs3ProcessMetadata processMetadata,
     )
     readIdentityLogCandidates,
-  }) : _discoverProcessIds = discoverProcessIds,
+  }) : _profiles = List<GameProfile>.unmodifiable(
+         profiles ?? GameProfileCatalog.profiles,
+       ),
+       _discoverProcessIds = discoverProcessIds,
        _readProcessMetadata = readProcessMetadata,
        _readIdentityLogCandidates = readIdentityLogCandidates;
 
   static const String _collectionMenuPpuHash =
       'PPU-673b1ce1b01ce7f42f1787a479f9b83854fa26f5';
 
+  /// Immutable profile view used to resolve boot identity evidence.
+  final List<GameProfile> _profiles;
   final List<int> Function() _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId) _readProcessMetadata;
   final List<Rpcs3GameIdentityLogSnapshot> Function(
@@ -123,7 +131,7 @@ class Rpcs3GameDetectionWorkflow {
       );
     }
 
-    return ResolveGameProfileUseCase().execute(
+    return ResolveGameProfileUseCase(profiles: _profiles).execute(
       ResolveGameProfileParams(
         processId: processId,
         titleId: event?.titleId,

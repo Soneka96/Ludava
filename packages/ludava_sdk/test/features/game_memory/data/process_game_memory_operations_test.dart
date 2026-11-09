@@ -1,10 +1,41 @@
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava_sdk/features/game_memory/data/process_game_memory_operations.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:ludava_sdk/shared/platform/windows_memory_exception.dart';
 import 'package:test/test.dart';
 
 import '../../../support/fake_windows_memory_api.dart';
+
+final _profile = GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'TEST00001',
+  executable: 'SYNTHETIC.self',
+  executableHash: 'PPU-synthetic-hash',
+  readStatus: VerificationStatus.experimental,
+  writeStatus: VerificationStatus.researchConfirmed,
+  fields: {
+    'credits': GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      readStatus: VerificationStatus.experimental,
+      writeStatus: VerificationStatus.researchConfirmed,
+      minimumValue: 0,
+      maximumValue: 0xffffffff,
+    ),
+  },
+);
+
+ProcessGameMemoryOperations _operations(FakeWindowsMemoryApi api) =>
+    ProcessGameMemoryOperations(
+      api: api.adapter,
+      isWindows: true,
+      pointerSize: 8,
+    );
 
 void main() {
   group('Method readField() behaves correctly', () {
@@ -14,7 +45,7 @@ void main() {
         processId: 42,
         profile: _profile,
         memoryBase: 0x300000000,
-        fieldId: 'bolts',
+        fieldId: 'credits',
       );
 
       expect(result.readResult?.status, GameReadStatus.success);
@@ -35,7 +66,7 @@ void main() {
         processId: 42,
         profile: _profile,
         memoryBase: 0x300000000,
-        fieldId: 'bolts',
+        fieldId: 'credits',
       );
 
       expect(result.readResult?.status, GameReadStatus.readFailed);
@@ -52,7 +83,7 @@ void main() {
         processId: 42,
         profile: _profile,
         memoryBase: 0x300000000,
-        fieldId: 'bolts',
+        fieldId: 'credits',
       );
 
       expect(result.operationError, isA<WindowsMemoryException>());
@@ -85,7 +116,7 @@ void main() {
         processId: 42,
         profile: _profile,
         memoryBase: 0x300000000,
-        fieldId: 'bolts',
+        fieldId: 'credits',
       );
 
       expect(result.readResult?.succeeded, isTrue);
@@ -105,7 +136,7 @@ void main() {
           processId: 42,
           profile: _profile,
           memoryBase: 0x300000000,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           value: 0x01020304,
           confirmed: true,
         );
@@ -129,7 +160,7 @@ void main() {
         processId: 42,
         profile: _profile,
         memoryBase: 0x300000000,
-        fieldId: 'bolts',
+        fieldId: 'credits',
         value: 0x01020304,
         confirmed: true,
       );
@@ -149,7 +180,7 @@ void main() {
           processId: 42,
           profile: _profile,
           memoryBase: 0x300000000,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           value: 61,
           confirmed: true,
         );
@@ -171,7 +202,7 @@ void main() {
         processId: 42,
         profile: _profile,
         memoryBase: 0x300000000,
-        fieldId: 'bolts',
+        fieldId: 'credits',
         value: 61,
         confirmed: true,
       );
@@ -191,7 +222,7 @@ void main() {
         processId: 42,
         profile: _profile,
         memoryBase: 0x300000000,
-        fieldId: 'bolts',
+        fieldId: 'credits',
         value: 0x01020305,
         confirmed: true,
       );
@@ -223,12 +254,3 @@ void main() {
     });
   });
 }
-
-ProcessGameMemoryOperations _operations(FakeWindowsMemoryApi api) =>
-    ProcessGameMemoryOperations(
-      api: api.adapter,
-      isWindows: true,
-      pointerSize: 8,
-    );
-
-final _profile = GameProfileCatalog.find('rc2-collection')!;

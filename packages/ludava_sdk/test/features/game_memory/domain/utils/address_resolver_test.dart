@@ -1,19 +1,18 @@
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_memory/domain/utils/address_resolver.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('Method resolve() behaves correctly', () {
     test(
-      'Method resolve() returns the RC2 host address when mapping is valid',
+      'Method resolve() adds a synthetic guest offset to the session base',
       () {
         expect(
           AddressResolver.resolve(
             memoryBase: 0x300000000,
-            guestOffset: 0x01329e80,
+            guestOffset: 0x1234,
             byteLength: 4,
           ),
-          0x301329e80,
+          0x300001234,
         );
       },
     );
@@ -28,22 +27,6 @@ void main() {
         0x100001234,
       );
     });
-
-    test(
-      'Method resolve() applies the Deadlocked Bolts offset to the supplied session base',
-      () {
-        final field = DeadlockedPs3Profile.profile.findField('bolts')!;
-
-        expect(
-          AddressResolver.resolve(
-            memoryBase: 0x310000000,
-            guestOffset: field.guestOffset,
-            byteLength: 4,
-          ),
-          0x3109c32e8,
-        );
-      },
-    );
 
     test(
       'Method resolve() accepts the maximum native address for one byte',

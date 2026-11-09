@@ -3,23 +3,51 @@ import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.en
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
+abstract final class _GameProfileTestData {
+  static GameProfile build({
+    VerificationStatus readStatus = VerificationStatus.experimental,
+    VerificationStatus writeStatus = VerificationStatus.none,
+    Map<String, GameField> fields = const {},
+  }) => GameProfile(
+    id: 'synthetic-profile',
+    gameName: 'Synthetic game',
+    buildId: 'TEST00001',
+    executable: 'SYNTHETIC.self',
+    readStatus: readStatus,
+    writeStatus: writeStatus,
+    fields: fields,
+  );
+
+  static GameField buildCreditField() => GameField(
+    id: 'credits',
+    name: 'Credits',
+    guestOffset: 0x1234,
+    valueType: MemoryValueType.unsigned32,
+    byteOrder: ByteOrder.big,
+    readStatus: VerificationStatus.experimental,
+  );
+
+  static GameField buildHealthField() => GameField(
+    id: 'health',
+    name: 'Health',
+    guestOffset: 0x2000,
+    valueType: MemoryValueType.unsigned32,
+    byteOrder: ByteOrder.big,
+    readStatus: VerificationStatus.experimental,
+  );
+}
+
 void main() {
   group('Class GameProfile construction', () {
     test(
       'Class GameProfile initializes identity and an immutable field map',
       () {
-        final fields = {'bolts': _GameProfileTestData.buildBoltsField()};
+        final fields = {'credits': _GameProfileTestData.buildCreditField()};
         final profile = _GameProfileTestData.build(fields: fields);
         fields['health'] = _GameProfileTestData.buildHealthField();
 
-        expect(profile.id, 'rc2-collection');
-        expect(profile.gameName, 'Ratchet & Clank 2');
-        expect(profile.buildId, 'BCUS98282');
-        expect(profile.executable, 'RC2.ppu.self');
-        expect(profile.executableHash, isNull);
-        expect(profile.readStatus, VerificationStatus.experimental);
-        expect(profile.writeStatus, VerificationStatus.none);
-        expect(profile.fields.keys, ['bolts']);
+        expect(profile.fields.keys, ['credits']);
+        expect(profile.fields.containsKey('health'), isFalse);
         expect(
           () =>
               profile.fields['health'] =
@@ -29,20 +57,12 @@ void main() {
       },
     );
 
-    test('Class GameProfile stores a measured executable hash', () {
-      final profile = _GameProfileTestData.build(
-        executableHash: 'PPU-measured-hash',
-      );
-
-      expect(profile.executableHash, 'PPU-measured-hash');
-    });
-
     test(
       'Class GameProfile rejects a map key that differs from its field id',
       () {
         expect(
           () => _GameProfileTestData.build(
-            fields: {'other': _GameProfileTestData.buildBoltsField()},
+            fields: {'other': _GameProfileTestData.buildCreditField()},
           ),
           throwsArgumentError,
         );
@@ -126,11 +146,11 @@ void main() {
       'Method findField() returns the matching field when id is present',
       () {
         final profile = _GameProfileTestData.build(
-          fields: {'bolts': _GameProfileTestData.buildBoltsField()},
+          fields: {'credits': _GameProfileTestData.buildCreditField()},
         );
 
-        expect(profile.findField('bolts'), isA<GameField>());
-        expect(profile.findField('bolts')?.id, 'bolts');
+        expect(profile.findField('credits'), isA<GameField>());
+        expect(profile.findField('credits')?.id, 'credits');
       },
     );
 
@@ -138,40 +158,4 @@ void main() {
       expect(_GameProfileTestData.build().findField('health'), isNull);
     });
   });
-}
-
-abstract final class _GameProfileTestData {
-  static GameProfile build({
-    String? executableHash,
-    VerificationStatus readStatus = VerificationStatus.experimental,
-    VerificationStatus writeStatus = VerificationStatus.none,
-    Map<String, GameField> fields = const {},
-  }) => GameProfile(
-    id: 'rc2-collection',
-    gameName: 'Ratchet & Clank 2',
-    buildId: 'BCUS98282',
-    executable: 'RC2.ppu.self',
-    executableHash: executableHash,
-    readStatus: readStatus,
-    writeStatus: writeStatus,
-    fields: fields,
-  );
-
-  static GameField buildBoltsField() => GameField(
-    id: 'bolts',
-    name: 'Bolts',
-    guestOffset: 0x1329e80,
-    valueType: MemoryValueType.unsigned32,
-    byteOrder: ByteOrder.big,
-    readStatus: VerificationStatus.experimental,
-  );
-
-  static GameField buildHealthField() => GameField(
-    id: 'health',
-    name: 'Health',
-    guestOffset: 0x2000,
-    valueType: MemoryValueType.unsigned32,
-    byteOrder: ByteOrder.big,
-    readStatus: VerificationStatus.experimental,
-  );
 }

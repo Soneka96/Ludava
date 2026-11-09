@@ -5,6 +5,15 @@ import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
+Widget _wrap(TrainerSessionState session) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: Rpcs3ConnectionIndicator(session: session)),
+);
+
+/// Reads the color of the small process-status dot.
+Color _dotColor(WidgetTester tester) =>
+    tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color!;
+
 void main() {
   group('Class Rpcs3ConnectionIndicator session behavior', () {
     testWidgets('Class Rpcs3ConnectionIndicator reports an absent process', (
@@ -90,11 +99,3 @@ void main() {
 }
 
 /// Builds the indicator under the shipped semantic theme.
-Widget _wrap(TrainerSessionState session) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: Rpcs3ConnectionIndicator(session: session)),
-);
-
-/// Reads the color of the small process-status dot.
-Color _dotColor(WidgetTester tester) =>
-    tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color!;

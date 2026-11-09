@@ -8,6 +8,64 @@ import 'package:test/test.dart';
 
 const _freshProcessLaunchCount = 50;
 
+Future<bool> _compileAotHelper(String sourcePath, String executablePath) async {
+  final process = await Process.start(Platform.resolvedExecutable, [
+    'compile',
+    'exe',
+    sourcePath,
+    '-o',
+    executablePath,
+  ], workingDirectory: Directory.current.path);
+  final result = await Future.wait<Object>([
+    process.exitCode,
+    process.stdout.transform(systemEncoding.decoder).join(),
+    process.stderr.transform(systemEncoding.decoder).join(),
+  ]).timeout(
+    const Duration(seconds: 60),
+    onTimeout: () async {
+      process.kill();
+      await process.exitCode;
+      return const [-1, '', 'Dart AOT compilation timed out.'];
+    },
+  );
+  final exitCode = result[0] as int;
+  return exitCode == 0;
+}
+
+Future<List<int>> _discoverInFreshProcess(String executablePath) async {
+  final process = await Process.start(
+    executablePath,
+    const [],
+    workingDirectory: Directory.systemTemp.path,
+  );
+  final result = await Future.wait<Object>([
+    process.exitCode,
+    process.stdout.transform(systemEncoding.decoder).join(),
+    process.stderr.transform(systemEncoding.decoder).join(),
+  ]).timeout(
+    const Duration(seconds: 20),
+    onTimeout: () async {
+      process.kill();
+      await process.exitCode;
+      return const [-1, '', 'AOT child process timed out.'];
+    },
+  );
+  final exitCode = result[0] as int;
+  final output = (result[1] as String).trim();
+  final errorOutput = (result[2] as String).trim();
+
+  expect(
+    exitCode,
+    0,
+    reason: 'Fresh AOT process failed or timed out: $errorOutput',
+  );
+  expect(output, startsWith('RESULT:'), reason: errorOutput);
+
+  final encodedIds = output.substring('RESULT:'.length);
+  if (encodedIds.isEmpty) return const [];
+  return encodedIds.split(',').map(int.parse).toList(growable: false);
+}
+
 void main() {
   group('Integration Windows process discovery behaves correctly', () {
     test(
@@ -81,61 +139,3 @@ Directory get _sdkDirectory =>
     ).parent;
 
 Directory get _repositoryRoot => _sdkDirectory.parent.parent;
-
-Future<bool> _compileAotHelper(String sourcePath, String executablePath) async {
-  final process = await Process.start(Platform.resolvedExecutable, [
-    'compile',
-    'exe',
-    sourcePath,
-    '-o',
-    executablePath,
-  ], workingDirectory: Directory.current.path);
-  final result = await Future.wait<Object>([
-    process.exitCode,
-    process.stdout.transform(systemEncoding.decoder).join(),
-    process.stderr.transform(systemEncoding.decoder).join(),
-  ]).timeout(
-    const Duration(seconds: 60),
-    onTimeout: () async {
-      process.kill();
-      await process.exitCode;
-      return const [-1, '', 'Dart AOT compilation timed out.'];
-    },
-  );
-  final exitCode = result[0] as int;
-  return exitCode == 0;
-}
-
-Future<List<int>> _discoverInFreshProcess(String executablePath) async {
-  final process = await Process.start(
-    executablePath,
-    const [],
-    workingDirectory: Directory.systemTemp.path,
-  );
-  final result = await Future.wait<Object>([
-    process.exitCode,
-    process.stdout.transform(systemEncoding.decoder).join(),
-    process.stderr.transform(systemEncoding.decoder).join(),
-  ]).timeout(
-    const Duration(seconds: 20),
-    onTimeout: () async {
-      process.kill();
-      await process.exitCode;
-      return const [-1, '', 'AOT child process timed out.'];
-    },
-  );
-  final exitCode = result[0] as int;
-  final output = (result[1] as String).trim();
-  final errorOutput = (result[2] as String).trim();
-
-  expect(
-    exitCode,
-    0,
-    reason: 'Fresh AOT process failed or timed out: $errorOutput',
-  );
-  expect(output, startsWith('RESULT:'), reason: errorOutput);
-
-  final encodedIds = output.substring('RESULT:'.length);
-  if (encodedIds.isEmpty) return const [];
-  return encodedIds.split(',').map(int.parse).toList(growable: false);
-}

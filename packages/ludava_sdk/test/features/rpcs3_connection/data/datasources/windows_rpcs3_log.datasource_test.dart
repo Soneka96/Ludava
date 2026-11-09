@@ -9,6 +9,75 @@ import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_rp
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_rpcs3_log_api.dart';
 import 'package:test/test.dart';
 
+class _FakeWindowsRpcs3LogApi {
+  final List<int> contents;
+  int handleAddress = 0x1234;
+  int openError = 5;
+  int readError = 5;
+  int closeError = 6;
+  int readResult = 1;
+  int closeResult = 1;
+  int? reportedReadBytes;
+  int? maxBytesPerRead;
+  int openCalls = 0;
+  int readCalls = 0;
+  int closeCalls = 0;
+  int? requestedAccess;
+  int? requestedSharing;
+  int? creationDisposition;
+  int? fileFlags;
+  String? openedPath;
+  int _offset = 0;
+  int _lastError = 0;
+
+  _FakeWindowsRpcs3LogApi(this.contents);
+
+  WindowsRpcs3LogApi get adapter => WindowsRpcs3LogApi(
+    createFileW: (path, access, sharing, _, disposition, flags, __) {
+      openCalls++;
+      openedPath = path.toDartString();
+      requestedAccess = access;
+      requestedSharing = sharing;
+      creationDisposition = disposition;
+      fileFlags = flags;
+      _lastError = openError;
+      return Pointer<Void>.fromAddress(handleAddress);
+    },
+    readFile: (_, buffer, bufferLength, bytesRead, __) {
+      readCalls++;
+      if (readResult == 0) {
+        _lastError = readError;
+        return 0;
+      }
+      final bytesRemaining = contents.length - _offset;
+      final count =
+          reportedReadBytes ??
+          min(
+            min(bufferLength, bytesRemaining),
+            maxBytesPerRead ?? bufferLength,
+          );
+      bytesRead.value = count;
+      if (count <= bufferLength && count > 0) {
+        for (
+          var index = 0;
+          index < count && _offset + index < contents.length;
+          index++
+        ) {
+          buffer[index] = contents[_offset + index];
+        }
+        _offset += count;
+      }
+      return 1;
+    },
+    closeHandle: (_) {
+      closeCalls++;
+      if (closeResult == 0) _lastError = closeError;
+      return closeResult;
+    },
+    getLastError: () => _lastError,
+  );
+}
+
 void main() {
   group('Method read() behaves correctly', () {
     test('Method read() shares the log and reads its full contents', () {
@@ -233,73 +302,4 @@ void main() {
       },
     );
   });
-}
-
-class _FakeWindowsRpcs3LogApi {
-  final List<int> contents;
-  int handleAddress = 0x1234;
-  int openError = 5;
-  int readError = 5;
-  int closeError = 6;
-  int readResult = 1;
-  int closeResult = 1;
-  int? reportedReadBytes;
-  int? maxBytesPerRead;
-  int openCalls = 0;
-  int readCalls = 0;
-  int closeCalls = 0;
-  int? requestedAccess;
-  int? requestedSharing;
-  int? creationDisposition;
-  int? fileFlags;
-  String? openedPath;
-  int _offset = 0;
-  int _lastError = 0;
-
-  _FakeWindowsRpcs3LogApi(this.contents);
-
-  WindowsRpcs3LogApi get adapter => WindowsRpcs3LogApi(
-    createFileW: (path, access, sharing, _, disposition, flags, __) {
-      openCalls++;
-      openedPath = path.toDartString();
-      requestedAccess = access;
-      requestedSharing = sharing;
-      creationDisposition = disposition;
-      fileFlags = flags;
-      _lastError = openError;
-      return Pointer<Void>.fromAddress(handleAddress);
-    },
-    readFile: (_, buffer, bufferLength, bytesRead, __) {
-      readCalls++;
-      if (readResult == 0) {
-        _lastError = readError;
-        return 0;
-      }
-      final bytesRemaining = contents.length - _offset;
-      final count =
-          reportedReadBytes ??
-          min(
-            min(bufferLength, bytesRemaining),
-            maxBytesPerRead ?? bufferLength,
-          );
-      bytesRead.value = count;
-      if (count <= bufferLength && count > 0) {
-        for (
-          var index = 0;
-          index < count && _offset + index < contents.length;
-          index++
-        ) {
-          buffer[index] = contents[_offset + index];
-        }
-        _offset += count;
-      }
-      return 1;
-    },
-    closeHandle: (_) {
-      closeCalls++;
-      if (closeResult == 0) _lastError = closeError;
-      return closeResult;
-    },
-    getLastError: () => _lastError,
-  );
 }

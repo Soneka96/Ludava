@@ -5,6 +5,13 @@ import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 
+Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
+  theme: theme ?? LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
+void _noOp() {}
+
 void main() {
   group('Class LudavaShutdownOverlay shutdown behavior', () {
     testWidgets('Class LudavaShutdownOverlay renders no UI while idle', (
@@ -195,10 +202,3 @@ void main() {
     });
   });
 }
-
-Widget _wrap(Widget child, {ThemeData? theme}) => MaterialApp(
-  theme: theme ?? LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);
-
-void _noOp() {}

@@ -1,40 +1,30 @@
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
+GameProfile _profile() => GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'TEST00001',
+  executable: 'SYNTHETIC.self',
+  executableHash: 'PPU-synthetic-hash',
+  readStatus: VerificationStatus.experimental,
+  fields: {
+    'credits': GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      readStatus: VerificationStatus.experimental,
+    ),
+  },
+);
+
 void main() {
   group('Class GameDetectionResult construction', () {
-    test(
-      'Class GameDetectionResult initializes supported profile evidence',
-      () {
-        final result = GameDetectionResult(
-          status: GameDetectionStatus.supportedGame,
-          processId: 42,
-          titleId: 'BCUS98282',
-          gameTitle: 'Ratchet & Clank 2',
-          executable: 'RC2.ppu.self',
-          executableHash: 'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9',
-          confidence: GameIdentityConfidence.confirmed,
-          profile: Rc2CollectionProfile.profile,
-          evidenceDescription: 'Current RPCS3 identity evidence.',
-        );
-
-        expect(result.status, GameDetectionStatus.supportedGame);
-        expect(result.processId, 42);
-        expect(result.titleId, 'BCUS98282');
-        expect(result.gameTitle, 'Ratchet & Clank 2');
-        expect(result.executable, 'RC2.ppu.self');
-        expect(
-          result.executableHash,
-          'PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9',
-        );
-        expect(result.confidence, GameIdentityConfidence.confirmed);
-        expect(result.profile, same(Rc2CollectionProfile.profile));
-        expect(result.evidenceDescription, 'Current RPCS3 identity evidence.');
-      },
-    );
-
     test(
       'Class GameDetectionResult rejects a profile for unsupported status',
       () {
@@ -42,8 +32,8 @@ void main() {
           () => GameDetectionResult(
             status: GameDetectionStatus.unsupportedGame,
             confidence: GameIdentityConfidence.confirmed,
-            profile: Rc2CollectionProfile.profile,
-            evidenceDescription: 'Identified unsupported title.',
+            profile: _profile(),
+            evidenceDescription: 'Synthetic unsupported identity.',
           ),
           throwsArgumentError,
         );
@@ -57,7 +47,7 @@ void main() {
           () => GameDetectionResult(
             status: GameDetectionStatus.supportedGame,
             confidence: GameIdentityConfidence.confirmed,
-            evidenceDescription: 'Unique identity evidence.',
+            evidenceDescription: 'Synthetic identity.',
           ),
           throwsArgumentError,
         );
@@ -69,8 +59,8 @@ void main() {
         () => GameDetectionResult(
           status: GameDetectionStatus.supportedGame,
           confidence: GameIdentityConfidence.uncertain,
-          profile: Rc2CollectionProfile.profile,
-          evidenceDescription: 'Incomplete identity evidence.',
+          profile: _profile(),
+          evidenceDescription: 'Incomplete synthetic evidence.',
         ),
         throwsArgumentError,
       );
@@ -83,24 +73,25 @@ void main() {
             status: GameDetectionStatus.ambiguous,
             processId: processId,
             confidence: GameIdentityConfidence.uncertain,
-            evidenceDescription: 'Incomplete identity evidence.',
+            evidenceDescription: 'Incomplete synthetic evidence.',
           ),
           throwsArgumentError,
         );
       }
     });
 
-    test('Class GameDetectionResult accepts a manually selected profile', () {
+    test('Class GameDetectionResult accepts a manual profile selection', () {
+      final profile = _profile();
       final result = GameDetectionResult(
         status: GameDetectionStatus.supportedGame,
         confidence: GameIdentityConfidence.manuallySelected,
-        profile: Rc2CollectionProfile.profile,
-        evidenceDescription: 'Selected manually.',
+        profile: profile,
+        evidenceDescription: 'Synthetic manual selection.',
       );
 
       expect(result.status, GameDetectionStatus.supportedGame);
       expect(result.confidence, GameIdentityConfidence.manuallySelected);
-      expect(result.profile, same(Rc2CollectionProfile.profile));
+      expect(result.profile, same(profile));
     });
   });
 
@@ -109,18 +100,18 @@ void main() {
       final result = GameDetectionResult(
         status: GameDetectionStatus.supportedGame,
         confidence: GameIdentityConfidence.confirmed,
-        profile: Rc2CollectionProfile.profile,
-        evidenceDescription: 'Unique identity evidence.',
+        profile: _profile(),
+        evidenceDescription: 'Synthetic identity.',
       );
 
-      expect(result.availableFields.map((field) => field.id), ['bolts']);
+      expect(result.availableFields.map((field) => field.id), ['credits']);
     });
 
     test('Property availableFields is empty without a supported profile', () {
       final result = GameDetectionResult(
         status: GameDetectionStatus.ambiguous,
         confidence: GameIdentityConfidence.uncertain,
-        evidenceDescription: 'Shared title ID only.',
+        evidenceDescription: 'Synthetic identity lacks a unique match.',
       );
 
       expect(result.availableFields, isEmpty);

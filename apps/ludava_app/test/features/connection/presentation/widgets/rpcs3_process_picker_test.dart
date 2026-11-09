@@ -5,6 +5,11 @@ import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_proces
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 
+Widget _wrap(Widget child) => MaterialApp(
+  theme: LudavaTheme.graphiteAndTeal,
+  home: Scaffold(body: child),
+);
+
 void main() {
   group('Class Rpcs3ProcessPicker composition behavior', () {
     testWidgets(
@@ -79,8 +84,3 @@ void main() {
     );
   });
 }
-
-Widget _wrap(Widget child) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: child),
-);

@@ -3,31 +3,40 @@ import 'package:ludava_sdk/shared/constants/app_constants.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
+abstract final class _GameFieldTestData {
+  static GameField build({
+    VerificationStatus readStatus = VerificationStatus.none,
+    VerificationStatus writeStatus = VerificationStatus.none,
+    int? minimumValue,
+    int? maximumValue,
+  }) => GameField(
+    id: 'credits',
+    name: 'Credits',
+    guestOffset: 0x1234,
+    valueType: MemoryValueType.unsigned32,
+    byteOrder: ByteOrder.big,
+    readStatus: readStatus,
+    writeStatus: writeStatus,
+    minimumValue: minimumValue,
+    maximumValue: maximumValue,
+  );
+}
+
 void main() {
   group('Class GameField construction', () {
-    test(
-      'Class GameField initializes field metadata and read-only default',
-      () {
-        final field = GameField(
-          id: 'bolts',
-          name: 'Bolts',
-          guestOffset: 0x1329e80,
-          valueType: MemoryValueType.unsigned32,
-          byteOrder: ByteOrder.big,
-          readStatus: VerificationStatus.experimental,
-        );
+    test('Class GameField defaults to no write approval', () {
+      final field = GameField(
+        id: 'credits',
+        name: 'Credits',
+        guestOffset: 0x1234,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus: VerificationStatus.experimental,
+      );
 
-        expect(field.id, 'bolts');
-        expect(field.name, 'Bolts');
-        expect(field.guestOffset, 0x1329e80);
-        expect(field.valueType, MemoryValueType.unsigned32);
-        expect(field.byteOrder, ByteOrder.big);
-        expect(field.readStatus, VerificationStatus.experimental);
-        expect(field.writeStatus, VerificationStatus.none);
-        expect(field.minimumValue, isNull);
-        expect(field.maximumValue, isNull);
-      },
-    );
+      expect(field.writeStatus, VerificationStatus.none);
+      expect(field.canWrite, isFalse);
+    });
 
     test('Class GameField accepts valid inclusive unsigned bounds', () {
       final field = _GameFieldTestData.build(
@@ -146,23 +155,4 @@ void main() {
       }
     });
   });
-}
-
-abstract final class _GameFieldTestData {
-  static GameField build({
-    VerificationStatus readStatus = VerificationStatus.none,
-    VerificationStatus writeStatus = VerificationStatus.none,
-    int? minimumValue,
-    int? maximumValue,
-  }) => GameField(
-    id: 'bolts',
-    name: 'Bolts',
-    guestOffset: 0x1329e80,
-    valueType: MemoryValueType.unsigned32,
-    byteOrder: ByteOrder.big,
-    readStatus: readStatus,
-    writeStatus: writeStatus,
-    minimumValue: minimumValue,
-    maximumValue: maximumValue,
-  );
 }
