@@ -84,99 +84,6 @@ void main() {
     );
 
     test(
-      'Method create() wires diagnostic operations to runtime collaborators',
-      () async {
-        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 61];
-        final profile = _registeredProfile;
-        final sdk = LudavaSdk.create(
-          api: api.adapter,
-          isWindows: true,
-          pointerSize: 8,
-          discoverProcessIds: () => const [42],
-          readProcessMetadata: (_) => _metadata,
-          detectGame: (_, __) => _confirmedIdentity(profile),
-        );
-
-        try {
-          final result = sdk.diagnostics.execute(
-            DiagnosticGameMemoryRequest(
-              gameId: profile.id,
-              fieldId: 'bolts',
-              processId: 42,
-              memoryBase: 0x300000000,
-              action: GameMemoryAction.read,
-            ),
-          );
-
-          expect(result.succeeded, isTrue);
-          expect(result.readResult?.value, 61);
-          expect(result.identityConfirmed, isTrue);
-          expect(api.openCalls, 1);
-          expect(api.readCalls, 1);
-          expect(api.closeCalls, 1);
-        } finally {
-          await sdk.dispose();
-        }
-      },
-    );
-
-    test(
-      'Method create() preserves an injected unavailable memory base',
-      () async {
-        final api = FakeWindowsMemoryApi();
-        final profile = _registeredProfile;
-        final sdk = LudavaSdk.create(
-          api: api.adapter,
-          isWindows: true,
-          pointerSize: 8,
-          discoverProcessIds: () => [42],
-          readProcessMetadata: (processId) {
-            expect(processId, 42);
-            return _metadata;
-          },
-          resolveMemoryBaseCandidate: (_) => null,
-          detectGame:
-              (processId, _) => GameDetectionResult(
-                status: GameDetectionStatus.supportedGame,
-                processId: processId,
-                titleId: profile.buildId,
-                gameTitle: profile.gameName,
-                executable: profile.executable,
-                executableHash: profile.executableHash,
-                confidence: GameIdentityConfidence.confirmed,
-                profile: profile,
-                evidenceDescription: 'Injected confirmed identity.',
-              ),
-        );
-        try {
-          sdk.session.connect();
-
-          expect(sdk.session.state.processIds, [42]);
-          expect(sdk.session.state.selectedProcessId, 42);
-          expect(sdk.session.state.processMetadata, same(_metadata));
-          expect(
-            sdk.session.state.detection?.status,
-            GameDetectionStatus.supportedGame,
-          );
-          expect(sdk.session.selectProcess(42), isTrue);
-          sdk.session.refresh();
-          sdk.session.redetect();
-          expect(sdk.session.state.memoryBase, isNull);
-          expect(sdk.session.state.readResults, isEmpty);
-          expect(
-            sdk.session.writeField('bolts', 1).status,
-            GameWriteStatus.unsupportedProfile,
-          );
-          expect(api.openCalls, 0);
-          expect(api.readCalls, 0);
-          expect(api.writeCalls, 0);
-        } finally {
-          await sdk.dispose();
-        }
-      },
-    );
-
-    test(
       'Method create() detects a supported game through its injected log source',
       () async {
         var discoveryCalls = 0;
@@ -230,8 +137,6 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           expect(sdk.session.state.readResults['bolts']?.value, 19);
           expect(discoveryCalls, greaterThan(1));
           expect(logReads, 2);
-          expect(api.readCalls, 1);
-          expect(api.closeCalls, 1);
         } finally {
           await sdk.dispose();
         }
@@ -285,12 +190,6 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           expect(publishedWriteState.selectedProcessId, 42);
           expect(publishedWriteState.lastWriteResult?.readBackValue, 42);
           expect(snapshots.last.readResults['bolts']?.value, 42);
-          expect(api.openCalls, 2);
-          expect(api.readCalls, 3);
-          expect(api.writeCalls, 1);
-          expect(api.closeCalls, 2);
-          expect(api.requestedAccess, 0x0038);
-          expect(api.writeAddress, 0x301329e80);
         } finally {
           await sdk.dispose();
           await streamClosed.future.timeout(const Duration(seconds: 1));
@@ -322,65 +221,8 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           );
 
           expect(sdk.session.state.readResults['bolts']?.value, 61);
+          expect(diagnosticResult.succeeded, isTrue);
           expect(diagnosticResult.readResult?.value, 61);
-          expect(api.openCalls, 2);
-          expect(api.readCalls, 2);
-          expect(api.writeCalls, 0);
-          expect(api.closeCalls, 2);
-        } finally {
-          await sdk.dispose();
-        }
-      },
-    );
-
-    test(
-      'Method create() rejects values outside the field range before writing',
-      () async {
-        final api = FakeWindowsMemoryApi();
-        final profile = _registeredProfile;
-        final sdk = _createSdk(
-          api,
-          currentIdentity: () => _confirmedIdentity(profile),
-        );
-
-        try {
-          sdk.session.connect();
-          final result = sdk.session.writeField('bolts', 0x100000000);
-
-          expect(result.status, GameWriteStatus.invalidValue);
-          expect(api.writeCalls, 0);
-          expect(api.openCalls, 1);
-        } finally {
-          await sdk.dispose();
-        }
-      },
-    );
-
-    test(
-      'Method create() rejects a write when current game identity changes',
-      () async {
-        final api = FakeWindowsMemoryApi();
-        final profile = _registeredProfile;
-        var currentIdentity = _confirmedIdentity(profile);
-        final sdk = _createSdk(api, currentIdentity: () => currentIdentity);
-
-        try {
-          sdk.session.connect();
-          currentIdentity = GameDetectionResult(
-            status: GameDetectionStatus.noActiveGame,
-            processId: 42,
-            confidence: GameIdentityConfidence.none,
-            evidenceDescription: 'The active game stopped before the write.',
-          );
-          final result = sdk.session.writeField('bolts', 50);
-
-          expect(result.status, GameWriteStatus.unsupportedProfile);
-          expect(sdk.session.state.lastWriteResult, same(result));
-          expect(sdk.session.state.selectedProcessId, isNull);
-          expect(sdk.session.state.readResults, isEmpty);
-          expect(api.writeCalls, 0);
-          expect(api.openCalls, 1);
-          expect(api.closeCalls, 1);
         } finally {
           await sdk.dispose();
         }

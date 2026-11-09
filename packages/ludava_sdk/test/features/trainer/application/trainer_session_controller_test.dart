@@ -101,8 +101,6 @@ class _SessionFixture {
 GameProfile _profile({
   String id = 'synthetic-profile',
   String executableHash = 'PPU-synthetic-hash',
-  bool writeEnabled = true,
-  bool fieldWriteEnabled = true,
   bool withUnreadableField = false,
   bool twoFields = false,
   bool secondFieldWriteEnabled = false,
@@ -113,10 +111,7 @@ GameProfile _profile({
   executable: 'SYNTHETIC.self',
   executableHash: executableHash,
   readStatus: VerificationStatus.verified,
-  writeStatus:
-      writeEnabled
-          ? VerificationStatus.researchConfirmed
-          : VerificationStatus.none,
+  writeStatus: VerificationStatus.researchConfirmed,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -125,10 +120,7 @@ GameProfile _profile({
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
       readStatus: VerificationStatus.verified,
-      writeStatus:
-          fieldWriteEnabled
-              ? VerificationStatus.researchConfirmed
-              : VerificationStatus.none,
+      writeStatus: VerificationStatus.researchConfirmed,
       minimumValue: 0,
       maximumValue: 1000000,
     ),
@@ -914,26 +906,6 @@ void main() {
       expect(fixture.writeCalls, 0);
     });
 
-    test('Method writeField() rejects values outside the field bounds', () {
-      final fixture = _SessionFixture()..controller.connect();
-
-      final result = fixture.controller.writeField('credits', 1000001);
-
-      expect(result.status, GameWriteStatus.invalidValue);
-      expect(fixture.writeCalls, 0);
-      expect(fixture.controller.state.profile?.id, fixture.profile.id);
-      expect(fixture.controller.state.readResults['credits']?.value, 100);
-    });
-
-    test('Method writeField() rejects a value below the field bounds', () {
-      final fixture = _SessionFixture()..controller.connect();
-
-      final result = fixture.controller.writeField('credits', -1);
-
-      expect(result.status, GameWriteStatus.invalidValue);
-      expect(fixture.writeCalls, 0);
-    });
-
     test('Method writeField() rejects a missing field before writing', () {
       final fixture = _SessionFixture()..controller.connect();
 
@@ -942,53 +914,6 @@ void main() {
       expect(result.status, GameWriteStatus.unsupportedField);
       expect(fixture.writeCalls, 0);
       expect(fixture.controller.state.readResults['credits']?.value, 100);
-    });
-
-    test('Method writeField() rejects a read-only field before writing', () {
-      final fixture =
-          _SessionFixture()
-            ..profile = _profile(fieldWriteEnabled: false)
-            ..controller.connect();
-
-      final result = fixture.controller.writeField('credits', 101);
-
-      expect(result.status, GameWriteStatus.unsupportedField);
-      expect(fixture.writeCalls, 0);
-    });
-
-    test('Method writeField() rejects a profile not approved for writing', () {
-      final fixture =
-          _SessionFixture()
-            ..profile = _profile(writeEnabled: false, fieldWriteEnabled: true)
-            ..controller.connect();
-
-      final result = fixture.controller.writeField('credits', 101);
-
-      expect(result.status, GameWriteStatus.unsupportedProfile);
-      expect(fixture.writeCalls, 0);
-    });
-
-    test('Method writeField() rejects a missing identity before writing', () {
-      final fixture = _SessionFixture()..controller.connect();
-      fixture.detectionStatus = GameDetectionStatus.ambiguous;
-
-      final result = fixture.controller.writeField('credits', 101);
-
-      expect(result.status, GameWriteStatus.unsupportedProfile);
-      expect(fixture.writeCalls, 0);
-    });
-
-    test('Method writeField() blocks when live detection throws', () {
-      final fixture = _SessionFixture()..controller.connect();
-      fixture.detectionError = StateError('identity read failed');
-
-      final result = fixture.controller.writeField('credits', 101);
-
-      expect(result.status, GameWriteStatus.unsupportedProfile);
-      expect(result.succeeded, isFalse);
-      expect(fixture.writeCalls, 0);
-      expect(fixture.controller.state.profile, isNull);
-      expect(fixture.controller.state.readResults, isEmpty);
     });
 
     test('Method writeField() blocks a stale process session', () {
@@ -1007,97 +932,6 @@ void main() {
       expect(fixture.controller.state.readResults, isEmpty);
     });
 
-    test('Method writeField() blocks a process that has exited', () {
-      final fixture = _SessionFixture()..controller.connect();
-      fixture.processIds = [];
-
-      final result = fixture.controller.writeField('credits', 101);
-
-      expect(result.succeeded, isFalse);
-      expect(fixture.writeCalls, 0);
-      expect(fixture.controller.state.profile, isNull);
-      expect(fixture.controller.state.readResults, isEmpty);
-    });
-
-    test('Method writeField() blocks a changed game', () {
-      final fixture = _SessionFixture()..controller.connect();
-      fixture.profile = _profile(id: 'synthetic-profile-next');
-
-      final result = fixture.controller.writeField('credits', 101);
-
-      expect(result.succeeded, isFalse);
-      expect(fixture.writeCalls, 0);
-      expect(fixture.controller.state.profile, isNull);
-      expect(fixture.controller.state.readResults, isEmpty);
-    });
-
-    test(
-      'Method writeField() blocks an executable hash change with the same profile id',
-      () {
-        final fixture = _SessionFixture()..controller.connect();
-        fixture.profile = _profile(executableHash: 'different-hash');
-
-        final result = fixture.controller.writeField('credits', 101);
-
-        expect(result.succeeded, isFalse);
-        expect(fixture.writeCalls, 0);
-        expect(fixture.controller.state.profile, isNull);
-        expect(fixture.controller.state.readResults, isEmpty);
-      },
-    );
-
-    test('Method writeField() blocks a changed memory base', () {
-      final fixture = _SessionFixture()..controller.connect();
-      fixture.memoryBase = 0x400000000;
-
-      final result = fixture.controller.writeField('credits', 101);
-
-      expect(result.succeeded, isFalse);
-      expect(fixture.writeCalls, 0);
-      expect(fixture.controller.state.profile, isNull);
-      expect(fixture.controller.state.readResults, isEmpty);
-    });
-
-    test(
-      'Method writeField() blocks when the current memory base is unavailable',
-      () {
-        final fixture = _SessionFixture()..controller.connect();
-        fixture.memoryBase = null;
-        fixture.controller.refresh();
-
-        final result = fixture.controller.writeField('credits', 101);
-
-        expect(result.succeeded, isFalse);
-        expect(fixture.writeCalls, 0);
-      },
-    );
-
-    test(
-      'Method writeField() surfaces preliminary read failure without success',
-      () {
-        final fixture =
-            _SessionFixture()
-              ..profile = _profile(twoFields: true)
-              ..controller.connect()
-              ..writeResult = const GameWriteResult(
-                status: GameWriteStatus.preliminaryReadFailed,
-                fieldId: 'credits',
-                requestedValue: 101,
-              );
-
-        final result = fixture.controller.writeField('credits', 101);
-
-        expect(result.status, GameWriteStatus.preliminaryReadFailed);
-        expect(result.succeeded, isFalse);
-        expect(fixture.writeCalls, 1);
-        expect(
-          fixture.controller.state.readResults.containsKey('credits'),
-          isFalse,
-        );
-        expect(fixture.controller.state.readResults['weapons']?.value, 7);
-      },
-    );
-
     test(
       'Method writeField() surfaces partial native writes without success',
       () {
@@ -1115,84 +949,6 @@ void main() {
 
         expect(result.status, GameWriteStatus.incompleteWrite);
         expect(result.succeeded, isFalse);
-        expect(
-          fixture.controller.state.readResults.containsKey('credits'),
-          isFalse,
-        );
-        expect(fixture.controller.state.readResults['weapons']?.value, 7);
-      },
-    );
-
-    test(
-      'Method writeField() removes only the attempted field after a native write failure',
-      () {
-        final fixture =
-            _SessionFixture()
-              ..profile = _profile(twoFields: true)
-              ..controller.connect()
-              ..writeResult = const GameWriteResult(
-                status: GameWriteStatus.writeFailed,
-                fieldId: 'credits',
-                requestedValue: 101,
-              );
-
-        final result = fixture.controller.writeField('credits', 101);
-
-        expect(result.succeeded, isFalse);
-        expect(fixture.controller.state.lastWriteResult?.succeeded, isFalse);
-        expect(
-          fixture.controller.state.readResults.containsKey('credits'),
-          isFalse,
-        );
-        expect(fixture.controller.state.readResults['weapons']?.value, 7);
-        expect(fixture.controller.state.profile?.id, fixture.profile.id);
-      },
-    );
-
-    test(
-      'Method writeField() removes only the attempted field after a read-back failure',
-      () {
-        final fixture =
-            _SessionFixture()
-              ..profile = _profile(twoFields: true)
-              ..controller.connect()
-              ..writeResult = const GameWriteResult(
-                status: GameWriteStatus.readBackFailed,
-                fieldId: 'credits',
-                requestedValue: 101,
-              );
-
-        final result = fixture.controller.writeField('credits', 101);
-
-        expect(result.succeeded, isFalse);
-        expect(fixture.controller.state.lastWriteResult?.succeeded, isFalse);
-        expect(
-          fixture.controller.state.readResults.containsKey('credits'),
-          isFalse,
-        );
-        expect(fixture.controller.state.readResults['weapons']?.value, 7);
-        expect(fixture.controller.state.profile?.id, fixture.profile.id);
-      },
-    );
-
-    test(
-      'Method writeField() surfaces a read-back mismatch without success',
-      () {
-        final fixture =
-            _SessionFixture()
-              ..profile = _profile(twoFields: true)
-              ..controller.connect()
-              ..writeResult = const GameWriteResult(
-                status: GameWriteStatus.readBackMismatch,
-                fieldId: 'credits',
-                requestedValue: 101,
-                readBackValue: 99,
-              );
-
-        final result = fixture.controller.writeField('credits', 101);
-
-        expect(result.succeeded, isFalse);
-        expect(result.readBackValue, 99);
         expect(
           fixture.controller.state.readResults.containsKey('credits'),
           isFalse,

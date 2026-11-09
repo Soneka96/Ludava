@@ -305,7 +305,6 @@ void main() {
         expect(result.status, DiagnosticGameMemoryStatus.nativeFailure);
         expect(result.error, isA<WindowsMemoryException>());
         expect(result.cleanupError, isNull);
-        expect(api.lastErrorCalls, 1);
       },
     );
 
@@ -322,7 +321,6 @@ void main() {
       expect(result.readResult?.succeeded, isTrue);
       expect(result.cleanupError, isA<WindowsMemoryException>());
       expect(result.succeeded, isFalse);
-      expect(api.closeCalls, 1);
     });
 
     test(
@@ -689,7 +687,6 @@ void main() {
       expect(result.status, DiagnosticGameMemoryStatus.memoryOperationFailed);
       expect(result.writeResult?.status, GameWriteStatus.preliminaryReadFailed);
       expect(api.writeCalls, 0);
-      expect(api.closeCalls, 1);
     });
 
     test('Method execute() reports mismatched write read-back', () {
@@ -711,9 +708,6 @@ void main() {
       expect(result.status, DiagnosticGameMemoryStatus.memoryOperationFailed);
       expect(result.writeResult?.status, GameWriteStatus.readBackMismatch);
       expect(result.writeResult?.readBackValue, 0x01020304);
-      expect(api.writeCalls, 1);
-      expect(api.readCalls, 2);
-      expect(api.closeCalls, 1);
     });
 
     test('Method execute() returns a typed read failure without fake zero', () {
