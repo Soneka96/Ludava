@@ -8,7 +8,7 @@ import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_controller.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_sdk_capability.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';

@@ -1,6 +1,6 @@
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// SDK capabilities consumed by the Flutter trainer controller.
+/// Narrow SDK session operations consumed by Flutter trainer infrastructure.
 abstract interface class TrainerSdkCapability {
   /// Latest immutable session snapshot published by the SDK.
   TrainerSessionState get state;

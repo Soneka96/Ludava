@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_sdk_capability.dart';
+import 'package:ludava_app/features/trainer/services/ludava_sdk_trainer_capability.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Coordinates Flutter trainer interaction with one owned SDK runtime.
@@ -9,7 +10,8 @@ class TrainerController implements Listenable {
   /// Creates an SDK-backed trainer controller and starts RPCS3 discovery.
   TrainerController({LudavaSdk? sdk, TrainerSdkCapability? capability})
     : assert(sdk == null || capability == null),
-      _sdk = capability ?? _LudavaSdkCapability(sdk ?? LudavaSdk.create()) {
+      _sdk =
+          capability ?? LudavaSdkTrainerCapability(sdk ?? LudavaSdk.create()) {
     _session = _sdk.state;
     _stateSubscription = _sdk.stateChanges.listen(_handleStateChanged);
     _sdk.connect();
@@ -148,41 +150,4 @@ class TrainerController implements Listenable {
       throw StateError('This Flutter trainer controller has been disposed.');
     }
   }
-}
-
-/// Adapts the owned SDK runtime to the controller's narrow session contract.
-class _LudavaSdkCapability implements TrainerSdkCapability {
-  /// Wraps [sdk] while retaining ownership of its runtime lifecycle.
-  _LudavaSdkCapability(this._sdk);
-
-  final LudavaSdk _sdk;
-
-  /// Returns the SDK's current trainer snapshot.
-  @override
-  TrainerSessionState get state => _sdk.session.state;
-
-  /// Forwards the SDK's trainer state stream.
-  @override
-  Stream<TrainerSessionState> get stateChanges => _sdk.session.stateChanges;
-
-  /// Starts SDK process discovery.
-  @override
-  void connect() => _sdk.session.connect();
-
-  /// Refreshes the SDK's selected process session.
-  @override
-  void refresh() => _sdk.session.refresh();
-
-  /// Selects [processId] through the SDK trainer session.
-  @override
-  bool selectProcess(int processId) => _sdk.session.selectProcess(processId);
-
-  /// Delegates [fieldId] and [value] to the SDK's guarded write.
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      _sdk.session.writeField(fieldId, value);
-
-  /// Disposes the complete SDK runtime, including diagnostics.
-  @override
-  Future<void> dispose() => _sdk.dispose();
 }

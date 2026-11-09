@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/trainer_controller.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_sdk_capability.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 TrainerSessionState _eligibleState({
