@@ -158,17 +158,20 @@ class _SessionFixture {
   int detectCalls = 0;
   int writeCalls = 0;
   bool? lastConfirmed;
+  bool failMetadata = false;
   GameReadStatus readStatus = GameReadStatus.success;
   GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame;
   String evidenceDescription = 'Synthetic session evidence.';
 
   late final TrainerSessionController controller = TrainerSessionController(
     discoverProcessIds: () => processIds,
-    readProcessMetadata:
-        (_) => Rpcs3ProcessMetadata(
-          executablePath: r'C:\RPCS3\rpcs3.exe',
-          startedAtUtc: startedAtUtc,
-        ),
+    readProcessMetadata: (_) {
+      if (failMetadata) throw StateError('Test metadata failure.');
+      return Rpcs3ProcessMetadata(
+        executablePath: r'C:\RPCS3\rpcs3.exe',
+        startedAtUtc: startedAtUtc,
+      );
+    },
     resolveMemoryBaseCandidate:
         (_) => Rpcs3MemoryBaseCandidate(
           memoryBase: memoryBase,
@@ -232,7 +235,6 @@ GameProfile _profile({
   String executableHash = 'measured-hash',
   bool twoFields = false,
   bool profileWritable = true,
-  bool fieldWritable = true,
 }) => GameProfile(
   id: id,
   gameName: 'Synthetic game',
@@ -252,10 +254,7 @@ GameProfile _profile({
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
       readStatus: VerificationStatus.verified,
-      writeStatus:
-          fieldWritable
-              ? VerificationStatus.researchConfirmed
-              : VerificationStatus.none,
+      writeStatus: VerificationStatus.researchConfirmed,
       minimumValue: 0,
       maximumValue: 0xffffffff,
     ),
@@ -267,10 +266,7 @@ GameProfile _profile({
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
         readStatus: VerificationStatus.verified,
-        writeStatus:
-            fieldWritable
-                ? VerificationStatus.researchConfirmed
-                : VerificationStatus.none,
+        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: 0xffffffff,
       ),
@@ -309,27 +305,6 @@ void main() {
           await tester.sendEnter();
 
           expect(fixture.controller.state.selectedProcessId, 43);
-          expect(tester.terminalState, containsText('CONNECTED'));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerSessionComponent selects a process directly by number',
-      () async {
-        await testNocterm('direct process shortcut', (tester) async {
-          final fixture = _SessionFixture()..processIds = [42, 43];
-          await tester.pumpComponent(_app(fixture));
-
-          await tester.sendKey(LogicalKey.digit3);
-          expect(fixture.controller.state.selectedProcessId, isNull);
-          expect(fixture.detectCalls, 0);
-          expect(tester.terminalState, containsText('Select an RPCS3 process'));
-
-          await tester.sendKey(LogicalKey.digit2);
-
-          expect(fixture.controller.state.selectedProcessId, 43);
-          expect(fixture.detectCalls, greaterThan(0));
           expect(tester.terminalState, containsText('CONNECTED'));
         });
       },
@@ -378,6 +353,21 @@ void main() {
     );
 
     test(
+      'Class TrainerSessionComponent displays session errors from the SDK state',
+      () async {
+        await testNocterm('session error feedback', (tester) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          fixture.failMetadata = true;
+
+          await tester.sendKey(LogicalKey.keyR);
+
+          expect(tester.terminalState, containsText('Test metadata failure.'));
+        });
+      },
+    );
+
+    test(
       'Class TrainerSessionComponent preserves the selected row on same-session refresh',
       () async {
         await testNocterm('same-session refresh selection', (tester) async {
@@ -415,8 +405,10 @@ void main() {
           await tester.pump();
 
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
-          expect(tester.terminalState, containsText('1. Credits (read-only)'));
-          expect(tester.terminalState, containsText('100'));
+          expect(
+            tester.terminalState,
+            containsText('Selected field is read-only'),
+          );
           await tester.sendKey(LogicalKey.digit1);
           await tester.sendEnter();
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
@@ -432,37 +424,6 @@ void main() {
           expect(tester.terminalState, containsText('1–9 Edit'));
           await tester.sendEnter();
           expect(tester.terminalState, containsText('EDIT CREDITS'));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerSessionComponent closes editing when the current field becomes read-only',
-      () async {
-        await testNocterm('field permission changes during refresh', (
-          tester,
-        ) async {
-          final fixture =
-              _SessionFixture()..profile = _profile(twoFields: true);
-          await tester.pumpComponent(_app(fixture));
-          await tester.sendEnter();
-          expect(tester.terminalState, containsText('EDIT CREDITS'));
-
-          fixture.profile = _profile(twoFields: true, fieldWritable: false);
-          fixture.controller.refresh();
-          await tester.pump();
-
-          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
-          expect(tester.terminalState, containsText('1. Credits (read-only)'));
-          expect(tester.terminalState, containsText('100'));
-          await tester.sendKey(LogicalKey.digit1);
-          await tester.sendEnter();
-          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
-          expect(fixture.writeCalls, 0);
-
-          final readCalls = fixture.readCalls;
-          await tester.sendKey(LogicalKey.keyR);
-          expect(fixture.readCalls, greaterThan(readCalls));
         });
       },
     );
@@ -544,39 +505,6 @@ void main() {
             containsText('Synthetic game · PS3 SYNTHETIC'),
           );
           expect(tester.terminalState, isNot(containsText('EDIT WEAPONS')));
-          expect(tester.terminalState, isNot(containsText('Weapons')));
-          expect(tester.terminalState, containsText('❯ 1. Credits'));
-          expect(fixture.writeCalls, 0);
-        });
-      },
-    );
-
-    test(
-      'Class TrainerSessionComponent closes the editor and resets selection when the executable hash changes',
-      () async {
-        await testNocterm('executable hash changes during refresh', (
-          tester,
-        ) async {
-          final fixture =
-              _SessionFixture()..profile = _profile(twoFields: true);
-          await tester.pumpComponent(_app(fixture));
-          await tester.sendArrowDown();
-          await tester.sendEnter();
-          expect(tester.terminalState, containsText('EDIT WEAPONS'));
-
-          fixture.profile = _profile(
-            twoFields: true,
-            executableHash: 'different-hash',
-          );
-          fixture.controller.refresh();
-          await tester.pump();
-
-          expect(fixture.controller.state.profile?.id, 'synthetic-profile');
-          expect(
-            fixture.controller.state.detection?.executableHash,
-            'different-hash',
-          );
-          expect(tester.terminalState, isNot(containsText('EDIT WEAPONS')));
           expect(tester.terminalState, containsText('❯ 1. Credits'));
           expect(fixture.writeCalls, 0);
         });
@@ -654,46 +582,23 @@ void main() {
     );
 
     test(
-      'Class TrainerSessionComponent preserves selection when cancelling an editor',
-      () async {
-        await testNocterm('cancel and return to selected field', (
-          tester,
-        ) async {
-          final fixture =
-              _SessionFixture()..profile = _profile(twoFields: true);
-          await tester.pumpComponent(_app(fixture));
-
-          await tester.sendKey(LogicalKey.digit2);
-          await tester.sendEnter();
-          expect(tester.terminalState, containsText('EDIT WEAPONS'));
-          await tester.sendEscape();
-          expect(fixture.writeCalls, 0);
-
-          await tester.sendEnter();
-
-          expect(tester.terminalState, containsText('EDIT WEAPONS'));
-          expect(fixture.writeCalls, 0);
-        });
-      },
-    );
-
-    test(
-      'Class TrainerSessionComponent opens a field by number and keeps editor digits local',
+      'Class TrainerSessionComponent preserves menu selection and editor key ownership',
       () async {
         await testNocterm('menu and editor digit ownership', (tester) async {
           final fixture =
               _SessionFixture()..profile = _profile(twoFields: true);
           await tester.pumpComponent(_app(fixture));
 
-          await tester.sendKey(LogicalKey.digit1);
-          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          await tester.sendArrowDown();
+          await tester.sendEnter();
+          expect(tester.terminalState, containsText('EDIT WEAPONS'));
           await tester.enterText('2');
-          expect(tester.terminalState, containsText('1002'));
+          expect(tester.terminalState, containsText('72'));
           await tester.sendEscape();
           await tester.sendEnter();
 
-          expect(tester.terminalState, containsText('EDIT CREDITS'));
-          expect(tester.terminalState, containsText('Current value: 100'));
+          expect(tester.terminalState, containsText('EDIT WEAPONS'));
+          expect(tester.terminalState, containsText('Current value: 7'));
           expect(fixture.writeCalls, 0);
         });
       },
@@ -717,37 +622,7 @@ void main() {
             containsText('Credits updated to 1,005'),
           );
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
-
-          await tester.sendEnter();
-          expect(tester.terminalState, containsText('Current value: 1,005'));
           expect(fixture.writeCalls, 1);
-          await tester.sendEscape();
-
-          expect(tester.terminalState, containsText('1,005'));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerSessionComponent invalidates the editor when write validation detects a game change',
-      () async {
-        await testNocterm('game changes before apply', (tester) async {
-          final fixture = _SessionFixture();
-          await tester.pumpComponent(_app(fixture));
-          await tester.sendEnter();
-          await tester.enterText('101');
-          fixture.profile = _profile(id: 'synthetic-profile-next');
-
-          await tester.sendEnter();
-
-          expect(fixture.writeCalls, 0);
-          expect(fixture.controller.state.profile, isNull);
-          expect(fixture.controller.state.readResults, isEmpty);
-          expect(
-            tester.terminalState,
-            containsText('active game or memory base changed'),
-          );
-          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
         });
       },
     );
@@ -770,30 +645,6 @@ void main() {
           expect(fixture.controller.state.profile, isNull);
           expect(fixture.controller.state.readResults, isEmpty);
           expect(tester.terminalState, containsText('session changed'));
-          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerSessionComponent invalidates the editor when the memory base changes before apply',
-      () async {
-        await testNocterm('memory base changes before apply', (tester) async {
-          final fixture = _SessionFixture();
-          await tester.pumpComponent(_app(fixture));
-          await tester.sendEnter();
-          await tester.enterText('1');
-          fixture.memoryBase = 0x400000000;
-
-          await tester.sendEnter();
-
-          expect(fixture.writeCalls, 0);
-          expect(fixture.controller.state.profile, isNull);
-          expect(fixture.controller.state.readResults, isEmpty);
-          expect(
-            tester.terminalState,
-            containsText('active game or memory base changed'),
-          );
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
         });
       },

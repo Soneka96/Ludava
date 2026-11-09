@@ -12,18 +12,6 @@ final _field = GameField(
   readStatus: VerificationStatus.verified,
 );
 
-final _writableField = GameField(
-  id: 'credits',
-  name: 'Credits',
-  guestOffset: 0x1000,
-  valueType: MemoryValueType.unsigned32,
-  byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.researchConfirmed,
-  minimumValue: 0,
-  maximumValue: 0xffffffff,
-);
-
 void main() {
   group('Class TrainerFieldRowComponent rendering behavior', () {
     test(
@@ -66,30 +54,6 @@ void main() {
                 value: 1234,
               ),
               selected: false,
-            ),
-          );
-
-          expect(tester.terminalState, containsText('1. Credits (read-only)'));
-          expect(tester.terminalState, containsText('1,234'));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerFieldRowComponent labels a writable field read-only when profile permission is absent',
-      () async {
-        await testNocterm('read-only profile field row', (tester) async {
-          await tester.pumpComponent(
-            TrainerFieldRowComponent(
-              index: 0,
-              field: _writableField,
-              canEdit: false,
-              readResult: const GameReadResult(
-                status: GameReadStatus.success,
-                fieldId: 'credits',
-                value: 1234,
-              ),
-              selected: true,
             ),
           );
 

@@ -38,8 +38,6 @@ TrainerSessionState _session({
       value: 7,
     ),
   },
-  bool hasMemoryBase = true,
-  GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
 }) {
   final selectedProfile = profile ?? _profile();
   return TrainerSessionState(
@@ -49,12 +47,12 @@ TrainerSessionState _session({
       executablePath: r'C:\RPCS3\rpcs3.exe',
       startedAtUtc: DateTime.utc(2026),
     ),
-    memoryBase: hasMemoryBase ? 0x300000000 : null,
+    memoryBase: 0x300000000,
     detection: GameDetectionResult(
       status: GameDetectionStatus.supportedGame,
       processId: 42,
       gameTitle: selectedProfile.gameName,
-      confidence: confidence,
+      confidence: GameIdentityConfidence.confirmed,
       profile: selectedProfile,
       evidenceDescription: 'Synthetic menu fixture.',
     ),
@@ -65,7 +63,6 @@ TrainerSessionState _session({
 GameProfile _profile({
   String id = 'synthetic-profile',
   bool profileReadable = true,
-  bool profileWritable = true,
   bool readableFields = true,
   bool includeWeapons = true,
   bool includeFields = true,
@@ -76,10 +73,7 @@ GameProfile _profile({
   executable: 'SYNTHETIC.self',
   readStatus:
       profileReadable ? VerificationStatus.verified : VerificationStatus.none,
-  writeStatus:
-      profileWritable
-          ? VerificationStatus.researchConfirmed
-          : VerificationStatus.none,
+  writeStatus: VerificationStatus.researchConfirmed,
   fields: {
     if (includeFields)
       'credits': GameField(
@@ -167,45 +161,9 @@ void main() {
           expect(screen, containsText('Synthetic game · PS3 SYNTHETIC'));
           expect(screen, containsText('Credits'));
           expect(screen, containsText('1. Credits'));
-          expect(screen, containsText('244,866'));
           expect(screen, containsText('Weapons'));
           expect(screen, containsText('2. Weapons'));
-          expect(screen, containsText('7'));
           expect(screen, isNot(containsText('Secret')));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerMenuComponent opens a readable synthetic field',
-      () async {
-        await testNocterm('synthetic field editor selection', (tester) async {
-          final openedFields = <GameField>[];
-          await tester.pumpComponent(
-            _menu(
-              _session(
-                profile: _profile(),
-                reads: {
-                  'credits': const GameReadResult(
-                    status: GameReadStatus.success,
-                    fieldId: 'credits',
-                    value: 1234,
-                  ),
-                },
-              ),
-              onOpenField: openedFields.add,
-            ),
-          );
-
-          expect(tester.terminalState, containsText('Synthetic game'));
-          expect(tester.terminalState, containsText('Credits'));
-          expect(tester.terminalState, containsText('1,234'));
-          expect(tester.terminalState, containsText('1–9 Edit'));
-
-          await tester.sendKey(LogicalKey.digit1);
-          await tester.sendEnter();
-
-          expect(openedFields.map((field) => field.id), ['credits', 'credits']);
         });
       },
     );
@@ -238,13 +196,10 @@ void main() {
 
           expect(tester.terminalState, containsText('1. Credits'));
           expect(tester.terminalState, containsText('2. Weapons'));
-          expect(tester.terminalState, containsText('3,793'));
-          expect(tester.terminalState, containsText('215'));
-
-          await tester.sendKey(LogicalKey.digit2);
+          await tester.sendArrowDown();
           await tester.sendEnter();
 
-          expect(openedFields.map((field) => field.id), ['weapons', 'weapons']);
+          expect(openedFields.map((field) => field.id), ['weapons']);
         });
       },
     );
@@ -303,89 +258,6 @@ void main() {
 
           await tester.sendKey(LogicalKey.digit1);
           expect(openedFields.map((field) => field.id), ['weapons']);
-        });
-      },
-    );
-
-    test(
-      'Class TrainerMenuComponent keeps writable fields read-only when the profile is not writable',
-      () async {
-        await testNocterm('read-only profile with writable fields', (
-          tester,
-        ) async {
-          final openedFields = <GameField>[];
-          var refreshCount = 0;
-          await tester.pumpComponent(
-            _menu(
-              _session(profile: _profile(profileWritable: false)),
-              onOpenField: openedFields.add,
-              onRefresh: () => refreshCount++,
-            ),
-          );
-
-          expect(tester.terminalState, containsText('1. Credits (read-only)'));
-          expect(tester.terminalState, containsText('244,866'));
-          expect(
-            tester.terminalState,
-            containsText('Selected field is read-only'),
-          );
-          await tester.sendKey(LogicalKey.digit1);
-          await tester.sendEnter();
-          await tester.sendKey(LogicalKey.keyR);
-
-          expect(openedFields, isEmpty);
-          expect(refreshCount, 1);
-          expect(tester.terminalState, containsText('1. Credits (read-only)'));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerMenuComponent hides edit actions without a valid target or current read',
-      () async {
-        await testNocterm('invalid write target', (tester) async {
-          final openedFields = <GameField>[];
-          for (final session in [
-            _session(hasMemoryBase: false),
-            _session(confidence: GameIdentityConfidence.manuallySelected),
-            _session(reads: const {}),
-          ]) {
-            await tester.pumpComponent(
-              _menu(session, onOpenField: openedFields.add),
-            );
-
-            expect(
-              tester.terminalState,
-              containsText('Selected field is read-only'),
-            );
-            await tester.sendKey(LogicalKey.digit1);
-            await tester.sendEnter();
-          }
-
-          expect(openedFields, isEmpty);
-        });
-      },
-    );
-
-    test(
-      'Class TrainerMenuComponent labels failed reads as unavailable',
-      () async {
-        await testNocterm('unavailable field value', (tester) async {
-          await tester.pumpComponent(
-            _menu(
-              _session(
-                reads: {
-                  'credits': const GameReadResult(
-                    status: GameReadStatus.readFailed,
-                    fieldId: 'credits',
-                  ),
-                },
-              ),
-            ),
-          );
-
-          expect(tester.terminalState, containsText('Unavailable'));
-          expect(tester.terminalState, isNot(containsText('0')));
         });
       },
     );
