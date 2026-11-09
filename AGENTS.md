@@ -1,10 +1,12 @@
 # Agent guidance
 
-Read only the guidance that applies to the task:
+Read only the authoritative guidance relevant to the task:
 
-- [Architecture](docs/ARCHITECTURE.md) owns feature boundaries, package dependencies, SDK composition, and authoritative state.
-- [Development](docs/DEVELOPMENT.md) owns source style, testing, documentation upkeep, workspace commands, and development workflow.
-- [Flutter architecture](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md) applies to the approved future Redux migration; the checked-in app still uses `TrainerController` until that migration is separately approved.
-- For memory or game-identity work, preserve the contracts in [game detection](docs/features/game-detection.md) and [game memory](docs/features/game-memory.md). Keep build instructions, factual feature guides, and game research in their existing owners.
+- [Architecture](docs/ARCHITECTURE.md): package and feature boundaries, dependency direction, SDK runtime, and safety invariants.
+- [Development](docs/DEVELOPMENT.md): Dart source style, workflow, frontend UI conventions, workspace commands, and CI setup.
+- [Testing](docs/TESTING.md): test ownership, naming, fixtures, synthetic data, safety regressions, and package-specific test practices.
+- [Documentation](docs/DOCUMENTATION.md): document ownership, research upkeep, and how to write or change conventions.
+- [Flutter architecture](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md): approved future Redux/GetIt contract. The checked-in Flutter app still uses `TrainerController` until the separately approved migration.
+- For game identity or memory work, also read the [game detection](docs/features/game-detection.md) and [game memory](docs/features/game-memory.md) contracts. Use existing guides and individual game records for build instructions and evidence.
 
-Each rule has one authoritative home. Update that home and link to it elsewhere; do not duplicate policy in the README or rewrite research and guides as conventions.
+Apply rules within their stated scope. Update the single authoritative home of a changed rule; link to it elsewhere rather than copying it into `AGENTS.md` or the README. Keep one-time migration requirements in the task or PR.

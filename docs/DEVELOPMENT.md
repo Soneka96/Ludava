@@ -1,6 +1,6 @@
 # Development policy — personal project
 
-This document owns development workflow and practical contributor-free project policy. Cross-package architecture, source/type conventions, safety invariants, and shared testing rules are authoritative in [ARCHITECTURE.md](ARCHITECTURE.md). Flutter Redux specifics are in [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
+This document owns development workflow, Dart source conventions, frontend presentation style, and workspace tooling. Package boundaries and SDK safety contracts live in [architecture](ARCHITECTURE.md), test rules in [testing](TESTING.md), documentation governance in [documentation](DOCUMENTATION.md), and future Flutter Redux specifics in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
 Ludava is a personal project maintained solely by Soneka96. The owner does not solicit or accept external source contributions, unsolicited patches, feature implementations, or third-party pull requests.
 
@@ -9,7 +9,6 @@ Public visibility is for reading and learning; it is not an open-source license 
 ## Development workflow
 
 - Keep each branch and pull request focused on one task. Record the problem, evidence, scope, verification, and limitations in the task or PR.
-- Test behavior at its owner and use fakes or mocks at external boundaries. Keep integrations few and focused on important seams.
 - Do not claim a game/build is compatible without reproducible live-game validation. Automated tests and plausible values are not compatibility evidence.
 - Enable writes only for profile fields with research-confirmed or verified evidence. Keep Ludava live-runtime validation distinct from external research; process discovery and manual profile selection alone do not identify a live game/build.
 - Prefer incremental changes with clear responsibilities. Cross-package architecture is owned by [ARCHITECTURE.md](ARCHITECTURE.md); future Flutter Redux architecture is owned by [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
@@ -25,12 +24,33 @@ Check existing trainer references before adding a game or field, including Cheat
 - Research and test on the development machine where practical. Use the ROG Ally for final interactive testing; do not require lengthy handheld commands or add data-collection tooling when local evidence is available.
 - Reuse generic engine tests. Add focused mapping coverage and a proportionate smoke test where useful; do not require repeated approval ceremonies for each field.
 
-## Source and test practices
+## Dart source conventions
 
-- Follow [ARCHITECTURE.md](ARCHITECTURE.md#files-classes-and-methods) for file/member layout, enum/constants/type-alias and Dart documentation rules; follow its [testing strategy](ARCHITECTURE.md#testing) for test ownership, paths, names, fixtures, isolation, safety cases, and integration coverage.
-- Flutter tests that need GetIt use isolated scopes. The Redux migration's layer-specific coverage is defined in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md#migration-test-ownership).
+### Files, classes, and methods
 
-For methodless Nocterm component-tree tests driven through public pumping/input APIs, use one top-level group `Class ComponentName <observable area> behavior`; scenarios use `Class ComponentName <observable outcome>`. Keep these tests mirrored and assert visible output or dispatched actions. This naming exception applies only to component-tree behavior; adapters, controllers, and properties follow the usual method/property names in [ARCHITECTURE.md](ARCHITECTURE.md#testing).
+- Put each public class, entity, model, use case, repository, and data source in its own file. Name the file after its primary type and add a role suffix where it clarifies the type, such as `.entity.dart`, `.model.dart`, `.usecase.dart`, `.repository.dart`, or `.datasource.dart`.
+- Order class members consistently: public fields/properties first; constructors next (primary/unnamed, then named, then factory); private fields next; public methods/getters/setters next; private methods/getters last. Keep static constants before ordinary fields within their visibility group. Constructor-initialized public data stays above the constructor; private dependencies/state stay below it.
+- Keep small non-enum declarations with their owning concept when that keeps the file focused; give a type its own file when it has independent meaning or behavior. Enums follow the central-file rule below.
+- Methods belong to the class that owns the behavior. Put stateless calculations in a focused utility class in the owning feature; do not add orphan top-level helper methods or generic `utils`/`services` dumping grounds.
+- `main()` is the executable entry point and is the intentional top-level function exception; keep it limited to handing off to the CLI command.
+- Keep profile definitions in separate files by game and build. A profile catalog may register them, but the memory-reading flow remains shared.
+
+### Enums, constants, and type aliases
+
+- Put handwritten SDK and cross-package enums in `packages/ludava_sdk/lib/shared/constants/enums.dart`. Frontend-only enums stay with their frontend. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
+- Put `none` first in every enum as the unset/error sentinel; it is not a real selected game value or a default compatibility claim. Give the enum and each member a concise `///` comment.
+- Put SDK business constants in `packages/ludava_sdk/lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
+- Keep layout and widget sizing constants in the owning frontend, such as `apps/ludava_tui/lib/shared/constants/layout_constants.dart`; do not mix presentation sizing into SDK business constants. Create a constants file only when there are constants of that kind to own.
+- Keep platform/API implementation details such as Windows access flags beside the adapter that owns them, as private `static const` members. Do not move implementation-only values into shared application constants.
+- Do not add handwritten `typedef`s, including function aliases or aliases for record-shaped results. Use a named class with fields for data and an owning class/interface for behavior or injected callbacks. Generated/third-party declarations are exempt. Keep a typedef only where Dart or a native/framework interop API requires it, and document why at the declaration.
+- Central enum and constants files are deliberate grouping exceptions to the one-class-per-file rule within the owning package: SDK enums share `enums.dart`; each constants class is grouped in the file for its constant kind.
+
+### Dart documentation
+
+- Add concise `///` documentation to every public class, method, and property, and to every public or private method. Explain the contract, constraints, or non-obvious reason; do not narrate an obvious implementation.
+- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.canRead]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
+- Import a referenced symbol when needed for IDE completion and navigation. An import used only in a doc comment creates no runtime dependency; it must not be used by executable code. Architecture checks judge dependency direction from executable imports and usage, while allowing imports that exist only to resolve doc links.
+- Use `[Class]` and `[Class.member]` rather than plain-text names when referring to code. Keep comments aligned with what the symbol guarantees, especially compatibility and memory-write safety.
 
 ## Frontend interaction conventions
 
@@ -39,7 +59,8 @@ For methodless Nocterm component-tree tests driven through public pumping/input 
 - Keep Nocterm components focused on rendering and explicit actions; process discovery, identity detection, and memory operations remain in SDK application/data layers. The root owns screen selection, navigation, and subscription cleanup.
 - Handle keys in the focused screen or editor. Scope number shortcuts to their screen; editing keys do not also trigger menu actions. Escape cancels without applying or leaking terminal protocol bytes into text. Preserve cursor, selection, and focus across edits and navigation.
 - Windows input comes from the Win32 console adapter, which translates complete console key records to bytes. Do not negotiate Kitty or `modifyOtherKeys`: this backend does not consume those protocols. Forward input chunks; do not infer key boundaries with an Escape timeout. Negotiate only when a backend reads the matching terminal protocol.
-- Test raw terminal sequences at the input boundary when decoding affects visible behavior, including fragmented/coalesced input. Test component output and dispatched actions through public APIs. Cover cancellation-without-write, unavailable-values-not-zero, and invalid-input-not-written.
+
+For terminal input and component tests, see [testing conventions](TESTING.md#nocterm-input-tests).
 
 ### Flutter presentation and design system
 
@@ -59,20 +80,9 @@ Theme responsibilities stay separate:
 | `shared/constants/ludava_constants.dart` | Documented shared spacing and window/layout/breakpoint values grouped by concern. Reuse equivalent measurements; do not create a token for every occurrence. |
 | Component | A genuinely independent local implementation detail. |
 
-Test meaningful widgets in their own files and at their responsibility. SDK tests own write eligibility, validation, revalidation, and verified read-back. Theme tests own semantic mappings and central styles; component tests own explicit style overrides. Prefer behavior assertions over pixel goldens unless a stable golden adds clear value. Test startup/connection, SDK-driven values and permissions, editing/cancel, success/failure, and stale-session invalidation. Cover semantic colors in app and Material controls, style presets, initial/minimum window sizes, compact widths, overflow, long titles/values, scrolling, process selection, semantics, and focus. Test dynamic fields, including profiles with multiple fields. Exercise normal/edit/error layouts at 520×360 and 480×340 logical pixels for stable row geometry and no overflow. Inject only native window actions that need a widget-test seam; test actual dragging, resizing, minimize/maximize/restore, and DPI on Windows.
+For widget, theme, layout, focus, and native-window test requirements, see [Flutter widget testing conventions](TESTING.md#flutter-widget-and-presentation-tests).
 
-The approved Redux migration's detailed state, write, lifecycle, and test contracts are in [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md). Its task-specific visual acceptance criteria live in the migration PR/plan, not these permanent conventions.
-
-## Documentation ownership and upkeep
-
-- Keep one authoritative home per rule or fact; link to it elsewhere. `ARCHITECTURE.md` owns package/feature architecture; this document owns development, source/test, and documentation practices; Flutter conventions own future Redux specifics; `features/` describe behavior; `guides/` own operating/build instructions; `games/` own research; `ROADMAP.md` owns future initiatives.
-- Keep README as an introduction and navigation entrypoint. Do not maintain competing convention summaries there.
-- Update docs when behavior, public interfaces, supported games, research conclusions, architecture, or instructions change. Do not update them just to record commits, tests, or CI runs. Keep meaningful historical observations; remove duplicated or volatile status metadata.
-- Make additions self-contained. Keep each game's research in its game record and shared Collection evidence in `games/collection.md`; do not maintain a hand-written game index. General architecture may explain evidence rules but does not duplicate hashes or addresses.
-- Keep `ROADMAP.md` to meaningful future initiatives with a goal, scope, and done condition. Remove completed initiatives instead of retaining PR or test history.
-- Update only the document that owns a changed fact: feature mechanisms in `features/`, game/build findings in `games/`, build instructions in `guides/`, and future work in the roadmap. Do not edit unrelated files just to synchronize status summaries.
-- GitHub Actions is authoritative for current CI status. Permanent docs may describe validation categories and link to [Actions](https://github.com/Soneka96/Ludava/actions), but do not freeze run numbers or changing counts. PRs may record run-specific evidence.
-- Record durable rules in their owning docs before implementation. When changing a rule, update its authority and linked references rather than copying competing versions.
+The approved Redux migration's architectural contract is in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md); its temporary acceptance criteria live in its implementation PR or plan.
 
 ## Workspace development and CI
 

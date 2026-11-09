@@ -1,6 +1,6 @@
-# Architecture and testing strategy
+# Architecture and SDK contracts
 
-This document defines the target architecture for new and materially changed code. Ludava uses feature-first organization with Clean Architecture boundaries inside a feature. Add folders when a responsibility exists; do not scaffold empty layers.
+This document defines package and feature ownership, dependency direction, SDK contracts, and safety invariants for new and materially changed code. Ludava uses feature-first organization with Clean Architecture boundaries inside a feature. Add folders when a responsibility exists; do not scaffold empty layers. Source style lives in [development](DEVELOPMENT.md#dart-source-conventions), testing rules in [testing](TESTING.md), and documentation governance in [documentation](DOCUMENTATION.md).
 
 ## Feature ownership
 
@@ -37,8 +37,6 @@ SDK composition may construct dependencies, connect adapters to use cases, creat
 Nocterm and Flutter frontends consume public typed SDK contracts. They do not assemble native memory adapters, construct internal repositories/use cases, duplicate detection or write authorization, or parse formatted SDK output to recover business data. Presentation owns input, rendering, navigation, and user-facing messages. Nocterm is the sole supported interactive terminal; explicit diagnostic commands remain. Remove the obsolete text menu and its menu-only logic and tests. Keep a compatibility exception only for a documented, supported use case.
 
 Prefer small typed capabilities over redundant abstractions. The approved Flutter Redux migration may use GetIt inside `apps/ludava_app` for root and feature dependency registration as defined in [`FLUTTER_ARCHITECTURE_CONVENTIONS.md`](FLUTTER_ARCHITECTURE_CONVENTIONS.md); the SDK and TUI do not use a service locator or Redux. Do not add a command bus, generic action registry, unnecessary factory, behaviorless base class, or interface without a meaningful replacement/testing purpose.
-
-When a durable architectural rule is accepted, update the authoritative documentation, review it for consistency, commit that documentation, then implement and verify the change. See [`DEVELOPMENT.md`](DEVELOPMENT.md#documentation-ownership-and-upkeep) for the workflow.
 
 The SDK runtime is the primary public object for one engine instance. It owns SDK capabilities and their lifetimes; feature application services own behavior; the trainer session controller owns authoritative game/session state. Immutable snapshots contain application facts, never service instances, native handles, or dependency containers. The runtime is neither the state object nor a generic dependency registry. Frontends observe session state and invoke operations through typed runtime capabilities.
 
@@ -127,55 +125,9 @@ The diagnostics feature follows the same boundary: the TUI owns command syntax, 
 
 Construct application services and presentation dependencies at their composition roots. Prefer small behavior-owning interfaces for replaceable boundaries. SDK and TUI code do not use a global service locator or Redux. The approved future Flutter Redux migration uses GetIt only inside `apps/ludava_app` for root/feature dependencies and the eager store singleton; reducers and middleware are directly wired into `CreateStore`. See [`FLUTTER_ARCHITECTURE_CONVENTIONS.md`](FLUTTER_ARCHITECTURE_CONVENTIONS.md) for the complete contract and [`DEVELOPMENT.md`](DEVELOPMENT.md) for source, keyboard, and component testing conventions.
 
-## Files, classes, and methods
-
-- Put each public class, entity, model, use case, repository, and data source in its own file. Name the file after its primary type and add a role suffix where it clarifies the type, such as `.entity.dart`, `.model.dart`, `.usecase.dart`, `.repository.dart`, or `.datasource.dart`.
-- Order class members consistently: public fields/properties first; constructors next (primary/unnamed, then named, then factory); private fields next; public methods/getters/setters next; private methods/getters last. Keep static constants before ordinary fields within their visibility group. Constructor-initialized public data stays above the constructor; private dependencies/state stay below it.
-- Keep small non-enum declarations with their owning concept when that keeps the file focused; give a type its own file when it has independent meaning or behavior. Enums follow the central-file rule below.
-- Methods belong to the class that owns the behavior. Put stateless calculations in a focused utility class in the owning feature; do not add orphan top-level helper methods or generic `utils`/`services` dumping grounds.
-- `main()` is the executable entry point and is the intentional top-level function exception; keep it limited to handing off to the CLI command.
-- Keep profile definitions in separate files by game and build. A profile catalog may register them, but the memory-reading flow remains shared.
-- Name tests after the production file and mirror its path under `test/`, with `_test.dart` appended.
-
-## Enums, constants, and type aliases
-
-- Put handwritten SDK and cross-package enums in `packages/ludava_sdk/lib/shared/constants/enums.dart`. Frontend-only enums stay with their frontend. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
-- Put `none` first in every enum as the unset/error sentinel; it is not a real selected game value or a default compatibility claim. Give the enum and each member a concise `///` comment.
-- Put SDK business constants in `packages/ludava_sdk/lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
-- Keep layout and widget sizing constants in the owning frontend, such as `apps/ludava_tui/lib/shared/constants/layout_constants.dart`; do not mix presentation sizing into SDK business constants. Create a constants file only when there are constants of that kind to own.
-- Keep platform/API implementation details such as Windows access flags beside the adapter that owns them, as private `static const` members. Do not move implementation-only values into shared application constants.
-- Do not add handwritten `typedef`s, including function aliases or aliases for record-shaped results. Use a named class with fields for data and an owning class/interface for behavior or injected callbacks. Generated/third-party declarations are exempt. Keep a typedef only where Dart or a native/framework interop API requires it, and document why at the declaration.
-- Central enum and constants files are deliberate grouping exceptions to the one-class-per-file rule within the owning package: SDK enums share `enums.dart`; each constants class is grouped in the file for its constant kind.
-
-## Dart documentation
-
-- Add concise `///` documentation to every public class, method, and property, and to every public or private method. Explain the contract, constraints, or non-obvious reason; do not narrate an obvious implementation.
-- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.canRead]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
-- Import a referenced symbol when needed for IDE completion and navigation. An import used only in a doc comment creates no runtime dependency; it must not be used by executable code. Architecture checks judge dependency direction from executable imports and usage, while allowing imports that exist only to resolve doc links.
-- Use `[Class]` and `[Class.member]` rather than plain-text names when referring to code. Keep comments aligned with what the symbol guarantees, especially compatibility and memory-write safety.
-
-## Testing
-
-- Give each behavior one primary test owner: that component, class, or layer tests its behavior thoroughly. A consumer tests only its own contract and must not repeat the owner's full behavior suite. Before keeping a consumer test that exercises a dependency, answer: “What specific bug would this catch that the owner's tests would not?” If there is no defensible answer, remove or narrow the test.
-- Isolate consumer tests at existing dependency-injection boundaries with fakes, controlled results, and recorded callbacks. Flutter composition tests may render real child widgets and inspect their presence, public properties, callback forwarding, and parent-owned geometry; do not add fake-widget frameworks or production factories solely to replace visual children. Do not retest a child's validation, parsing, error formatting, state machine, or SDK policy through its parent.
-- Integration tests must establish a distinct integration contract, such as callback wiring, notification propagation, resource ownership, focus handoff, or lifecycle ordering. The same failure stimulus may appear at multiple layers only when each assertion protects a different owner responsibility; for example, rejecting a partial write, closing its native handle, invalidating session state, and showing a UI failure are separate contracts.
-- Keep policy matrices at their policy owner. The SDK owns generic write eligibility, identity, bounds, and memory safety decisions; frontends test representative approved/denied presentation and their response to changing eligibility, not every SDK condition again.
-- Test behavior at its owner: SDK tests own SDK behavior, TUI tests own terminal behavior, and Flutter tests own widget behavior. Parent widget tests own composition and wiring; they do not repeat a child's focused behavior tests. Integration tests cover important dependency boundaries and orchestration risks, not every unit-test condition again.
-- Generic behavior tests use synthetic `GameProfile` and `GameField` values. Frontend tests use synthetic profiles and session snapshots. They must not depend on current production game names, IDs, hashes, offsets, registration order, or a shared mutable catalog. The shared catalog-integrity suite and focused integration tests may use the production catalog for those specific responsibilities.
-- Do not require a test file for each game or mirror ordinary game-profile tests across the SDK and frontends. One shared, data-driven catalog suite validates every registered profile against structural invariants without a hardcoded profile list or count. Keep exceptional game-specific tests only for unique behavior, regressions, or special mappings. Record game research and live-game evidence in `docs/games/`; passing automated tests does not establish game/build compatibility.
-- Tests prove observable behavior, a contract, invariant, failure mode, or regression. Do not add tests only to restate constructor assignments, raw palette values, static configuration, ordinary per-game data, child behavior already covered at its owner, or private implementation details. Preserve meaningful immutability, validation, semantic theme, layout, accessibility, and safety contracts.
-- Keep helpers and fixture classes local to a test file by default and declare them above `main()`. Use small setup/build functions with useful defaults and optional named overrides. Put helpers in package-local `test/support/` only when multiple files in that package genuinely share them. Do not add universal fixture frameworks, test service locators, cross-package test support, or unnecessary dependency containers.
-- Keep tests independently maintainable: ordinary profile-data changes must not require generic SDK, TUI, or Flutter behavior-test changes; tests must not leak mutable state or rely on execution order.
-- Preserve distinct safety and lifecycle cases. Do not combine different rejected preconditions merely to shorten a suite. Cover unverified profiles, unsupported/read-only fields, missing confirmation, stale or incorrect process identity and PPU hash, process termination/change, memory-base changes, invalid values/ranges, address overflow, incomplete transfers, native and preliminary-read failures, read-back mismatch, cleanup failure, rejected dependency calls, and correct disposal. Never weaken write protection to simplify tests.
-- Use fakes for deterministic memory boundaries and test the Windows adapter through an injected native API; unit tests must not read or write a live game's memory. Keep a small number of Windows integration tests for important native seams.
-- Keep tests for root compatibility entry points and run those checks in workspace CI alongside the SDK and TUI suites.
-- Use one top-level group per public method, named `Method methodName() behaves correctly`. Name each scenario `Method methodName() <outcome>` and add `when <condition>` when the condition is not already clear from the outcome. Use clear outcomes such as `returns`, `preserves`, `rejects`, and `throws`.
-- Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
-- For entity/model construction tests, use `Class TypeName construction` and `Class TypeName initializes ...`. Keep each test name specific about the input and expected result.
-- Do not use nested test groups. Cover negative and boundary cases for every safety check, and pair a test that expects a collaborator call with a test proving it is not called when the precondition fails.
-- Mirror a focused test's path under its owning package when that path clarifies responsibility. Mirroring governs where a dedicated test belongs; it does not require a test for every production class or every profile. SDK tests must run without Nocterm or interactive stdin; TUI tests should use SDK fakes at the package boundary. Workspace CI must explicitly analyze and run each package suite rather than assuming a root test command discovers every workspace package.
-
 ## Safety invariants
+
+These SDK safety requirements are enforced by responsibility-focused tests under [testing conventions](TESTING.md#sdk-safety-and-native-integration).
 
 1. Only an explicitly selected profile and a field with `researchConfirmed` or `verified` write evidence can be written; report when Ludava has not checked the live runtime identity.
 2. Preserve 64-bit host addresses and validate the complete requested memory range.

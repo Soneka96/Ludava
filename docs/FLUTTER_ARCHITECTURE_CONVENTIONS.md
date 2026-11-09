@@ -1,6 +1,6 @@
 # Flutter architecture conventions
 
-These rules define the approved future Redux architecture for `apps/ludava_app`; they do not start its implementation. The checked-in MVP continues to use `TrainerController` until the owner approves a separate migration. Cross-package boundaries are owned by [ARCHITECTURE.md](ARCHITECTURE.md); development and test practices are in [DEVELOPMENT.md](DEVELOPMENT.md).
+These rules define the approved future Redux architecture for `apps/ludava_app`; they do not start its implementation. The checked-in MVP continues to use `TrainerController` until the owner approves a separate migration. Cross-package boundaries are in [architecture](ARCHITECTURE.md), source practices in [development](DEVELOPMENT.md), and shared test practices in [testing](TESTING.md).
 
 ## SDK authority and Redux state
 
@@ -74,7 +74,7 @@ The SDK remains responsible for current process/session identity, executable has
 
 ## Migration test ownership
 
-Preserve behavioral coverage from `TrainerController` tests and move it to the owner of the migrated behavior:
+Follow the shared [testing conventions](TESTING.md) for naming, fixtures, safety cases, and isolation. Preserve behavioral coverage from `TrainerController` tests and move it to the owner of the migrated behavior:
 
 | Test area | Owns |
 | --- | --- |
@@ -86,7 +86,7 @@ Preserve behavioral coverage from `TrainerController` tests and move it to the o
 | Dependency injection | Root/feature registrations, eager store identity, one SDK capability, isolated GetIt scopes, and lifetime ownership. |
 | Widgets | Inline editing, local draft/focus, keyboard behavior, fixed geometry, stable dynamic fields, and shutdown interaction. |
 
-Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. Mirror production paths under `apps/ludava_app/test/`. Avoid behaviorless-class tests and duplicate SDK write-validation coverage. Run the Flutter analyze/test commands from [DEVELOPMENT.md](DEVELOPMENT.md#workspace-development-and-ci) for the implementation migration; this documentation change does not run application tests.
+Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. Follow [shared testing conventions](TESTING.md#naming-and-placement) for test paths and behavior ownership. The migration must pass the [documented Flutter analysis and test commands](DEVELOPMENT.md#workspace-development-and-ci).
 
 ## Organization and references
 

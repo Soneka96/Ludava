@@ -55,7 +55,9 @@ The Dart workspace contains a reusable SDK (`packages/ludava_sdk`), the Nocterm 
 
 - [Architecture and workspace](docs/ARCHITECTURE.md)
 - [Approved future Flutter Redux conventions](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md) (the checked-in app currently uses `TrainerController`)
-- [Development and research conventions](docs/DEVELOPMENT.md)
+- [Development and source conventions](docs/DEVELOPMENT.md)
+- [Testing conventions](docs/TESTING.md)
+- [Documentation and convention maintenance](docs/DOCUMENTATION.md)
 - [Feature behavior](docs/features/game-detection.md)
 - [Game research and compatibility](docs/games/collection.md)
 - [Windows build and setup guide](docs/guides/windows-build.md)
@@ -64,7 +66,7 @@ The Dart workspace contains a reusable SDK (`packages/ludava_sdk`), the Nocterm 
 
 ## Engineering conventions
 
-Use [AGENTS.md](AGENTS.md) as the short navigation map for coding agents. The authoritative rules live in [architecture](docs/ARCHITECTURE.md), [development practices](docs/DEVELOPMENT.md), and [future Flutter Redux conventions](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md). Feature behavior, build guides, and game evidence remain in their linked documents above.
+Use [AGENTS.md](AGENTS.md) as the short task-based guide for coding agents. Architecture, development, testing, documentation, and Flutter Redux conventions each have one linked authoritative home. Feature behavior, build guides, and game evidence remain in their owning documents.
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 
