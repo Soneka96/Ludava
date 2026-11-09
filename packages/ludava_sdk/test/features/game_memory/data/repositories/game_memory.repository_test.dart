@@ -17,7 +17,7 @@ void main() {
       );
       final repository = GameMemoryRepository(source);
 
-      final result = repository.read(0x301329e80, 4);
+      final result = repository.read(0x300001234, 4);
 
       expect(result.status, MemoryReadStatus.complete);
       expect(result.bytes, [0, 0, 0, 42]);
@@ -61,7 +61,7 @@ void main() {
       );
       final repository = GameMemoryRepository(source);
 
-      final result = repository.write(0x301329e80, [0, 0, 0, 42]);
+      final result = repository.write(0x300001234, [0, 0, 0, 42]);
 
       expect(result.status, MemoryWriteStatus.complete);
       expect(result.bytesWritten, 4);

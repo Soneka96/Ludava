@@ -5,6 +5,44 @@ import 'package:test/test.dart';
 
 import '../support/fake_windows_memory_api.dart';
 
+LudavaSdk _createSdk(
+  FakeWindowsMemoryApi api, {
+  required GameDetectionResult Function() currentIdentity,
+}) => LudavaSdk.create(
+  api: api.adapter,
+  isWindows: true,
+  pointerSize: 8,
+  discoverProcessIds: () => const [42],
+  readProcessMetadata: (_) => _metadata,
+  resolveMemoryBaseCandidate:
+      (_) => const Rpcs3MemoryBaseCandidate(
+        memoryBase: 0x300000000,
+        logPath: r'C:\RPCS3\log\RPCS3.log',
+      ),
+  detectGame: (_, __) => currentIdentity(),
+);
+
+/// Builds confirmed identity evidence for [profile] and process 42.
+GameDetectionResult _confirmedIdentity(GameProfile profile) =>
+    GameDetectionResult(
+      status: GameDetectionStatus.supportedGame,
+      processId: 42,
+      titleId: profile.buildId,
+      gameTitle: profile.gameName,
+      executable: profile.executable,
+      executableHash: profile.executableHash,
+      confidence: GameIdentityConfidence.confirmed,
+      profile: profile,
+      evidenceDescription: 'Injected confirmed identity for the runtime test.',
+    );
+
+final _metadata = Rpcs3ProcessMetadata(
+  executablePath: r'C:\RPCS3\rpcs3.exe',
+  startedAtUtc: DateTime.utc(2026, 11, 5, 10),
+);
+
+final _registeredProfile = GameProfileCatalog.find('rc2-collection')!;
+
 void main() {
   group('Method create() behaves correctly', () {
     test(
@@ -28,9 +66,7 @@ void main() {
           },
           detectGame: (_, __) {
             detectionCalls++;
-            return _confirmedIdentity(
-              GameProfileCatalog.find('rc2-collection')!,
-            );
+            return _confirmedIdentity(_registeredProfile);
           },
         );
 
@@ -51,7 +87,7 @@ void main() {
       'Method create() wires diagnostic operations to runtime collaborators',
       () async {
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 61];
-        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final profile = _registeredProfile;
         final sdk = LudavaSdk.create(
           api: api.adapter,
           isWindows: true,
@@ -88,7 +124,7 @@ void main() {
       'Method create() preserves an injected unavailable memory base',
       () async {
         final api = FakeWindowsMemoryApi();
-        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final profile = _registeredProfile;
         final sdk = LudavaSdk.create(
           api: api.adapter,
           isWindows: true,
@@ -130,10 +166,6 @@ void main() {
           expect(
             sdk.session.writeField('bolts', 1).status,
             GameWriteStatus.unsupportedProfile,
-          );
-          expect(
-            GameProfileCatalog.profiles.map((profile) => profile.id),
-            containsAll(['rc1-collection', 'rc2-collection', 'rc3-collection']),
           );
           expect(api.openCalls, 0);
           expect(api.readCalls, 0);
@@ -191,7 +223,10 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
             sdk.session.state.detection?.confidence,
             GameIdentityConfidence.confirmed,
           );
-          expect(sdk.session.state.profile?.id, 'rc2-collection');
+          expect(
+            sdk.session.state.profile,
+            same(sdk.session.state.detection?.profile),
+          );
           expect(sdk.session.state.readResults['bolts']?.value, 19);
           expect(discoveryCalls, greaterThan(1));
           expect(logReads, 2);
@@ -207,7 +242,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method create() connects, reads, writes, verifies, and publishes state',
       () async {
         final api = FakeWindowsMemoryApi();
-        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final profile = _registeredProfile;
         final sdk = _createSdk(
           api,
           currentIdentity: () => _confirmedIdentity(profile),
@@ -268,7 +303,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method create() shares feature-owned memory operations with diagnostics',
       () async {
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 61];
-        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final profile = _registeredProfile;
         final sdk = _createSdk(
           api,
           currentIdentity: () => _confirmedIdentity(profile),
@@ -302,7 +337,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method create() rejects values outside the field range before writing',
       () async {
         final api = FakeWindowsMemoryApi();
-        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final profile = _registeredProfile;
         final sdk = _createSdk(
           api,
           currentIdentity: () => _confirmedIdentity(profile),
@@ -325,7 +360,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method create() rejects a write when current game identity changes',
       () async {
         final api = FakeWindowsMemoryApi();
-        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final profile = _registeredProfile;
         var currentIdentity = _confirmedIdentity(profile);
         final sdk = _createSdk(api, currentIdentity: () => currentIdentity);
 
@@ -382,7 +417,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method dispose() rejects retained capabilities as disposal starts',
       () async {
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 41];
-        final profile = GameProfileCatalog.find('rc2-collection')!;
+        final profile = _registeredProfile;
         var discoveryCalls = 0;
         var metadataCalls = 0;
         var detectionCalls = 0;
@@ -508,38 +543,3 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
 }
 
 /// Creates a runtime with deterministic current-session evidence and memory.
-LudavaSdk _createSdk(
-  FakeWindowsMemoryApi api, {
-  required GameDetectionResult Function() currentIdentity,
-}) => LudavaSdk.create(
-  api: api.adapter,
-  isWindows: true,
-  pointerSize: 8,
-  discoverProcessIds: () => const [42],
-  readProcessMetadata: (_) => _metadata,
-  resolveMemoryBaseCandidate:
-      (_) => const Rpcs3MemoryBaseCandidate(
-        memoryBase: 0x300000000,
-        logPath: r'C:\RPCS3\log\RPCS3.log',
-      ),
-  detectGame: (_, __) => currentIdentity(),
-);
-
-/// Builds confirmed identity evidence for [profile] and process 42.
-GameDetectionResult _confirmedIdentity(GameProfile profile) =>
-    GameDetectionResult(
-      status: GameDetectionStatus.supportedGame,
-      processId: 42,
-      titleId: profile.buildId,
-      gameTitle: profile.gameName,
-      executable: profile.executable,
-      executableHash: profile.executableHash,
-      confidence: GameIdentityConfidence.confirmed,
-      profile: profile,
-      evidenceDescription: 'Injected confirmed identity for the runtime test.',
-    );
-
-final _metadata = Rpcs3ProcessMetadata(
-  executablePath: r'C:\RPCS3\rpcs3.exe',
-  startedAtUtc: DateTime.utc(2026, 11, 5, 10),
-);

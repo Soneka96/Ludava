@@ -6,6 +6,68 @@ import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_rp
 import 'package:ludava_sdk/features/rpcs3_connection/data/datasources/windows_rpcs3_log_api.dart';
 import 'package:test/test.dart';
 
+class _NativeFileWriterApi {
+  final int Function(Pointer<Void>, int, Pointer<Int64>, int) setFilePointerEx;
+  final int Function(
+    Pointer<Void>,
+    Pointer<Uint8>,
+    int,
+    Pointer<Uint32>,
+    Pointer<Void>,
+  )
+  writeFile;
+
+  const _NativeFileWriterApi({
+    required this.setFilePointerEx,
+    required this.writeFile,
+  });
+
+  factory _NativeFileWriterApi.system() {
+    final kernel32 = DynamicLibrary.open('kernel32.dll');
+    return _NativeFileWriterApi(
+      setFilePointerEx: kernel32.lookupFunction<
+        Int32 Function(Pointer<Void>, Int64, Pointer<Int64>, Uint32),
+        int Function(Pointer<Void>, int, Pointer<Int64>, int)
+      >('SetFilePointerEx'),
+      writeFile: kernel32.lookupFunction<
+        Int32 Function(
+          Pointer<Void>,
+          Pointer<Uint8>,
+          Uint32,
+          Pointer<Uint32>,
+          Pointer<Void>,
+        ),
+        int Function(
+          Pointer<Void>,
+          Pointer<Uint8>,
+          int,
+          Pointer<Uint32>,
+          Pointer<Void>,
+        )
+      >('WriteFile'),
+    );
+  }
+
+  void append(Pointer<Void> handle, String text) {
+    final bytes = text.codeUnits;
+    final buffer = calloc<Uint8>(bytes.length);
+    final written = calloc<Uint32>();
+    try {
+      buffer.asTypedList(bytes.length).setAll(0, bytes);
+      if (setFilePointerEx(handle, 0, nullptr.cast<Int64>(), 2) == 0) {
+        throw StateError('SetFilePointerEx failed.');
+      }
+      if (writeFile(handle, buffer, bytes.length, written, nullptr) == 0 ||
+          written.value != bytes.length) {
+        throw StateError('WriteFile failed or completed a partial transfer.');
+      }
+    } finally {
+      calloc.free(written);
+      calloc.free(buffer);
+    }
+  }
+}
+
 void main() {
   group('Integration Windows RPCS3 log reading behaves correctly', () {
     test(
@@ -87,66 +149,4 @@ void main() {
       skip: !Platform.isWindows,
     );
   });
-}
-
-class _NativeFileWriterApi {
-  final int Function(Pointer<Void>, int, Pointer<Int64>, int) setFilePointerEx;
-  final int Function(
-    Pointer<Void>,
-    Pointer<Uint8>,
-    int,
-    Pointer<Uint32>,
-    Pointer<Void>,
-  )
-  writeFile;
-
-  const _NativeFileWriterApi({
-    required this.setFilePointerEx,
-    required this.writeFile,
-  });
-
-  factory _NativeFileWriterApi.system() {
-    final kernel32 = DynamicLibrary.open('kernel32.dll');
-    return _NativeFileWriterApi(
-      setFilePointerEx: kernel32.lookupFunction<
-        Int32 Function(Pointer<Void>, Int64, Pointer<Int64>, Uint32),
-        int Function(Pointer<Void>, int, Pointer<Int64>, int)
-      >('SetFilePointerEx'),
-      writeFile: kernel32.lookupFunction<
-        Int32 Function(
-          Pointer<Void>,
-          Pointer<Uint8>,
-          Uint32,
-          Pointer<Uint32>,
-          Pointer<Void>,
-        ),
-        int Function(
-          Pointer<Void>,
-          Pointer<Uint8>,
-          int,
-          Pointer<Uint32>,
-          Pointer<Void>,
-        )
-      >('WriteFile'),
-    );
-  }
-
-  void append(Pointer<Void> handle, String text) {
-    final bytes = text.codeUnits;
-    final buffer = calloc<Uint8>(bytes.length);
-    final written = calloc<Uint32>();
-    try {
-      buffer.asTypedList(bytes.length).setAll(0, bytes);
-      if (setFilePointerEx(handle, 0, nullptr.cast<Int64>(), 2) == 0) {
-        throw StateError('SetFilePointerEx failed.');
-      }
-      if (writeFile(handle, buffer, bytes.length, written, nullptr) == 0 ||
-          written.value != bytes.length) {
-        throw StateError('WriteFile failed or completed a partial transfer.');
-      }
-    } finally {
-      calloc.free(written);
-      calloc.free(buffer);
-    }
-  }
 }

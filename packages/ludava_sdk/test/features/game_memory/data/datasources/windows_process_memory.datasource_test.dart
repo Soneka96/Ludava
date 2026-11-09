@@ -5,6 +5,19 @@ import 'package:test/test.dart';
 
 import '../../../../support/fake_windows_memory_api.dart';
 
+abstract final class _WindowsProcessMemoryDataSourceTestData {
+  static WindowsProcessMemoryDataSource open(
+    FakeWindowsMemoryApi api, {
+    bool allowWrites = false,
+  }) => WindowsProcessMemoryDataSource.open(
+    42,
+    api: api.adapter,
+    isWindows: true,
+    pointerSize: 8,
+    allowWrites: allowWrites,
+  );
+}
+
 void main() {
   group('Method open() behaves correctly', () {
     test('Method open() requests read access only', () {
@@ -98,13 +111,13 @@ void main() {
             FakeWindowsMemoryApi()..readBytes = [0x00, 0x01, 0x23, 0x45];
         final source = _WindowsProcessMemoryDataSourceTestData.open(api);
 
-        final result = source.read(0x301329e80, 4);
+        final result = source.read(0x300001234, 4);
 
         expect(result.status, MemoryReadStatus.complete);
         expect(result.bytes, [0x00, 0x01, 0x23, 0x45]);
         expect(result.bytesRead, 4);
         expect(result.requestedBytes, 4);
-        expect(api.readAddress, 0x301329e80);
+        expect(api.readAddress, 0x300001234);
         expect(api.readCalls, 1);
         source.close();
       },
@@ -265,12 +278,12 @@ void main() {
           allowWrites: true,
         );
 
-        final result = source.write(0x301329e80, [10, 20, 30, 40]);
+        final result = source.write(0x300001234, [10, 20, 30, 40]);
 
         expect(result.status, MemoryWriteStatus.complete);
         expect(result.bytesWritten, 4);
         expect(result.bytesWritten, result.requestedBytes);
-        expect(api.writeAddress, 0x301329e80);
+        expect(api.writeAddress, 0x300001234);
         expect(api.writtenBytes, [10, 20, 30, 40]);
         source.close();
       },
@@ -378,17 +391,4 @@ void main() {
       expect(() => source.write(0x1000, [1]), throwsStateError);
     });
   });
-}
-
-abstract final class _WindowsProcessMemoryDataSourceTestData {
-  static WindowsProcessMemoryDataSource open(
-    FakeWindowsMemoryApi api, {
-    bool allowWrites = false,
-  }) => WindowsProcessMemoryDataSource.open(
-    42,
-    api: api.adapter,
-    isWindows: true,
-    pointerSize: 8,
-    allowWrites: allowWrites,
-  );
 }

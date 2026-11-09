@@ -1,6 +1,5 @@
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
-import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_read_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_write_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/repositories/Igame_memory.repository.dart';
@@ -9,10 +8,69 @@ import 'package:ludava_sdk/features/game_memory/domain/usecases/read_game_field.
 import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
+class _ReadGameFieldTestData implements IGameMemoryRepository {
+  int readCalls = 0;
+  int? lastAddress;
+  int? lastByteCount;
+
+  _ReadGameFieldTestData([MemoryReadResult? readResult])
+    : _readResult =
+          readResult ??
+          MemoryReadResult(
+            status: MemoryReadStatus.complete,
+            bytes: [0, 0, 0, 42],
+            bytesRead: 4,
+            requestedBytes: 4,
+          );
+
+  final MemoryReadResult _readResult;
+
+  static GameProfile profile({
+    VerificationStatus readStatus = VerificationStatus.experimental,
+    VerificationStatus fieldReadStatus = VerificationStatus.experimental,
+    MemoryValueType valueType = MemoryValueType.unsigned32,
+    ByteOrder byteOrder = ByteOrder.big,
+  }) => GameProfile(
+    id: 'synthetic-profile',
+    gameName: 'Test game',
+    buildId: 'TEST',
+    executable: 'test.exe',
+    readStatus: readStatus,
+    fields: {
+      'credits': GameField(
+        id: 'credits',
+        name: 'Credits',
+        guestOffset: 0x1234,
+        valueType: valueType,
+        byteOrder: byteOrder,
+        readStatus: fieldReadStatus,
+      ),
+    },
+  );
+
+  static _ReadGameFieldTestData repository({MemoryReadResult? readResult}) =>
+      _ReadGameFieldTestData(readResult);
+
+  @override
+  MemoryReadResult read(int address, int byteCount) {
+    readCalls++;
+    lastAddress = address;
+    lastByteCount = byteCount;
+    return _readResult;
+  }
+
+  @override
+  MemoryWriteResult write(int address, List<int> bytes) => MemoryWriteResult(
+    status: MemoryWriteStatus.invalidRequest,
+    bytesWritten: 0,
+    requestedBytes: bytes.length,
+  );
+}
+
 void main() {
   group('Method execute() behaves correctly', () {
     test(
-      'Method execute() reads four big-endian bytes at the Deadlocked session-relative address',
+      'Method execute() reads four big-endian bytes at a synthetic session-relative address',
       () {
         final repository = _ReadGameFieldTestData(
           MemoryReadResult(
@@ -24,8 +82,8 @@ void main() {
         );
         final result = ReadGameFieldUseCase(repository).execute(
           ReadGameFieldParams(
-            profile: DeadlockedPs3Profile.profile,
-            fieldId: 'bolts',
+            profile: _ReadGameFieldTestData.profile(),
+            fieldId: 'credits',
             memoryBase: 0x310000000,
           ),
         );
@@ -33,7 +91,7 @@ void main() {
         expect(result.status, GameReadStatus.success);
         expect(result.value, 0x00012345);
         expect(repository.readCalls, 1);
-        expect(repository.lastAddress, 0x3109c32e8);
+        expect(repository.lastAddress, 0x310001234);
         expect(repository.lastByteCount, 4);
       },
     );
@@ -50,16 +108,16 @@ void main() {
       final result = ReadGameFieldUseCase(repository).execute(
         ReadGameFieldParams(
           profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'bolts',
+          fieldId: 'credits',
           memoryBase: 0x300000000,
         ),
       );
 
       expect(result.status, GameReadStatus.success);
       expect(result.succeeded, isTrue);
-      expect(result.fieldId, 'bolts');
+      expect(result.fieldId, 'credits');
       expect(result.value, 42);
-      expect(repository.lastAddress, 0x301329e80);
+      expect(repository.lastAddress, 0x300001234);
       expect(repository.lastByteCount, 4);
     });
 
@@ -75,7 +133,7 @@ void main() {
       final result = ReadGameFieldUseCase(repository).execute(
         ReadGameFieldParams(
           profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'bolts',
+          fieldId: 'credits',
           memoryBase: 0x300000000,
         ),
       );
@@ -93,7 +151,7 @@ void main() {
       final result = ReadGameFieldUseCase(repository).execute(
         ReadGameFieldParams(
           profile: profile,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           memoryBase: 0x300000000,
         ),
       );
@@ -113,14 +171,14 @@ void main() {
         final unsupported = ReadGameFieldUseCase(repository).execute(
           ReadGameFieldParams(
             profile: profile,
-            fieldId: 'bolts',
+            fieldId: 'credits',
             memoryBase: 0x300000000,
           ),
         );
         final missing = ReadGameFieldUseCase(repository).execute(
           ReadGameFieldParams(
             profile: profile,
-            fieldId: 'health',
+            fieldId: 'missing',
             memoryBase: 0x300000000,
           ),
         );
@@ -137,7 +195,7 @@ void main() {
       final result = ReadGameFieldUseCase(repository).execute(
         ReadGameFieldParams(
           profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'bolts',
+          fieldId: 'credits',
           memoryBase: -1,
         ),
       );
@@ -168,7 +226,7 @@ void main() {
         );
         final params = ReadGameFieldParams(
           profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'bolts',
+          fieldId: 'credits',
           memoryBase: 0x300000000,
         );
 
@@ -213,7 +271,7 @@ void main() {
         final params =
             (GameProfile profile) => ReadGameFieldParams(
               profile: profile,
-              fieldId: 'bolts',
+              fieldId: 'credits',
               memoryBase: 0x300000000,
             );
 
@@ -235,63 +293,4 @@ void main() {
       },
     );
   });
-}
-
-class _ReadGameFieldTestData implements IGameMemoryRepository {
-  int readCalls = 0;
-  int? lastAddress;
-  int? lastByteCount;
-
-  _ReadGameFieldTestData([MemoryReadResult? readResult])
-    : _readResult =
-          readResult ??
-          MemoryReadResult(
-            status: MemoryReadStatus.complete,
-            bytes: [0, 0, 0, 42],
-            bytesRead: 4,
-            requestedBytes: 4,
-          );
-
-  final MemoryReadResult _readResult;
-
-  static GameProfile profile({
-    VerificationStatus readStatus = VerificationStatus.experimental,
-    VerificationStatus fieldReadStatus = VerificationStatus.experimental,
-    MemoryValueType valueType = MemoryValueType.unsigned32,
-    ByteOrder byteOrder = ByteOrder.big,
-  }) => GameProfile(
-    id: 'rc2-test',
-    gameName: 'Test game',
-    buildId: 'TEST',
-    executable: 'test.exe',
-    readStatus: readStatus,
-    fields: {
-      'bolts': GameField(
-        id: 'bolts',
-        name: 'Bolts',
-        guestOffset: 0x1329e80,
-        valueType: valueType,
-        byteOrder: byteOrder,
-        readStatus: fieldReadStatus,
-      ),
-    },
-  );
-
-  static _ReadGameFieldTestData repository({MemoryReadResult? readResult}) =>
-      _ReadGameFieldTestData(readResult);
-
-  @override
-  MemoryReadResult read(int address, int byteCount) {
-    readCalls++;
-    lastAddress = address;
-    lastByteCount = byteCount;
-    return _readResult;
-  }
-
-  @override
-  MemoryWriteResult write(int address, List<int> bytes) => MemoryWriteResult(
-    status: MemoryWriteStatus.invalidRequest,
-    bytesWritten: 0,
-    requestedBytes: bytes.length,
-  );
 }
