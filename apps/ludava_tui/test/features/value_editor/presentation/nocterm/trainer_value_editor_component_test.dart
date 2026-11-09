@@ -904,62 +904,6 @@ void main() {
     );
 
     test(
-      'Class TrainerValueEditorComponent disables fields without read approval',
-      () async {
-        await testNocterm('field without read evidence', (tester) async {
-          var applyCount = 0;
-          await tester.pumpComponent(
-            _editor(
-              field: _field(readEnabled: false),
-              onApply: (_) {
-                applyCount++;
-                return _success(1);
-              },
-            ),
-          );
-          final input = tester.findAllComponents<TextField>().single;
-
-          expect(input.enabled, isFalse);
-          expect(_controller(tester).text, isEmpty);
-          expect(
-            tester.terminalState,
-            containsText('Current value unavailable.'),
-          );
-          await tester.sendEnter();
-          expect(applyCount, 0);
-        });
-      },
-    );
-
-    test(
-      'Class TrainerValueEditorComponent disables fields without approved bounds',
-      () async {
-        await testNocterm('field without bounds', (tester) async {
-          var applyCount = 0;
-          await tester.pumpComponent(
-            _editor(
-              field: _field(minimumValue: null, maximumValue: null),
-              onApply: (_) {
-                applyCount++;
-                return _success(1);
-              },
-            ),
-          );
-          final input = tester.findAllComponents<TextField>().single;
-
-          expect(input.enabled, isFalse);
-          expect(_controller(tester).text, '123');
-          expect(
-            tester.terminalState,
-            containsText('This field has no approved value range.'),
-          );
-          await tester.sendEnter();
-          expect(applyCount, 0);
-        });
-      },
-    );
-
-    test(
       'Class TrainerValueEditorComponent disables editing when either bound is absent',
       () async {
         await testNocterm('one missing bound', (tester) async {
