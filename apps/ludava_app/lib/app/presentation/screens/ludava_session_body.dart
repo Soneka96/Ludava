@@ -3,7 +3,7 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/app/presentation/state/ludava_session_body_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
-import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel_connector.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
@@ -58,7 +58,7 @@ class LudavaSessionBody extends StatelessWidget {
                         ),
                       ),
               ),
-              const Expanded(child: TrainerFieldsPanelConnector()),
+              const Expanded(child: TrainerFieldsPanel()),
             ],
           );
         },

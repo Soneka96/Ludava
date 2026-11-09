@@ -3,7 +3,7 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_session_body.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
-import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel_connector.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
 import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
@@ -53,7 +53,7 @@ void main() {
         await tester.pumpWidget(wrap());
 
         expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanelConnector), findsNothing);
+        expect(find.byType(TrainerFieldsPanel), findsNothing);
         expect(find.text('Available RPCS3 processes'), findsOneWidget);
         expect(find.text('Process ID 42'), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -69,7 +69,7 @@ void main() {
 
         await tester.pumpWidget(wrap());
         expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanelConnector), findsNothing);
+        expect(find.byType(TrainerFieldsPanel), findsNothing);
 
         store().dispatch(
           TrainerSessionChangedAction(
@@ -79,7 +79,7 @@ void main() {
         await tester.pump();
 
         expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanelConnector), findsNothing);
+        expect(find.byType(TrainerFieldsPanel), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -92,7 +92,7 @@ void main() {
       await tester.pumpWidget(wrap());
 
       expect(find.byType(SessionConnectionBody), findsNothing);
-      expect(find.byType(TrainerFieldsPanelConnector), findsOneWidget);
+      expect(find.byType(TrainerFieldsPanel), findsOneWidget);
       expect(find.text('Credits'), findsOneWidget);
       expect(find.text('17'), findsOneWidget);
       expect(tester.takeException(), isNull);

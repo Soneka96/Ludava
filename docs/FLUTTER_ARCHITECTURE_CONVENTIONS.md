@@ -1,12 +1,12 @@
 # Flutter architecture conventions
 
-These rules define the approved future Redux architecture for `apps/ludava_app`; they do not start its implementation. The checked-in MVP continues to use `TrainerController` until the owner approves a separate migration. Cross-package boundaries are in [architecture](ARCHITECTURE.md), source practices in [development](DEVELOPMENT.md), and shared test practices in [testing](TESTING.md).
+These rules define the approved Redux architecture implemented in `apps/ludava_app`. Cross-package boundaries are in [architecture](ARCHITECTURE.md), source practices in [development](DEVELOPMENT.md), and shared test practices in [testing](TESTING.md).
 
 ## SDK authority and Redux state
 
 - Keep RPCS3 discovery, process/session identity, detection, memory access, write eligibility, verification, and `GameWriteResult` authoritative in the SDK. Flutter capabilities may present eligibility, but the SDK revalidates every read and write.
 - Reuse SDK types. Redux stores the complete immutable `TrainerSessionState` snapshot as one value and only `editingFieldId` as trainer-specific UI state. Do not duplicate SDK facts, errors, or policy, reshape SDK types for Redux, or add deep snapshot equality solely for Redux.
-- Keep Redux and GetIt inside `apps/ludava_app`; neither belongs in the SDK or Nocterm. The migration removes `TrainerController` as a state owner and does not leave a second permanent state system or compatibility controller.
+- Keep Redux and GetIt inside `apps/ludava_app`; neither belongs in the SDK or Nocterm. Redux is the Flutter presentation-state owner; do not add a parallel controller or compatibility state system.
 - Keep numeric drafts, text controllers, cursor selection, focus, and keyboard interaction local to the inline editor.
 
 ## Composition and dependency registration
@@ -16,7 +16,7 @@ These rules define the approved future Redux architecture for `apps/ludava_app`;
 - During GetIt composition, read the registered SDK capability's current `TrainerSessionState` snapshot exactly once, and use it to build the initial `AppState` passed explicitly to `CreateStore`. Do not subscribe to SDK state or dispatch initialization snapshots while constructing the store.
 - Eagerly construct exactly one `Store<AppState>` singleton at the root; build reducers and middleware directly into it rather than registering them in GetIt.
 - Use that same store for `StoreProvider`, ViewModel factories, and lifecycle dispatch. Register each ViewModel with `registerFactoryParam`; its only runtime parameter and its `.fromStore` constructor argument are `Store<AppState>`.
-- `LudavaApp` resolves migrated app services from GetIt; remove its obsolete controller and SDK constructor overrides as part of the migration.
+- `LudavaApp` resolves app services from GetIt and owns native window lifecycle; it does not accept trainer-controller or SDK overrides.
 - Pass ordinary callbacks from `LudavaApp` to native window buttons; buttons do not resolve GetIt or dispatch Redux actions.
 - ViewModels expose final presentation fields and callbacks only. A final callback may resolve a genuinely needed app service, but it does not call the SDK directly except through the synchronous write bridge below. Do not wrap SDK operations in repositories, data sources, or use cases without a real application-owned responsibility.
 
@@ -76,7 +76,7 @@ The SDK remains responsible for current process/session identity, executable has
 
 ## Migration test ownership
 
-Follow the shared [testing conventions](TESTING.md) for naming, fixtures, safety cases, and isolation. Preserve behavioral coverage from `TrainerController` tests and move it to the owner of the migrated behavior:
+Follow the shared [testing conventions](TESTING.md) for naming, fixtures, safety cases, and isolation. Each behavior is tested by its current owner:
 
 | Test area | Owns |
 | --- | --- |
@@ -88,7 +88,7 @@ Follow the shared [testing conventions](TESTING.md) for naming, fixtures, safety
 | Dependency injection | Root/feature registrations, exactly-once initial SDK snapshot read, eager store identity, one SDK capability, isolated GetIt scopes, and lifetime ownership. |
 | Widgets | Inline editing, local draft/focus, keyboard behavior, fixed geometry, stable dynamic fields, and shutdown interaction. |
 
-Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. Follow [shared testing conventions](TESTING.md#naming-and-placement) for test paths and behavior ownership. The migration must pass the [documented Flutter analysis and test commands](DEVELOPMENT.md#workspace-development-and-ci).
+Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. Follow [shared testing conventions](TESTING.md#naming-and-placement) for test paths and behavior ownership. The Flutter app must pass the [documented analysis and test commands](DEVELOPMENT.md#workspace-development-and-ci).
 
 ## Organization and references
 
@@ -104,4 +104,4 @@ apps/ludava_app/lib/
     └── presentation/state/       # trainer state/actions/reducer/middleware/selectors/ViewModels
 ```
 
-Reference implementations can inform organization and lifecycle: [Flutter starter root container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/injection_container.dart), [feature container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/features/github_explorer/github_explorer.injection_container.dart), [store construction](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/shared/state/create_store.dart), [DovahLink store and SDK observation middleware](https://github.com/Soneka96/DovahLink/tree/main/app/lib/shared/state), and [WorthLoop feature middleware](https://github.com/Soneka96/worthloop/tree/main/lib/features/products/presentation/state). Ludava's approved rules take precedence over every reference. Keep the migration scoped to existing Flutter responsibilities; SDK and Nocterm remain independent.
+Reference implementations can inform organization and lifecycle: [Flutter starter root container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/injection_container.dart), [feature container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/features/github_explorer/github_explorer.injection_container.dart), [store construction](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/shared/state/create_store.dart), [DovahLink store and SDK observation middleware](https://github.com/Soneka96/DovahLink/tree/main/app/lib/shared/state), and [WorthLoop feature middleware](https://github.com/Soneka96/worthloop/tree/main/lib/features/products/presentation/state). Ludava's approved rules take precedence over every reference. Keep Flutter state and UI work scoped to existing responsibilities; SDK and Nocterm remain independent.

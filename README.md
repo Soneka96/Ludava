@@ -54,7 +54,7 @@ The Dart workspace contains a reusable SDK (`packages/ludava_sdk`), the Nocterm 
 ## Documentation
 
 - [Architecture and workspace](docs/ARCHITECTURE.md)
-- [Approved future Flutter Redux conventions](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md) (the checked-in app currently uses `TrainerController`)
+- [Flutter Redux architecture conventions](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md)
 - [Development and source conventions](docs/DEVELOPMENT.md)
 - [Testing conventions](docs/TESTING.md)
 - [Documentation and convention maintenance](docs/DOCUMENTATION.md)

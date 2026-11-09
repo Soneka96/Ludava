@@ -1,6 +1,6 @@
 # Development policy — personal project
 
-This document owns development workflow, Dart source conventions, frontend presentation style, and workspace tooling. Package boundaries and SDK safety contracts live in [architecture](ARCHITECTURE.md), test rules in [testing](TESTING.md), documentation governance in [documentation](DOCUMENTATION.md), and future Flutter Redux specifics in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
+This document owns development workflow, Dart source conventions, frontend presentation style, and workspace tooling. Package boundaries and SDK safety contracts live in [architecture](ARCHITECTURE.md), test rules in [testing](TESTING.md), documentation governance in [documentation](DOCUMENTATION.md), and Flutter Redux specifics in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
 Ludava is a personal project maintained solely by Soneka96. The owner does not solicit or accept external source contributions, unsolicited patches, feature implementations, or third-party pull requests.
 
@@ -11,7 +11,7 @@ Public visibility is for reading and learning; it is not an open-source license 
 - Keep each branch and pull request focused on one task. Record the problem, evidence, scope, verification, and limitations in the task or PR.
 - Do not claim a game/build is compatible without reproducible live-game validation. Automated tests and plausible values are not compatibility evidence.
 - Enable writes only for profile fields with research-confirmed or verified evidence. Keep Ludava live-runtime validation distinct from external research; process discovery and manual profile selection alone do not identify a live game/build.
-- Prefer incremental changes with clear responsibilities. Cross-package architecture is owned by [ARCHITECTURE.md](ARCHITECTURE.md); future Flutter Redux architecture is owned by [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
+- Prefer incremental changes with clear responsibilities. Cross-package architecture is owned by [ARCHITECTURE.md](ARCHITECTURE.md); Flutter Redux architecture is owned by [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
 ## Researching game fields
 
@@ -82,7 +82,7 @@ Theme responsibilities stay separate:
 
 For widget, theme, layout, focus, and native-window test requirements, see [Flutter widget testing conventions](TESTING.md#flutter-widget-and-presentation-tests).
 
-The approved Redux migration's architectural contract is in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md); its temporary acceptance criteria live in its implementation PR or plan.
+The Flutter Redux implementation follows [Flutter architecture conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
 ## Workspace development and CI
 
