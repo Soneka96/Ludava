@@ -23,4 +23,16 @@ void main() {
       expect(const CancelEditingAction(), isA<CancelEditingAction>());
     });
   });
+
+  group('Class RefreshTrainerAction construction', () {
+    test('Class RefreshTrainerAction creates a refresh request', () {
+      expect(const RefreshTrainerAction(), isA<RefreshTrainerAction>());
+    });
+  });
+
+  group('Class SelectRpcs3ProcessAction construction', () {
+    test('Class SelectRpcs3ProcessAction retains the selected process ID', () {
+      expect(const SelectRpcs3ProcessAction(42).processId, 42);
+    });
+  });
 }

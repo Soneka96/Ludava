@@ -23,3 +23,18 @@ class CancelEditingAction {
   /// Creates an edit cancellation request.
   const CancelEditingAction();
 }
+
+/// Requests the middleware to refresh or rediscover the trainer session.
+class RefreshTrainerAction {
+  /// Creates a trainer refresh request.
+  const RefreshTrainerAction();
+}
+
+/// Requests selection of an RPCS3 process by [processId].
+class SelectRpcs3ProcessAction {
+  /// RPCS3 process identifier selected by the user.
+  final int processId;
+
+  /// Creates a process selection request for [processId].
+  const SelectRpcs3ProcessAction(this.processId);
+}

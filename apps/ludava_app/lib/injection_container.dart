@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_middleware.dart';
 import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/features/trainer/trainer.injection_container.dart';
 import 'package:ludava_app/shared/state/app_reducer.dart';
@@ -17,6 +18,7 @@ void initDependencies({TrainerSdkCapability? trainerSdkCapability}) {
     Store<AppState>(
       appReducer,
       initialState: AppState(trainer: TrainerState(session: initialSession)),
+      middleware: [TrainerMiddleware().call],
     ),
   );
 }
