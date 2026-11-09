@@ -1,120 +1,53 @@
 # Flutter architecture conventions
 
-## 1. Scope and SDK authority
+These rules define the approved future Redux architecture for `apps/ludava_app`; they do not start its implementation. The checked-in MVP continues to use `TrainerController` until the owner approves a separate migration. Cross-package boundaries are owned by [ARCHITECTURE.md](ARCHITECTURE.md); development and test practices are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
-- **MUST** treat these rules as the approved future Redux contract for `apps/ludava_app`; this document does not authorize implementation.
-- **MUST** keep the checked-in `TrainerController` as the current architecture until the separately approved migration replaces it.
-- **MUST** remove `TrainerController` as the Flutter state owner when the Redux migration is implemented; **MUST NOT** retain a second permanent state-management system or compatibility controller.
-- **MUST** keep RPCS3 discovery, process identity, detection, memory access, read/write authorization, verification, and `GameWriteResult` authoritative in the SDK.
-- **MUST** store the complete `TrainerSessionState` snapshot directly in Redux and keep `editingFieldId` as the only trainer-specific Redux UI state.
-- **MUST NOT** duplicate SDK-owned fields or policy in `TrainerState`.
-- **MUST** reuse SDK types instead of creating equivalent Flutter models.
-- **MUST NOT** change the SDK to make `TrainerSessionState` structurally equatable or add deep snapshot equality solely for Redux.
-- **MUST NOT** implement Redux or GetIt in `ludava_sdk` or the Nocterm TUI.
+## SDK authority and Redux state
 
-## 2. Dependency injection
+- Keep RPCS3 discovery, process/session identity, detection, memory access, write eligibility, verification, and `GameWriteResult` authoritative in the SDK. Flutter capabilities may present eligibility, but the SDK revalidates every read and write.
+- Reuse SDK types. Redux stores the complete immutable `TrainerSessionState` snapshot as one value and only `editingFieldId` as trainer-specific UI state. Do not duplicate SDK facts, errors, or policy, reshape SDK types for Redux, or add deep snapshot equality solely for Redux.
+- Keep Redux and GetIt inside `apps/ludava_app`; neither belongs in the SDK or Nocterm. The migration removes `TrainerController` as a state owner and does not leave a second permanent state system or compatibility controller.
+- Keep numeric drafts, text controllers, cursor selection, focus, and keyboard interaction local to the inline editor.
 
-- **MUST** use GetIt only inside `apps/ludava_app`.
-- **MUST** use one root `injection_container.dart` to register shared app services and initialize per-feature containers in dependency order.
-- **MUST** place trainer-specific registrations in `features/trainer/trainer.injection_container.dart`.
-- **MUST** place the Flutter SDK capability interface and adapter under the trainer feature's `services/` directory.
-- **MUST** register exactly one `TrainerSdkCapability` singleton.
-- **MUST NOT** register the underlying `LudavaSdk` separately from `TrainerSdkCapability`.
-- **MUST** eagerly construct and register exactly one `Store<AppState>` singleton in the root composition.
-- **MUST** pass the initial `AppState` explicitly to `CreateStore`; `CreateStore` **MUST NOT** resolve initial SDK state through GetIt.
-- **MUST** construct reducers and middleware directly and wire them into `CreateStore`.
-- **MUST NOT** register reducers or middleware in GetIt.
-- **MUST** use the same store for `StoreProvider`, ViewModel factories, and lifecycle dispatches.
-- **MUST** register each ViewModel with GetIt `registerFactoryParam` using only `Store<AppState>` as its runtime parameter.
-- **MUST** give each ViewModel a `.fromStore(Store<AppState> store)` constructor that receives only the store.
-- **MUST** have `LudavaApp` resolve app services from GetIt after migration.
-- **MUST** remove obsolete controller and SDK constructor overrides from `LudavaApp` during migration.
-- **MAY** resolve a genuinely needed service through `sl` inside a final ViewModel callback.
-- **MUST NOT** make a ViewModel callback perform a direct SDK operation except through the synchronous write bridge in §7.
-- **MUST NOT** add repository, datasource, or use-case wrappers around SDK operations without an application-owned responsibility such as preferences or backend access.
-- **MUST** pass ordinary callbacks from `LudavaApp` to native-window buttons.
-- **MUST NOT** let native-window buttons resolve GetIt or dispatch Redux actions themselves.
+## Composition and dependency registration
 
-## 3. Redux store, states, actions and reducers
+- Use one root `injection_container.dart` to register app dependencies and initialize feature containers in dependency order. Put trainer registrations and the `TrainerSdkCapability` interface/adapter in the trainer feature (`trainer.injection_container.dart`, `services/`).
+- Register exactly one `TrainerSdkCapability` singleton; do not separately register its underlying `LudavaSdk`.
+- Eagerly construct exactly one `Store<AppState>` singleton at the root. Pass its initial `AppState` explicitly to `CreateStore`; build reducers and middleware directly into the store rather than registering them in GetIt.
+- Use that same store for `StoreProvider`, ViewModel factories, and lifecycle dispatch. Register each ViewModel with `registerFactoryParam`; its only runtime parameter and its `.fromStore` constructor argument are `Store<AppState>`.
+- `LudavaApp` resolves migrated app services from GetIt; remove its obsolete controller and SDK constructor overrides as part of the migration.
+- Pass ordinary callbacks from `LudavaApp` to native window buttons; buttons do not resolve GetIt or dispatch Redux actions.
+- ViewModels expose final presentation fields and callbacks only. A final callback may resolve a genuinely needed app service, but it does not call the SDK directly except through the synchronous write bridge below. Do not wrap SDK operations in repositories, data sources, or use cases without a real application-owned responsibility.
 
-- **MUST** keep `AppState` and feature state immutable.
-- **MUST** use `Equatable` with explicit `props` for `AppState`, feature states, and ViewModels.
-- **MUST** use `combineReducers` and `TypedReducer` to compose reducers.
-- **MUST** keep reducers pure: reducers **MUST NOT** resolve GetIt, call the SDK, perform I/O, or call widgets.
-- **MUST** return the original state object for a genuine no-op transition.
-- **MUST** reconcile each SDK snapshot and any edit invalidation atomically.
-- **MUST** ignore an SDK snapshot when it is the identical object already held in state.
-- **MUST** retain an active edit only while the selected process ID and process start time remain the same.
-- **MUST** retain an active edit only while detection status and confidence remain the same.
-- **MUST** retain an active edit only while profile ID, executable hash, and memory base remain the same.
-- **MUST** retain an active edit only while its field exists and the SDK reports a valid write target.
-- **MUST** preserve the failed-read/write-result exception: a failed read for the edited field alone does not invalidate its draft when `lastWriteResult.fieldId` identifies that field.
-- **MUST** invalidate editing when any other session-safety condition becomes stale or invalid.
-- **MUST NOT** weaken existing process, game, session, or write-target safety checks or duplicate SDK write authorization in Flutter.
-- **MUST** keep SDK-owned errors in `TrainerSessionState` and have selectors read them from that snapshot.
-- **MUST** use plain typed immutable actions whose names end in `Action`.
-- **MUST** keep action payloads minimal.
-- **MUST** make `BeginEditingAction` carry only `fieldId`; its reducer resolves the field from the authoritative session.
-- **MUST** place global `InitializeAppAction` and `ShutdownRequestedAction` in `shared/state/app.actions.dart`.
-- **MUST** place trainer actions inside the trainer feature.
-- **MAY** give an action a reducer, middleware handler, both when each has a responsibility, or neither.
-- **MUST NOT** require every action to have a reducer and middleware handler.
-- **MUST NOT** add intermediate or forwarding actions when the SDK snapshot already expresses the result.
-- **MUST NOT** make actions `Equatable`; the mutable cleanup collection on `ShutdownRequestedAction` is the approved exception to immutable action payloads.
+## State, actions, and reducers
 
-## 4. Middleware and SDK observation
+- Keep `AppState` and feature state immutable; use `Equatable` with explicit `props` for states and ViewModels. Compose pure reducers with `combineReducers` and `TypedReducer`.
+- Reducers perform no lookup, SDK call, I/O, or widget work. Return the original object for a genuine no-op. Reconcile an SDK snapshot and any edit invalidation atomically; ignore the identical snapshot object already held.
+- Keep an active edit only while all of these still match the authoritative session: process ID and start time; detection status and confidence; profile ID, executable hash, and memory base; field existence; and SDK write-target eligibility.
+- Preserve the failed-read exception: a failed read for the edited field alone does not clear its draft when `lastWriteResult.fieldId` identifies that field. Any other stale or invalid safety condition cancels editing.
+- Use plain, typed, minimal actions ending in `Action`. `BeginEditingAction` carries only `fieldId`; its reducer resolves the field from the SDK snapshot. Put global `InitializeAppAction` and `ShutdownRequestedAction` in `shared/state/app.actions.dart`, and trainer actions in the trainer feature.
+- An action may be handled by a reducer, middleware, both when each has work, or neither. Do not require pass-through handling, add forwarding actions when an SDK snapshot already represents the result, or make actions `Equatable`. The one approved mutable action payload is the cleanup-future collection on `ShutdownRequestedAction`.
 
-- **MUST** implement Redux middleware with `MiddlewareClass<AppState>`.
-- **MUST** resolve the SDK capability through `sl` in middleware.
-- **MUST** call `next(action)` before handling an action, following the owner's next-first convention.
-- **MUST** use `switch (action)` for intercepted actions.
-- **MUST** route each intercepted action to one dedicated private handler whose name removes `Action` and lower-camel-cases the remainder; for example, `RefreshTrainerAction` routes to `_refreshTrainer()` and `SelectProcessAction` routes to `_selectProcess()`.
-- **MUST NOT** put substantial work inside switch cases or merge unrelated actions into generic handlers.
-- **MUST NOT** handle actions for which the middleware has no responsibility.
-- **MUST** preserve both refresh paths: discovery/connect when no process is selected, and SDK refresh when one is selected.
-- **MUST** use the typed process-selection action for process selection.
-- **MUST** catch and report unexpected SDK command exceptions at the middleware operation boundary.
-- **MUST** make `TrainerMiddleware` the sole owner of SDK session observation.
-- **MUST** subscribe to the SDK session stream before connecting or beginning discovery in response to `InitializeAppAction`.
-- **MUST** dispatch authoritative session updates from the SDK stream.
-- **MUST NOT** manually dispatch duplicate session snapshots after SDK commands.
-- **MUST** report unexpected stream errors without reconnecting or inventing session data.
-- **MUST** ignore late SDK updates after terminal shutdown begins.
-- **MUST NOT** reopen the SDK operation guard after shutdown begins.
-- **MUST NOT** introduce a generic action registry, command bus, second SDK runtime, or mandatory pass-through SDK layers.
+## Middleware and observation
 
-## 5. Selectors and ViewModels
+- Implement middleware as `MiddlewareClass<AppState>`, resolve the capability through `sl`, and call `next(action)` before handling it.
+- Use `switch (action)` to route only owned actions to dedicated private handlers (`RefreshTrainerAction` → `_refreshTrainer()`). Keep substantive work in those handlers; do not combine unrelated actions into generic handlers.
+- Preserve both refresh paths: discover/connect when no process is selected, and refresh the SDK session when one is selected. Use the typed process-selection action.
+- `TrainerMiddleware` is the sole owner of SDK session observation. On `InitializeAppAction`, subscribe before connecting or discovering, then dispatch authoritative SDK snapshots. Do not dispatch duplicate snapshots after commands.
+- Catch and report unexpected command exceptions at the operation boundary. Report stream errors without reconnecting or inventing state. Ignore late SDK updates after shutdown starts; never reopen the SDK operation guard.
+- Do not add an action registry, command bus, second SDK runtime, or mandatory pass-through layer.
 
-- **MUST** start with one trainer feature-level selector class, such as `TrainerSelectors`.
-- **MUST** keep state selection, filtering, and derived presentation calculations in pure selectors.
-- **MUST NOT** resolve GetIt, call SDK commands, or perform I/O in selectors.
-- **MUST NOT** add a selector framework or memoization without a demonstrated requirement.
-- **MUST** give each widget that directly consumes Redux its own `StoreConnector` and widget-specific ViewModel.
-- **MUST** keep the `StoreConnector` inside the connected widget and set `distinct: true`.
-- **MUST** include presentation-relevant state values in each ViewModel's `Equatable.props`.
-- **MUST NOT** include callback identity in ViewModel equality.
-- **MUST** expose only final presentation properties and final callback fields from a ViewModel.
-- **MUST NOT** add operation methods, filtering, business rules, subscriptions, or SDK calls to ViewModels.
-- **MUST NOT** create one general ViewModel for unrelated widgets.
-- **MUST NOT** use any ViewModel constructor or factory argument other than `Store<AppState>`.
+## Selectors, ViewModels, and widgets
 
-## 6. Generic widgets and presentation
+- Start with one trainer-level selector class. Keep selectors pure: state selection, filtering, and derived presentation calculations only; no GetIt, commands, I/O, selector framework, or memoization without demonstrated need.
+- Each widget that directly consumes Redux owns its `StoreConnector` and widget-specific ViewModel, with `distinct: true`. Include all presentation-relevant state in `Equatable.props`, excluding callback identity. Do not use one general ViewModel for unrelated widgets or give ViewModels operation methods, rules, filtering, or subscriptions.
+- Keep generic presentation widgets independent of Redux, GetIt, and SDK services. Pass typed values and callbacks. Use one connected field-list widget with generic presentational rows, keyed by stable field ID; generated rows do not get separate ViewModels.
+- Keep meaningful visual components in named `Widget` classes in focused files. Do not hide them in private visual subclasses or private widget-returning builders. Do not create wrappers or layers without a responsibility.
 
-- **MUST** keep generic presentation widgets independent of Redux, GetIt, and SDK services.
-- **MUST** pass ordinary typed properties and callbacks into generic presentation widgets.
-- **MUST** use one connected field-list widget with generic presentational field rows.
-- **MUST** key dynamic field rows by stable field ID.
-- **MUST** keep numeric drafts, text controllers, cursor selection, focus, and keyboard interaction local to the inline editor.
-- **MUST NOT** create separate Redux ViewModels for generated field rows.
-- **MUST NOT** define private visual `Widget` subclasses or private visual widget-builder methods.
+## Synchronous write bridge
 
-## 7. Synchronous writes and editing
-
-- **MUST** preserve synchronous `GameWriteResult` handling.
-- **MUST** route writes through one small guarded bridge using the same registered SDK capability as middleware.
-- **MUST** expose the bridge through the appropriate widget-specific ViewModel's final callback.
-- **MUST** check the terminal SDK operation guard before calling the SDK.
-- **MUST** return synchronously without calling the SDK when the guard is closed, using the SDK-defined unsuccessful sentinel:
+- Preserve synchronous `GameWriteResult` handling through one small bridge using the same registered capability as middleware. Expose it as a final callback on the appropriate ViewModel and check the shared one-way SDK operation guard before the call.
+- If the guard is closed, return synchronously without calling the SDK, using its defined unsuccessful sentinel:
 
   ```dart
   GameWriteResult(
@@ -124,104 +57,49 @@
   )
   ```
 
-- **MUST NOT** invent SDK result constructors, enum values, statuses, or successful results.
-- **MUST NOT** call the SDK after the operation guard closes.
-- **MUST NOT** turn writes into fire-and-forget Redux actions or infer success from dispatch.
-- **MUST NOT** dispatch cancellation from the write bridge.
-- **MUST** invoke `InlineValueEditor.onApplied` only after a successful write or its existing unchanged-value behavior.
-- **MUST** let the `onApplied` callback dispatch the editing-cancellation action for the reducer to apply.
-- **MUST** retain a valid draft and display SDK feedback after a failed write.
-- **MUST** preserve unchanged-value behavior and synchronous SDK stream reentrancy during writes.
-- **MUST NOT** repeat the SDK's complete write-validation matrix in Flutter.
+- Never invent SDK result constructors, statuses, or success; do not call the SDK after the guard closes, convert writes to fire-and-forget actions, infer success from dispatch, or dispatch cancellation from the bridge.
+- `InlineValueEditor.onApplied` runs only after a successful write or existing unchanged-value behavior; it dispatches the edit-cancellation action for the reducer. Failed writes retain a valid draft and show SDK feedback. Preserve unchanged-value behavior and synchronous stream reentrancy. Flutter does not repeat the SDK's full write-validation matrix.
 
-## 8. Initialization and shutdown
-- **MUST** configure native-window lifecycle handling before dispatching `InitializeAppAction`.
-- **MUST** initialize middleware through `InitializeAppAction` and subscribe before connection or discovery.
-- **MUST** make initialization idempotent and prevent initialization from restarting the SDK after shutdown begins.
-- **MUST NOT** initialize middleware through direct application-to-middleware lifecycle calls.
-- **MUST** close the shared one-way SDK operation guard immediately before dispatching global `ShutdownRequestedAction`.
-- **MUST NOT** globally disable Redux dispatch during shutdown.
-- **MUST** let only middleware that owns cleanup register its cleanup future on `ShutdownRequestedAction` during synchronous dispatch.
-- **MUST** expose one mutable cleanup-future collection on `ShutdownRequestedAction` for those registrations; **MUST NOT** add a middleware registry, generic event bus, or second shutdown coordinator.
-- **MUST** preserve next-first middleware behavior while registering shutdown cleanup.
-- **MUST** catch a synchronous cleanup invocation failure and add it to the cleanup collection as a failed future so other middleware can participate.
-- **MUST** catch a synchronous cleanup registration failure and add it to the cleanup collection as a failed future so other middleware can participate.
-- **MUST** await every registered cleanup operation even when one fails.
-- **MUST** report each cleanup failure without hiding failures from other operations.
-- **MUST** attempt SDK disposal exactly once after middleware cleanup settles and await its completion before native-window close.
-- **MUST** report SDK disposal errors through the existing close-failure handling.
-- **MUST** preserve overlapping-close coalescing, native-close veto handling, close-failure UI, and retry behavior.
-- **MUST NOT** repeat SDK cleanup or recreate resources when a native-close retry occurs.
-- **MUST** keep the store alive until application teardown, including when native close fails and the UI remains mounted.
-- **MUST** make application tree-disposal fallback close the operation guard and dispatch `ShutdownRequestedAction` if shutdown has not started.
-- **MUST** have tree-disposal fallback await the same registered middleware cleanup before awaiting the same terminal SDK-disposal future used by native close.
-- **MUST NOT** race SDK disposal against active middleware observation.
-- **MUST NOT** dispose the SDK through GetIt or rely on widget disposal as the primary shutdown path.
-- **MUST NOT** allow an SDK restart after shutdown begins.
-- **MUST** keep native-window lifecycle state in `LudavaApp`; window buttons receive callbacks from the close coordinator and preserve minimize, maximize, and restore behavior.
-- **MUST** stop new middleware subscriptions and begin cancellation only once when shutdown starts.
+The SDK remains responsible for current process/session identity, executable hash, profile and field evidence, memory base, user approval, type/range, complete preliminary read, complete native transfer, and matching read-back. Failed/partial reads are not zero. Unsupported, stale, ambiguous, or unverified targets fail closed according to the [game detection](features/game-detection.md) and [game memory](features/game-memory.md) contracts.
 
-## 9. Testing conventions
+## Initialization and native shutdown
 
-- **MUST** test meaningful behavior at its owning Redux layer and preserve the responsibilities currently covered by `TrainerController` tests.
-- **MUST** replace obsolete `TrainerController` tests with equivalent reducer, middleware, write-bridge, lifecycle, selector/ViewModel, DI, or widget tests owned by the migrated behavior.
-- **MUST NOT** retain tests that only target a deleted `TrainerController` class.
-- **MUST NOT** remove behavioral coverage to simplify migration.
-- **MUST** test pure reducers and selectors without GetIt.
-- **MUST** mock SDK dependencies in Flutter tests and use isolated GetIt scopes when injection is required.
-- **MUST NOT** repeat the SDK's full write-validation matrix in Flutter tests.
-- **MUST** mirror production paths under `apps/ludava_app/test/` and name tests after their production files.
-- **MUST NOT** add tests for behaviorless classes solely to increase coverage.
-- **MUST** cover reducer no-op identity, eligibility, snapshot replacement, same-session draft preservation, failed-read exception, and invalidation for each session-safety condition.
-- **MUST** cover middleware action routing, refresh and process-selection behavior, stream projection, subscribe-before-connect ordering, idempotent initialization, command/stream error reporting, and terminal guards.
-- **MUST** cover lifecycle startup idempotence, cleanup collection and failures, exactly-once disposal, native veto, close failure and retry, overlapping close requests, tree-disposal fallback, and store lifetime.
-- **MUST** cover synchronous write result propagation, failure, shutdown rejection, and reentrant SDK events.
-- **MUST** cover selector-derived values, ViewModel callback dispatch and equality, and connected-widget behavior.
-- **MUST** cover inline editing, local draft and focus, keyboard behavior, fixed geometry, stable dynamic field lists, and shutdown interaction.
-- **MUST** cover root/feature registrations, eager store identity, the single SDK capability, isolated GetIt scopes, and lifetime ownership.
-- **MUST** run the documented Flutter analyze and test commands in [`DEVELOPMENT.md`](DEVELOPMENT.md) for the implementation migration.
+- Configure native-window lifecycle handling before dispatching `InitializeAppAction`. Initialize middleware through that action; subscribe before connection/discovery. Initialization is idempotent and cannot restart the SDK after shutdown begins. Do not call middleware lifecycle methods directly.
+- On shutdown, close the shared one-way SDK operation guard immediately before dispatching global `ShutdownRequestedAction`. Keep Redux dispatch available; do not globally disable it.
+- Only middleware that owns cleanup registers its future in the action's single mutable collection during synchronous dispatch. Preserve next-first middleware order. Convert synchronous cleanup invocation or registration failures into failed futures so other cleanup can register; await every cleanup and report each failure without hiding the others.
+- After middleware cleanup settles, attempt SDK disposal exactly once and await it before allowing native close. Report disposal errors through close-failure handling. Do not race disposal with active observation, dispose the SDK through GetIt, or depend on widget disposal as the primary path.
+- `LudavaApp` owns native-window lifecycle state. It coalesces overlapping close requests, honors native-close veto, shows close failure, and allows retry. A retry does not repeat cleanup or recreate resources. If native close fails, the app stays terminal and the store remains alive while the UI is mounted; disposed SDK resources are never reused.
+- Tree-disposal cleanup is a fallback: if shutdown has not started, close the guard and dispatch the same shutdown action; then await the same registered middleware cleanup and terminal SDK-disposal future. Begin observation cancellation only once.
+- Window buttons receive callbacks from the close coordinator and keep minimize, maximize, and restore behavior.
 
-## 10. File organization
+## Migration test ownership
 
-- **MUST** keep the Redux store and global actions/state/reducer under `shared/state/`.
-- **MUST** keep trainer Redux state, actions, reducer, middleware, selectors, and ViewModels inside the trainer feature.
-- **MUST** use this organization as a baseline, not as a reason to create empty directories or speculative layers:
+Preserve behavioral coverage from `TrainerController` tests and move it to the owner of the migrated behavior:
 
-  ```text
-  apps/ludava_app/lib/
-  ├── injection_container.dart
-  ├── shared/state/
-  │   ├── app.actions.dart
-  │   ├── app.state.dart
-  │   ├── app.reducer.dart
-  │   └── create_store.dart
-  └── features/trainer/
-      ├── trainer.injection_container.dart
-      ├── services/
-      └── presentation/state/
-          ├── trainer.state.dart
-          ├── trainer.actions.dart
-          ├── trainer.reducer.dart
-          ├── trainer.middleware.dart
-          ├── trainer.selectors.dart
-          └── viewmodels/
-  ```
+| Test area | Owns |
+| --- | --- |
+| Reducers | No-op identity, eligibility, snapshot replacement, same-session draft preservation, the failed-read exception, and stale-session invalidation. |
+| Middleware | Action routing, refresh/process selection, stream projection, subscribe-before-connect, idempotent initialization, error reporting, and terminal guards. |
+| Lifecycle | Startup idempotence, cleanup collection/failures, exactly-once disposal, native veto, close failure/retry, overlapping requests, tree-disposal fallback, and store lifetime. |
+| Write bridge | Synchronous results, failures, shutdown rejection, and reentrant SDK events. |
+| Selectors/ViewModels | Derived values, callback dispatch, equality, and connected-widget behavior. |
+| Dependency injection | Root/feature registrations, eager store identity, one SDK capability, isolated GetIt scopes, and lifetime ownership. |
+| Widgets | Inline editing, local draft/focus, keyboard behavior, fixed geometry, stable dynamic fields, and shutdown interaction. |
 
-- **MAY** use the owner starter's root/feature DI, store, Redux state, reducer, selector, and ViewModel organization as a reference: [root container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/injection_container.dart), [feature container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/features/github_explorer/github_explorer.injection_container.dart), [store construction](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/shared/state/create_store.dart), and [GitHub Explorer state](https://github.com/Soneka96/flutter-clean-architecture-starter/tree/main/lib/features/github_explorer/presentation/state).
-- **MAY** use [DovahLink's store and composition](https://github.com/Soneka96/DovahLink/tree/main/app/lib/shared/state) and [SDK observation middleware](https://github.com/Soneka96/DovahLink/blob/main/app/lib/features/live_state/presentation/state/live_state.middleware.dart) as lifecycle references.
-- **MAY** use [WorthLoop's feature middleware](https://github.com/Soneka96/worthloop/tree/main/lib/features/products/presentation/state) as a middleware organization reference.
-- **MUST** follow Ludava's explicit rules whenever a reference project differs from an approved decision.
-- **MUST** keep the migration focused on existing app responsibilities and preserve SDK and Nocterm independence.
+Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. Mirror production paths under `apps/ludava_app/test/`. Avoid behaviorless-class tests and duplicate SDK write-validation coverage. Run the Flutter analyze/test commands from [DEVELOPMENT.md](DEVELOPMENT.md#workspace-development-and-ci) for the implementation migration; this documentation change does not run application tests.
 
-## 11. Migration acceptance checklist
+## Organization and references
 
-- **MUST** preserve exactly one Refresh button and current process discovery and selection behavior.
-- **MUST** preserve fixed 48-pixel field rows with no layout shifts.
-- **MUST** preserve inline numeric editing, Enter/check apply, and Escape/cross cancel.
-- **MUST** preserve editor focus, cursor, and keyboard behavior without unnecessary focus changes.
-- **MUST** preserve SDK-authoritative field values, failed-write feedback, valid draft retention, and successful read-back display.
-- **MUST** preserve same-session draft state and invalidate stale-session drafts.
-- **MUST** preserve existing native-window controls, Graphite and Teal visual conventions, strict SDK disposal, and native-close retry behavior.
-- **MUST** use the existing central shell interaction boundary and shutdown overlay to disable user interaction after shutdown starts.
-- **MUST NOT** change runtime behavior, SDK behavior, TUI behavior, dependencies, Flutter widgets, or production code as part of this documentation contract.
-- **MUST** wait for separate owner approval before beginning the Redux implementation PR.
+Use this as a placement guide, not a required empty scaffold:
+
+```text
+apps/ludava_app/lib/
+├── injection_container.dart
+├── shared/state/                 # app state, actions, reducer, store creation
+└── features/trainer/
+    ├── trainer.injection_container.dart
+    ├── services/                 # SDK capability
+    └── presentation/state/       # trainer state/actions/reducer/middleware/selectors/ViewModels
+```
+
+Reference implementations can inform organization and lifecycle: [Flutter starter root container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/injection_container.dart), [feature container](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/features/github_explorer/github_explorer.injection_container.dart), [store construction](https://github.com/Soneka96/flutter-clean-architecture-starter/blob/main/lib/shared/state/create_store.dart), [DovahLink store and SDK observation middleware](https://github.com/Soneka96/DovahLink/tree/main/app/lib/shared/state), and [WorthLoop feature middleware](https://github.com/Soneka96/worthloop/tree/main/lib/features/products/presentation/state). Ludava's approved rules take precedence over every reference. Keep the migration scoped to existing Flutter responsibilities; SDK and Nocterm remain independent.

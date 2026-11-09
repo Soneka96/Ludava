@@ -62,14 +62,9 @@ The Dart workspace contains a reusable SDK (`packages/ludava_sdk`), the Nocterm 
 - [Optional diagnostic commands](docs/guides/diagnostics.md)
 - [Future initiatives](docs/ROADMAP.md)
 
-## Engineering principles
+## Engineering conventions
 
-1. Add abstractions only for a real boundary or requirement.
-2. Keep catalog data, RPCS3 integration, game detection, generic memory access, and trainer presentation in their owning features.
-3. Test each behavior at its owner, using fakes for process-memory boundaries.
-4. A failed read is never a zero; fields without write-enabling research stay disabled.
-5. Automated tests and plausible values do not prove game/build compatibility.
-6. Keep work incremental and report limitations honestly.
+Use [AGENTS.md](AGENTS.md) as the short navigation map for coding agents. The authoritative rules live in [architecture](docs/ARCHITECTURE.md), [development practices](docs/DEVELOPMENT.md), and [future Flutter Redux conventions](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md). Feature behavior, build guides, and game evidence remain in their linked documents above.
 
 Ludava is intended as a **new, independently implemented project**, not a renamed fork or translated copy of [ParadoxEpoch's RatchetHax](https://github.com/ParadoxEpoch/RatchetHax), which is GPLv3 licensed. Cite research, independently reproduce critical measurements, and review provenance before reusing third-party code or curated data.
 
