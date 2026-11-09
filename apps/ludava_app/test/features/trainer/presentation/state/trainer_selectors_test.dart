@@ -8,6 +8,15 @@ import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
+  group('Method session() behaves correctly', () {
+    test('Method session() returns the authoritative SDK snapshot', () {
+      final session = trainerStateFixtureSession();
+      final state = AppState(trainer: TrainerState(session: session));
+
+      expect(TrainerSelectors.session(state), same(session));
+    });
+  });
+
   group('Method fields() behaves correctly', () {
     test('Method fields() selects the synthetic profile fields', () {
       final state = AppState(
@@ -28,6 +37,61 @@ void main() {
       );
 
       expect(TrainerSelectors.fields(state), isEmpty);
+    });
+  });
+
+  group('Method readResult() behaves correctly', () {
+    test('Method readResult() selects the SDK result for a field', () {
+      final result = const GameReadResult(
+        status: GameReadStatus.success,
+        fieldId: 'credits',
+        value: 25,
+      );
+      final state = AppState(
+        trainer: TrainerState(
+          session: trainerStateFixtureSession(readResult: result),
+        ),
+      );
+      final field = state.trainer.session.profile!.fields['credits']!;
+
+      expect(TrainerSelectors.readResult(state, field), same(result));
+    });
+  });
+
+  group('Method writeResult() behaves correctly', () {
+    test(
+      'Method writeResult() returns only a result for its matching field',
+      () {
+        final result = const GameWriteResult(
+          status: GameWriteStatus.writeFailed,
+          fieldId: 'credits',
+          requestedValue: 25,
+        );
+        final state = AppState(
+          trainer: TrainerState(
+            session: trainerStateFixtureSession(lastWriteResult: result),
+          ),
+        );
+        final matchingField = state.trainer.session.profile!.fields['credits']!;
+        final otherField = trainerStateFixtureField(id: 'scrap');
+
+        expect(
+          TrainerSelectors.writeResult(state, matchingField),
+          same(result),
+        );
+        expect(TrainerSelectors.writeResult(state, otherField), isNull);
+      },
+    );
+  });
+
+  group('Method canRead() behaves correctly', () {
+    test('Method canRead() reflects profile and field read permission', () {
+      final state = AppState(
+        trainer: TrainerState(session: trainerStateFixtureSession()),
+      );
+      final field = state.trainer.session.profile!.fields['credits']!;
+
+      expect(TrainerSelectors.canRead(state, field), isTrue);
     });
   });
 
@@ -65,6 +129,27 @@ void main() {
       );
 
       expect(TrainerSelectors.editingField(state), isNull);
+    });
+  });
+
+  group('Method isEditing() behaves correctly', () {
+    test('Method isEditing() requires a matching valid active edit', () {
+      final state = AppState(
+        trainer: TrainerState(
+          session: trainerStateFixtureSession(),
+          editingFieldId: 'credits',
+        ),
+      );
+      final field = state.trainer.session.profile!.fields['credits']!;
+
+      expect(TrainerSelectors.isEditing(state, field), isTrue);
+      expect(
+        TrainerSelectors.isEditing(
+          state,
+          trainerStateFixtureField(id: 'scrap'),
+        ),
+        isFalse,
+      );
     });
   });
 }

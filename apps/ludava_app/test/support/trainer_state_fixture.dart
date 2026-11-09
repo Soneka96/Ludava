@@ -17,6 +17,7 @@ GameField trainerStateFixtureField({String id = 'credits'}) => GameField(
 TrainerSessionState trainerStateFixtureSession({
   String fieldId = 'credits',
   List<String> additionalFieldIds = const [],
+  String gameName = 'Synthetic Game',
   int memoryBase = 0x1000,
   int processId = 42,
   DateTime? startedAtUtc,
@@ -34,7 +35,7 @@ TrainerSessionState trainerStateFixtureSession({
   };
   final profile = GameProfile(
     id: profileId,
-    gameName: 'Synthetic Game',
+    gameName: gameName,
     buildId: 'test-build',
     executable: 'synthetic.exe',
     executableHash: executableHash,
