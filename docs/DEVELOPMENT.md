@@ -32,13 +32,13 @@ Check existing trainer references before adding a game or field, including Cheat
 - Order class members consistently: public fields/properties first; constructors next (primary/unnamed, then named, then factory); private fields next; public methods/getters/setters next; private methods/getters last. Keep static constants before ordinary fields within their visibility group. Constructor-initialized public data stays above the constructor; private dependencies/state stay below it.
 - Keep small non-enum declarations with their owning concept when that keeps the file focused; give a type its own file when it has independent meaning or behavior. Enums follow the central-file rule below.
 - Methods belong to the class that owns the behavior. Put stateless calculations in a focused utility class in the owning feature; do not add orphan top-level helper methods or generic `utils`/`services` dumping grounds.
-- `main()` is the executable entry point and is the intentional top-level function exception; keep it limited to handing off to the CLI command.
+- Keep each package's `main()` minimal: perform only essential entry-point initialization, then delegate to its application bootstrap or command runner. Keep business logic, feature orchestration, and incidental setup in their owning components; `main()` is not a general configuration or initialization container.
 - Keep profile definitions in separate files by game and build. A profile catalog may register them, but the memory-reading flow remains shared.
 
 ### Enums, constants, and type aliases
 
 - Put handwritten SDK and cross-package enums in `packages/ludava_sdk/lib/shared/constants/enums.dart`. Frontend-only enums stay with their frontend. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
-- Put `none` first in every enum as the unset/error sentinel; it is not a real selected game value or a default compatibility claim. Give the enum and each member a concise `///` comment.
+- Put `none` first in every handwritten enum, including frontend-local enums. Treat it as an invalid or unset sentinel, never as a valid selected state or implicit success. Handle an encountered `none` explicitly with an appropriate warning, error, or safe rejection; do not invent a meaningful transition solely for the sentinel. Give the enum and each member a concise `///` comment.
 - Put SDK business constants in `packages/ludava_sdk/lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
 - Keep layout and widget sizing constants in the owning frontend, such as `apps/ludava_tui/lib/shared/constants/layout_constants.dart`; do not mix presentation sizing into SDK business constants. Create a constants file only when there are constants of that kind to own.
 - Keep platform/API implementation details such as Windows access flags beside the adapter that owns them, as private `static const` members. Do not move implementation-only values into shared application constants.
@@ -95,10 +95,6 @@ The approved Redux migration's architectural contract is in [Flutter conventions
 - `tool/check_workspace_boundaries.ps1` enforces package boundaries, public SDK entry points, removed legacy paths, and cross-package imports; `tool/test_workspace_boundaries.ps1` tests the checker. Review directory purpose and duplicated policy against [ARCHITECTURE.md](ARCHITECTURE.md), which cannot be fully enforced mechanically.
 - CI formatting checks only Dart files added or changed from the PR base (`main` on branch pushes; previous commit on `main`). It resolves a missing comparison base or fails; it does not treat Git errors as an empty file list. Renames use the new path, deletions are skipped, paths with spaces are safe, and the check is read-only. Format a historical Dart file when materially changing it; do not pull unrelated findings into a task.
 - These are internal engineering standards, not contributor instructions.
-
-## Windows last-error capture
-
-For Tool Help calls that report failure through `GetLastError`, the `rpcs3_connection` native wrapper invokes the Win32 operation, reads `GetLastError` immediately, and returns both through its output parameter. Dart must not call `GetLastError` later: the FFI transition can lose the thread-local value. The build script compiles this wrapper to `build/ludava_process_discovery.dll`; keep it limited to process discovery.
 
 ## Third-party research and licensing
 

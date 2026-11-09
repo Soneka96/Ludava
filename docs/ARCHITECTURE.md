@@ -136,6 +136,10 @@ These SDK safety requirements are enforced by responsibility-focused tests under
 5. A write requires a research-confirmed or verified field, a valid value range, a deliberate user action, a complete native transfer, and a matching read-back. The TUI uses Enter to apply; diagnostic commands require `--confirm-write`. Live-game validation is required before claiming Ludava compatibility.
 6. Surface process and native errors; do not silently retry writes.
 
+## Windows last-error capture
+
+For Tool Help calls that report failure through `GetLastError`, the `rpcs3_connection` native wrapper invokes the Win32 operation, reads `GetLastError` immediately, and returns both through its output parameter. Dart must not call `GetLastError` later: the FFI transition can lose the thread-local value. The build script compiles this wrapper to `build/ludava_process_discovery.dll`; keep it limited to process discovery.
+
 ## Compatibility evidence
 
 Compatibility is recorded per exact game/build and capability. Keep experimental, read-verified, write-verified, and unsupported states distinct. A process ID, selected profile, passing unit test, or plausible value is not proof of game identity or compatibility. See [per-game evidence](games/collection.md) for the evidence required to change a status.
