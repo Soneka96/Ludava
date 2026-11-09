@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/services/sdk_operation_gate.dart';
 import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
+import 'package:ludava_app/features/trainer/services/trainer_write_bridge.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -20,6 +21,7 @@ void main() {
       expect(sl.isRegistered<TrainerSdkCapability>(), isTrue);
       expect(sl.isRegistered<SdkOperationGate>(), isTrue);
       expect(sl.isRegistered<Store<AppState>>(), isTrue);
+      expect(sl.isRegistered<TrainerWriteBridge>(), isTrue);
       expect(sl<Store<AppState>>(), same(sl<Store<AppState>>()));
       expect(
         sl<Store<AppState>>().state.trainer.session,
