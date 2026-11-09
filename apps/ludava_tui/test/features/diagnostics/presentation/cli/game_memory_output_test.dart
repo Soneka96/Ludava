@@ -2,35 +2,57 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava_tui/features/diagnostics/presentation/cli/game_memory_output.dart';
 import 'package:test/test.dart';
 
+final _profile = GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'TEST00001',
+  executable: 'SYNTHETIC.self',
+  readStatus: VerificationStatus.experimental,
+  writeStatus: VerificationStatus.researchConfirmed,
+  fields: {
+    'credits': GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      readStatus: VerificationStatus.experimental,
+      writeStatus: VerificationStatus.researchConfirmed,
+      minimumValue: 0,
+      maximumValue: 0xffffffff,
+    ),
+  },
+);
+
 void main() {
   group('Method readResult() behaves correctly', () {
     test(
       'Method readResult() displays the selected field and decoded value',
       () {
         final output = GameMemoryOutput.readResult(
-          _rc2Profile,
+          _profile,
           const GameReadResult(
             status: GameReadStatus.success,
-            fieldId: 'bolts',
+            fieldId: 'credits',
             value: 0,
           ),
         );
 
-        expect(output, contains('rc2-collection'));
+        expect(output, contains('synthetic-profile'));
         expect(output, contains('Profile status: experimental'));
         expect(output, contains('profile selection is manual or unverified'));
         expect(output, contains('Status: read complete'));
-        expect(output, contains('Field: bolts'));
+        expect(output, contains('Field: credits'));
         expect(output, contains('Value: 0'));
       },
     );
 
     test('Method readResult() displays a failed read and native error', () {
       final output = GameMemoryOutput.readResult(
-        _rc2Profile,
+        _profile,
         const GameReadResult(
           status: GameReadStatus.readFailed,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           errorCode: 299,
         ),
       );
@@ -42,8 +64,11 @@ void main() {
 
     test('Method readResult() labels a success without a value invalid', () {
       final output = GameMemoryOutput.readResult(
-        _rc2Profile,
-        const GameReadResult(status: GameReadStatus.success, fieldId: 'bolts'),
+        _profile,
+        const GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: 'credits',
+        ),
       );
 
       expect(output, contains('Status: invalid read result'));
@@ -62,8 +87,8 @@ void main() {
 
       for (final entry in expectedStatuses.entries) {
         final output = GameMemoryOutput.readResult(
-          _rc2Profile,
-          GameReadResult(status: entry.key, fieldId: 'bolts'),
+          _profile,
+          GameReadResult(status: entry.key, fieldId: 'credits'),
         );
 
         expect(output, contains(entry.value));
@@ -72,17 +97,17 @@ void main() {
 
     test('Method readResult() displays mapping and partial-read failures', () {
       final invalidMapping = GameMemoryOutput.readResult(
-        _rc2Profile,
+        _profile,
         const GameReadResult(
           status: GameReadStatus.invalidMapping,
-          fieldId: 'bolts',
+          fieldId: 'credits',
         ),
       );
       final incompleteRead = GameMemoryOutput.readResult(
-        _rc2Profile,
+        _profile,
         const GameReadResult(
           status: GameReadStatus.incompleteRead,
-          fieldId: 'bolts',
+          fieldId: 'credits',
         ),
       );
 
@@ -96,10 +121,10 @@ void main() {
   group('Method writeResult() behaves correctly', () {
     test('Method writeResult() displays matching read-back evidence', () {
       final output = GameMemoryOutput.writeResult(
-        _rc2Profile,
+        _profile,
         const GameWriteResult(
           status: GameWriteStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 42,
           readBackValue: 42,
         ),
@@ -114,10 +139,10 @@ void main() {
 
     test('Method writeResult() reports confirmed runtime identity', () {
       final output = GameMemoryOutput.writeResult(
-        _rc2Profile,
+        _profile,
         const GameWriteResult(
           status: GameWriteStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 42,
           readBackValue: 42,
         ),
@@ -130,35 +155,35 @@ void main() {
 
     test('Method writeResult() explains rejected and failed writes', () {
       final confirmationRequired = GameMemoryOutput.writeResult(
-        _rc2Profile,
+        _profile,
         const GameWriteResult(
           status: GameWriteStatus.confirmationRequired,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 42,
         ),
       );
       final invalidValue = GameMemoryOutput.writeResult(
-        _rc2Profile,
+        _profile,
         const GameWriteResult(
           status: GameWriteStatus.invalidValue,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 0x100000000,
         ),
       );
       final readBackFailed = GameMemoryOutput.writeResult(
-        _rc2Profile,
+        _profile,
         const GameWriteResult(
           status: GameWriteStatus.readBackFailed,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 42,
           errorCode: 299,
         ),
       );
       final preliminaryReadFailed = GameMemoryOutput.writeResult(
-        _rc2Profile,
+        _profile,
         const GameWriteResult(
           status: GameWriteStatus.preliminaryReadFailed,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 42,
           errorCode: 299,
         ),
@@ -199,8 +224,8 @@ void main() {
 
       for (final entry in expectedStatuses.entries) {
         final output = GameMemoryOutput.writeResult(
-          _rc2Profile,
-          GameWriteResult(status: entry.key, fieldId: 'bolts'),
+          _profile,
+          GameWriteResult(status: entry.key, fieldId: 'credits'),
         );
 
         expect(output, contains(entry.value));
@@ -208,6 +233,3 @@ void main() {
     });
   });
 }
-
-/// Resolves the selected RC2 profile through the public SDK catalog.
-GameProfile get _rc2Profile => GameProfileCatalog.find('rc2-collection')!;

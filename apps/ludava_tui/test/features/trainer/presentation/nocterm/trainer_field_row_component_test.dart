@@ -3,6 +3,27 @@ import 'package:ludava_tui/features/trainer/presentation/nocterm/trainer_field_r
 import 'package:nocterm/nocterm_test.dart' show containsText, testNocterm;
 import 'package:test/test.dart';
 
+final _field = GameField(
+  id: 'credits',
+  name: 'Credits',
+  guestOffset: 0x1000,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.verified,
+);
+
+final _writableField = GameField(
+  id: 'credits',
+  name: 'Credits',
+  guestOffset: 0x1000,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.researchConfirmed,
+  minimumValue: 0,
+  maximumValue: 0xffffffff,
+);
+
 void main() {
   group('Class TrainerFieldRowComponent rendering behavior', () {
     test(
@@ -16,7 +37,7 @@ void main() {
               canEdit: true,
               readResult: GameReadResult(
                 status: GameReadStatus.success,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 value: 1234567,
               ),
               selected: true,
@@ -24,7 +45,7 @@ void main() {
           );
 
           expect(tester.terminalState, containsText('❯'));
-          expect(tester.terminalState, containsText('1. Bolts'));
+          expect(tester.terminalState, containsText('1. Credits'));
           expect(tester.terminalState, containsText('1,234,567'));
         });
       },
@@ -41,14 +62,14 @@ void main() {
               canEdit: false,
               readResult: const GameReadResult(
                 status: GameReadStatus.success,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 value: 1234,
               ),
               selected: false,
             ),
           );
 
-          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1. Credits (read-only)'));
           expect(tester.terminalState, containsText('1,234'));
         });
       },
@@ -65,14 +86,14 @@ void main() {
               canEdit: false,
               readResult: const GameReadResult(
                 status: GameReadStatus.success,
-                fieldId: 'bolts',
+                fieldId: 'credits',
                 value: 1234,
               ),
               selected: true,
             ),
           );
 
-          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1. Credits (read-only)'));
           expect(tester.terminalState, containsText('1,234'));
         });
       },
@@ -89,7 +110,7 @@ void main() {
               canEdit: false,
               readResult: const GameReadResult(
                 status: GameReadStatus.readFailed,
-                fieldId: 'bolts',
+                fieldId: 'credits',
               ),
               selected: false,
             ),
@@ -97,7 +118,7 @@ void main() {
 
           expect(tester.terminalState, containsText('Unavailable'));
           expect(tester.terminalState, isNot(containsText('0')));
-          expect(tester.terminalState, containsText('Bolts'));
+          expect(tester.terminalState, containsText('Credits'));
         });
       },
     );
@@ -123,24 +144,3 @@ void main() {
     );
   });
 }
-
-final _field = GameField(
-  id: 'bolts',
-  name: 'Bolts',
-  guestOffset: 0x1000,
-  valueType: MemoryValueType.unsigned32,
-  byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-);
-
-final _writableField = GameField(
-  id: 'bolts',
-  name: 'Bolts',
-  guestOffset: 0x1000,
-  valueType: MemoryValueType.unsigned32,
-  byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.researchConfirmed,
-  minimumValue: 0,
-  maximumValue: 0xffffffff,
-);

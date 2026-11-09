@@ -5,6 +5,42 @@ import 'package:nocterm/nocterm_test.dart'
     show LogicalKey, containsText, testNocterm;
 import 'package:test/test.dart';
 
+TrainerProcessPickerComponent _picker(
+  List<int> processIds, {
+  void Function(int processId)? onSelectProcess,
+  void Function()? onRefresh,
+  void Function()? onRedetect,
+  void Function()? onQuit,
+}) => TrainerProcessPickerComponent(
+  processIds: processIds,
+  onSelectProcess: onSelectProcess ?? (_) {},
+  onRefresh: onRefresh ?? () {},
+  onRedetect: onRedetect ?? () {},
+  onQuit: onQuit ?? () {},
+);
+
+class _ProcessPickerHost extends StatefulComponent {
+  final void Function(int processId) onSelectProcess;
+
+  const _ProcessPickerHost({required this.onSelectProcess});
+
+  @override
+  State<_ProcessPickerHost> createState() => _ProcessPickerHostState();
+}
+
+class _ProcessPickerHostState extends State<_ProcessPickerHost> {
+  List<int> _processIds = [41, 42, 43];
+
+  /// Replaces the process results while preserving the picker state.
+  void updateProcessIds(List<int> processIds) {
+    setState(() => _processIds = processIds);
+  }
+
+  @override
+  Component build(BuildContext context) =>
+      _picker(_processIds, onSelectProcess: component.onSelectProcess);
+}
+
 void main() {
   group('Class TrainerProcessPickerComponent selection behavior', () {
     test(
@@ -182,40 +218,4 @@ void main() {
       },
     );
   });
-}
-
-TrainerProcessPickerComponent _picker(
-  List<int> processIds, {
-  void Function(int processId)? onSelectProcess,
-  void Function()? onRefresh,
-  void Function()? onRedetect,
-  void Function()? onQuit,
-}) => TrainerProcessPickerComponent(
-  processIds: processIds,
-  onSelectProcess: onSelectProcess ?? (_) {},
-  onRefresh: onRefresh ?? () {},
-  onRedetect: onRedetect ?? () {},
-  onQuit: onQuit ?? () {},
-);
-
-class _ProcessPickerHost extends StatefulComponent {
-  final void Function(int processId) onSelectProcess;
-
-  const _ProcessPickerHost({required this.onSelectProcess});
-
-  @override
-  State<_ProcessPickerHost> createState() => _ProcessPickerHostState();
-}
-
-class _ProcessPickerHostState extends State<_ProcessPickerHost> {
-  List<int> _processIds = [41, 42, 43];
-
-  /// Replaces the process results while preserving the picker state.
-  void updateProcessIds(List<int> processIds) {
-    setState(() => _processIds = processIds);
-  }
-
-  @override
-  Component build(BuildContext context) =>
-      _picker(_processIds, onSelectProcess: component.onSelectProcess);
 }

@@ -4,6 +4,75 @@ import 'package:ludava_tui/shared/terminal/trainer_terminal_backend.dart';
 import 'package:nocterm/nocterm.dart' show Size, TerminalBackend;
 import 'package:test/test.dart';
 
+class _FakeTerminalBackend implements TerminalBackend {
+  _FakeTerminalBackend({this.provideInput = true});
+
+  /// Whether the fake exposes its controlled input stream.
+  final bool provideInput;
+
+  final StreamController<List<int>> _input =
+      StreamController<List<int>>.broadcast(sync: true);
+
+  /// Terminal output recorded for assertions.
+  final List<String> writes = [];
+
+  /// Sends one translated Windows console key event to the input listener.
+  void send(List<int> bytes) => _input.add(bytes);
+
+  /// Closes the controlled input source.
+  Future<void> close() => _input.close();
+
+  /// Returns the controlled source of translated input events.
+  @override
+  Stream<List<int>>? get inputStream => provideInput ? _input.stream : null;
+
+  /// Records terminal output written by the backend.
+  @override
+  void writeRaw(String data) => writes.add(data);
+
+  /// Returns the test terminal dimensions.
+  @override
+  Size getSize() => const Size(80, 24);
+
+  /// Reports that size queries are not supported by the test backend.
+  @override
+  bool get supportsSize => false;
+
+  /// Provides no resize events in the test backend.
+  @override
+  Stream<Size>? get resizeStream => null;
+
+  /// Provides no shutdown events in the test backend.
+  @override
+  Stream<void>? get shutdownStream => null;
+
+  /// Ignores raw-mode changes in the test backend.
+  @override
+  void enableRawMode() {}
+
+  /// Ignores raw-mode restoration in the test backend.
+  @override
+  void disableRawMode() {}
+
+  /// Reports that the test input source is available.
+  @override
+  bool get isAvailable => true;
+
+  /// Ignores exit requests in the test backend.
+  @override
+  void requestExit([int exitCode = 0]) {}
+
+  /// Ignores size changes in the controlled test backend.
+  @override
+  void notifySizeChanged(Size newSize) {}
+
+  /// Closes the controlled input source.
+  @override
+  void dispose() {
+    unawaited(_input.close());
+  }
+}
+
 void main() {
   group('Method forPlatform() behaves correctly', () {
     test('Method forPlatform() adapts Windows terminal output', () {
@@ -124,73 +193,4 @@ void main() {
       source.dispose();
     });
   });
-}
-
-class _FakeTerminalBackend implements TerminalBackend {
-  _FakeTerminalBackend({this.provideInput = true});
-
-  /// Whether the fake exposes its controlled input stream.
-  final bool provideInput;
-
-  final StreamController<List<int>> _input =
-      StreamController<List<int>>.broadcast(sync: true);
-
-  /// Terminal output recorded for assertions.
-  final List<String> writes = [];
-
-  /// Sends one translated Windows console key event to the input listener.
-  void send(List<int> bytes) => _input.add(bytes);
-
-  /// Closes the controlled input source.
-  Future<void> close() => _input.close();
-
-  /// Returns the controlled source of translated input events.
-  @override
-  Stream<List<int>>? get inputStream => provideInput ? _input.stream : null;
-
-  /// Records terminal output written by the backend.
-  @override
-  void writeRaw(String data) => writes.add(data);
-
-  /// Returns the test terminal dimensions.
-  @override
-  Size getSize() => const Size(80, 24);
-
-  /// Reports that size queries are not supported by the test backend.
-  @override
-  bool get supportsSize => false;
-
-  /// Provides no resize events in the test backend.
-  @override
-  Stream<Size>? get resizeStream => null;
-
-  /// Provides no shutdown events in the test backend.
-  @override
-  Stream<void>? get shutdownStream => null;
-
-  /// Ignores raw-mode changes in the test backend.
-  @override
-  void enableRawMode() {}
-
-  /// Ignores raw-mode restoration in the test backend.
-  @override
-  void disableRawMode() {}
-
-  /// Reports that the test input source is available.
-  @override
-  bool get isAvailable => true;
-
-  /// Ignores exit requests in the test backend.
-  @override
-  void requestExit([int exitCode = 0]) {}
-
-  /// Ignores size changes in the controlled test backend.
-  @override
-  void notifySizeChanged(Size newSize) {}
-
-  /// Closes the controlled input source.
-  @override
-  void dispose() {
-    unawaited(_input.close());
-  }
 }

@@ -6,6 +6,153 @@ import 'package:nocterm/nocterm_test.dart'
     show LogicalKey, containsText, testNocterm;
 import 'package:test/test.dart';
 
+TrainerMenuComponent _menu(
+  TrainerSessionState session, {
+  void Function(GameField field)? onOpenField,
+  void Function()? onRefresh,
+  void Function()? onRedetect,
+  void Function()? onQuit,
+  void Function(int selection)? onSelectionChanged,
+  int initialSelection = 0,
+}) => TrainerMenuComponent(
+  session: session,
+  onOpenField: onOpenField ?? (_) {},
+  onRefresh: onRefresh ?? () {},
+  onRedetect: onRedetect ?? () {},
+  onQuit: onQuit ?? () {},
+  initialSelection: initialSelection,
+  onSelectionChanged: onSelectionChanged,
+);
+
+TrainerSessionState _session({
+  GameProfile? profile,
+  Map<String, GameReadResult> reads = const {
+    'credits': GameReadResult(
+      status: GameReadStatus.success,
+      fieldId: 'credits',
+      value: 244866,
+    ),
+    'weapons': GameReadResult(
+      status: GameReadStatus.success,
+      fieldId: 'weapons',
+      value: 7,
+    ),
+  },
+  bool hasMemoryBase = true,
+  GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
+}) {
+  final selectedProfile = profile ?? _profile();
+  return TrainerSessionState(
+    processIds: const [42],
+    selectedProcessId: 42,
+    processMetadata: Rpcs3ProcessMetadata(
+      executablePath: r'C:\RPCS3\rpcs3.exe',
+      startedAtUtc: DateTime.utc(2026),
+    ),
+    memoryBase: hasMemoryBase ? 0x300000000 : null,
+    detection: GameDetectionResult(
+      status: GameDetectionStatus.supportedGame,
+      processId: 42,
+      gameTitle: selectedProfile.gameName,
+      confidence: confidence,
+      profile: selectedProfile,
+      evidenceDescription: 'Synthetic menu fixture.',
+    ),
+    readResults: reads,
+  );
+}
+
+GameProfile _profile({
+  String id = 'synthetic-profile',
+  bool profileReadable = true,
+  bool profileWritable = true,
+  bool readableFields = true,
+  bool includeWeapons = true,
+  bool includeFields = true,
+}) => GameProfile(
+  id: id,
+  gameName: 'Synthetic game',
+  buildId: 'SYNTHETIC',
+  executable: 'SYNTHETIC.self',
+  readStatus:
+      profileReadable ? VerificationStatus.verified : VerificationStatus.none,
+  writeStatus:
+      profileWritable
+          ? VerificationStatus.researchConfirmed
+          : VerificationStatus.none,
+  fields: {
+    if (includeFields)
+      'credits': GameField(
+        id: 'credits',
+        name: 'Credits',
+        guestOffset: 0x1000,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus:
+            readableFields
+                ? VerificationStatus.verified
+                : VerificationStatus.none,
+        writeStatus: VerificationStatus.researchConfirmed,
+        minimumValue: 0,
+        maximumValue: 0xffffffff,
+      ),
+    if (includeFields && includeWeapons)
+      'weapons': GameField(
+        id: 'weapons',
+        name: 'Weapons',
+        guestOffset: 0x2000,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus:
+            readableFields
+                ? VerificationStatus.verified
+                : VerificationStatus.none,
+        writeStatus: VerificationStatus.researchConfirmed,
+        minimumValue: 0,
+        maximumValue: 0xffffffff,
+      ),
+    if (includeFields)
+      'secret': GameField(
+        id: 'secret',
+        name: 'Secret',
+        guestOffset: 0x3000,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus: VerificationStatus.none,
+      ),
+  },
+);
+
+class _MenuHost extends StatefulComponent {
+  const _MenuHost({
+    required this.session,
+    required this.onSelectionChanged,
+    required this.onOpenField,
+  });
+
+  final TrainerSessionState session;
+  final void Function(int selection) onSelectionChanged;
+  final void Function(GameField field) onOpenField;
+
+  @override
+  State<_MenuHost> createState() => _MenuHostState();
+}
+
+class _MenuHostState extends State<_MenuHost> {
+  late TrainerSessionState _session = component.session;
+
+  void updateSession(TrainerSessionState session) {
+    setState(() => _session = session);
+  }
+
+  @override
+  Component build(BuildContext context) => _menu(
+    _session,
+    onSelectionChanged: component.onSelectionChanged,
+    onOpenField: component.onOpenField,
+  );
+}
+
 void main() {
   group('Class TrainerMenuComponent keyboard behavior', () {
     test(
@@ -17,9 +164,9 @@ void main() {
 
           expect(screen, containsText('LUDAVA'));
           expect(screen, containsText('CONNECTED'));
-          expect(screen, containsText('Ratchet & Clank 2 · PS3 Collection'));
-          expect(screen, containsText('Bolts'));
-          expect(screen, containsText('1. Bolts'));
+          expect(screen, containsText('Synthetic game · PS3 SYNTHETIC'));
+          expect(screen, containsText('Credits'));
+          expect(screen, containsText('1. Credits'));
           expect(screen, containsText('244,866'));
           expect(screen, containsText('Weapons'));
           expect(screen, containsText('2. Weapons'));
@@ -30,20 +177,18 @@ void main() {
     );
 
     test(
-      'Class TrainerMenuComponent displays and opens the write-verified Deadlocked Bolts editor',
+      'Class TrainerMenuComponent opens a readable synthetic field',
       () async {
-        await testNocterm('standalone verified-write game profile', (
-          tester,
-        ) async {
+        await testNocterm('synthetic field editor selection', (tester) async {
           final openedFields = <GameField>[];
           await tester.pumpComponent(
             _menu(
               _session(
-                profile: GameProfileCatalog.find('deadlocked-ps3')!,
+                profile: _profile(),
                 reads: {
-                  'bolts': const GameReadResult(
+                  'credits': const GameReadResult(
                     status: GameReadStatus.success,
-                    fieldId: 'bolts',
+                    fieldId: 'credits',
                     value: 1234,
                   ),
                 },
@@ -52,41 +197,37 @@ void main() {
             ),
           );
 
-          expect(
-            tester.terminalState,
-            containsText('Ratchet: Deadlocked · PS3 NPUA80646'),
-          );
-          expect(tester.terminalState, containsText('Bolts'));
+          expect(tester.terminalState, containsText('Synthetic game'));
+          expect(tester.terminalState, containsText('Credits'));
           expect(tester.terminalState, containsText('1,234'));
           expect(tester.terminalState, containsText('1–9 Edit'));
 
           await tester.sendKey(LogicalKey.digit1);
           await tester.sendEnter();
 
-          expect(openedFields.map((field) => field.id), ['bolts', 'bolts']);
+          expect(openedFields.map((field) => field.id), ['credits', 'credits']);
         });
       },
     );
 
     test(
-      'Class TrainerMenuComponent displays both fields and opens the Raritanium editor',
+      'Class TrainerMenuComponent displays dynamic fields and opens the selected row',
       () async {
-        await testNocterm('Tools of Destruction bolt profile', (tester) async {
+        await testNocterm('synthetic multi-field profile', (tester) async {
           final openedFields = <GameField>[];
           await tester.pumpComponent(
             _menu(
               _session(
-                profile:
-                    GameProfileCatalog.find('tools-of-destruction-bcus98127')!,
+                profile: _profile(),
                 reads: {
-                  'bolts': const GameReadResult(
+                  'credits': const GameReadResult(
                     status: GameReadStatus.success,
-                    fieldId: 'bolts',
+                    fieldId: 'credits',
                     value: 3793,
                   ),
-                  'raritanium': const GameReadResult(
+                  'weapons': const GameReadResult(
                     status: GameReadStatus.success,
-                    fieldId: 'raritanium',
+                    fieldId: 'weapons',
                     value: 215,
                   ),
                 },
@@ -95,24 +236,15 @@ void main() {
             ),
           );
 
-          expect(
-            tester.terminalState,
-            containsText(
-              'Ratchet & Clank Future: Tools of Destruction · PS3 BCUS98127',
-            ),
-          );
-          expect(tester.terminalState, containsText('1. Bolts'));
-          expect(tester.terminalState, containsText('2. Raritanium'));
+          expect(tester.terminalState, containsText('1. Credits'));
+          expect(tester.terminalState, containsText('2. Weapons'));
           expect(tester.terminalState, containsText('3,793'));
           expect(tester.terminalState, containsText('215'));
 
           await tester.sendKey(LogicalKey.digit2);
           await tester.sendEnter();
 
-          expect(openedFields.map((field) => field.id), [
-            'raritanium',
-            'raritanium',
-          ]);
+          expect(openedFields.map((field) => field.id), ['weapons', 'weapons']);
         });
       },
     );
@@ -130,9 +262,9 @@ void main() {
             readStatus: VerificationStatus.verified,
             writeStatus: VerificationStatus.researchConfirmed,
             fields: {
-              'bolts': GameField(
-                id: 'bolts',
-                name: 'Bolts',
+              'credits': GameField(
+                id: 'credits',
+                name: 'Credits',
                 guestOffset: 0x1000,
                 valueType: MemoryValueType.unsigned32,
                 byteOrder: ByteOrder.big,
@@ -191,7 +323,7 @@ void main() {
             ),
           );
 
-          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1. Credits (read-only)'));
           expect(tester.terminalState, containsText('244,866'));
           expect(
             tester.terminalState,
@@ -203,7 +335,7 @@ void main() {
 
           expect(openedFields, isEmpty);
           expect(refreshCount, 1);
-          expect(tester.terminalState, containsText('1. Bolts (read-only)'));
+          expect(tester.terminalState, containsText('1. Credits (read-only)'));
         });
       },
     );
@@ -243,9 +375,9 @@ void main() {
             _menu(
               _session(
                 reads: {
-                  'bolts': const GameReadResult(
+                  'credits': const GameReadResult(
                     status: GameReadStatus.readFailed,
-                    fieldId: 'bolts',
+                    fieldId: 'credits',
                   ),
                 },
               ),
@@ -363,9 +495,9 @@ void main() {
             _menu(
               _session(
                 reads: {
-                  'bolts': const GameReadResult(
+                  'credits': const GameReadResult(
                     status: GameReadStatus.success,
-                    fieldId: 'bolts',
+                    fieldId: 'credits',
                     value: 244866,
                   ),
                   'weapons': const GameReadResult(
@@ -408,7 +540,7 @@ void main() {
           await tester.pump();
           expect(selections.last, 0);
           await tester.sendEnter();
-          expect(openedFields.last.id, 'bolts');
+          expect(openedFields.last.id, 'credits');
 
           tester.findState<_MenuHostState>().updateSession(
             _session(profile: _profile(includeFields: false)),
@@ -433,13 +565,13 @@ void main() {
           await tester.sendArrowDown();
           await tester.pumpComponent(
             _menu(
-              _session(profile: _profile(id: 'rc3-collection')),
+              _session(profile: _profile(id: 'synthetic-profile-next')),
               onOpenField: (field) => openedField = field,
             ),
           );
           await tester.sendEnter();
 
-          expect(openedField?.id, 'bolts');
+          expect(openedField?.id, 'credits');
         });
       },
     );
@@ -460,7 +592,7 @@ void main() {
           );
           expect(selections, [0]);
           await tester.sendEnter();
-          expect(openedField?.id, 'bolts');
+          expect(openedField?.id, 'credits');
 
           await tester.pumpComponent(
             _menu(
@@ -538,10 +670,10 @@ void main() {
             _menu(_session(profile: _profile(profileReadable: false))),
           );
 
-          expect(tester.terminalState, isNot(containsText('Bolts')));
+          expect(tester.terminalState, isNot(containsText('Credits')));
           expect(
             tester.terminalState,
-            containsText('Ratchet & Clank 2 · PS3 Collection'),
+            containsText('Synthetic game · PS3 SYNTHETIC'),
           );
         });
       },
@@ -568,7 +700,7 @@ void main() {
 
           expect(openedFields, isEmpty);
           expect(selections, isEmpty);
-          expect(tester.terminalState, isNot(containsText('Bolts')));
+          expect(tester.terminalState, isNot(containsText('Credits')));
         });
       },
     );
@@ -646,151 +778,4 @@ void main() {
       },
     );
   });
-}
-
-TrainerMenuComponent _menu(
-  TrainerSessionState session, {
-  void Function(GameField field)? onOpenField,
-  void Function()? onRefresh,
-  void Function()? onRedetect,
-  void Function()? onQuit,
-  void Function(int selection)? onSelectionChanged,
-  int initialSelection = 0,
-}) => TrainerMenuComponent(
-  session: session,
-  onOpenField: onOpenField ?? (_) {},
-  onRefresh: onRefresh ?? () {},
-  onRedetect: onRedetect ?? () {},
-  onQuit: onQuit ?? () {},
-  initialSelection: initialSelection,
-  onSelectionChanged: onSelectionChanged,
-);
-
-TrainerSessionState _session({
-  GameProfile? profile,
-  Map<String, GameReadResult> reads = const {
-    'bolts': GameReadResult(
-      status: GameReadStatus.success,
-      fieldId: 'bolts',
-      value: 244866,
-    ),
-    'weapons': GameReadResult(
-      status: GameReadStatus.success,
-      fieldId: 'weapons',
-      value: 7,
-    ),
-  },
-  bool hasMemoryBase = true,
-  GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
-}) {
-  final selectedProfile = profile ?? _profile();
-  return TrainerSessionState(
-    processIds: const [42],
-    selectedProcessId: 42,
-    processMetadata: Rpcs3ProcessMetadata(
-      executablePath: r'C:\RPCS3\rpcs3.exe',
-      startedAtUtc: DateTime.utc(2026),
-    ),
-    memoryBase: hasMemoryBase ? 0x300000000 : null,
-    detection: GameDetectionResult(
-      status: GameDetectionStatus.supportedGame,
-      processId: 42,
-      gameTitle: selectedProfile.gameName,
-      confidence: confidence,
-      profile: selectedProfile,
-      evidenceDescription: 'Synthetic menu fixture.',
-    ),
-    readResults: reads,
-  );
-}
-
-GameProfile _profile({
-  String id = 'rc2-collection',
-  bool profileReadable = true,
-  bool profileWritable = true,
-  bool readableFields = true,
-  bool includeWeapons = true,
-  bool includeFields = true,
-}) => GameProfile(
-  id: id,
-  gameName: 'Ratchet & Clank 2',
-  buildId: 'BCUS98282',
-  executable: 'RC2.ppu.self',
-  readStatus:
-      profileReadable ? VerificationStatus.verified : VerificationStatus.none,
-  writeStatus:
-      profileWritable
-          ? VerificationStatus.researchConfirmed
-          : VerificationStatus.none,
-  fields: {
-    if (includeFields)
-      'bolts': GameField(
-        id: 'bolts',
-        name: 'Bolts',
-        guestOffset: 0x1000,
-        valueType: MemoryValueType.unsigned32,
-        byteOrder: ByteOrder.big,
-        readStatus:
-            readableFields
-                ? VerificationStatus.verified
-                : VerificationStatus.none,
-        writeStatus: VerificationStatus.researchConfirmed,
-        minimumValue: 0,
-        maximumValue: 0xffffffff,
-      ),
-    if (includeFields && includeWeapons)
-      'weapons': GameField(
-        id: 'weapons',
-        name: 'Weapons',
-        guestOffset: 0x2000,
-        valueType: MemoryValueType.unsigned32,
-        byteOrder: ByteOrder.big,
-        readStatus:
-            readableFields
-                ? VerificationStatus.verified
-                : VerificationStatus.none,
-        writeStatus: VerificationStatus.researchConfirmed,
-        minimumValue: 0,
-        maximumValue: 0xffffffff,
-      ),
-    if (includeFields)
-      'secret': GameField(
-        id: 'secret',
-        name: 'Secret',
-        guestOffset: 0x3000,
-        valueType: MemoryValueType.unsigned32,
-        byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.none,
-      ),
-  },
-);
-
-class _MenuHost extends StatefulComponent {
-  const _MenuHost({
-    required this.session,
-    required this.onSelectionChanged,
-    required this.onOpenField,
-  });
-
-  final TrainerSessionState session;
-  final void Function(int selection) onSelectionChanged;
-  final void Function(GameField field) onOpenField;
-
-  @override
-  State<_MenuHost> createState() => _MenuHostState();
-}
-
-class _MenuHostState extends State<_MenuHost> {
-  late TrainerSessionState _session = component.session;
-
-  void updateSession(TrainerSessionState session) {
-    setState(() => _session = session);
-  }
-
-  @override
-  Component build(BuildContext context) => _menu(
-    _session,
-    onSelectionChanged: component.onSelectionChanged,
-    onOpenField: component.onOpenField,
-  );
 }
