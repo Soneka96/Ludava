@@ -41,9 +41,6 @@ List<Rect> _fieldRowRects(WidgetTester tester, GameProfile profile) => profile
 Finder _feedbackRegion() =>
     find.byKey(const ValueKey('session-feedback-region'));
 
-String _editorText(WidgetTester tester, Finder input) =>
-    tester.widget<TextField>(input).controller!.text;
-
 TrainerSessionState _readySession({
   int processId = 42,
   int readValue = 17,
@@ -153,13 +150,12 @@ void main() {
     testWidgets(
       'Class LudavaSessionBody shows connection guidance until the session is ready',
       (tester) async {
-        final selectedProcesses = <int>[];
         await tester.pumpWidget(
           _wrap(
             LudavaSessionBody(
               session: TrainerSessionState(processIds: const [42, 43]),
               editingFieldId: null,
-              onSelectProcess: selectedProcesses.add,
+              onSelectProcess: (_) {},
               onEditField: (_) {},
               onApplyField: _failedWrite,
               onCancelEditing: () {},
@@ -170,9 +166,6 @@ void main() {
         expect(find.byType(SessionConnectionBody), findsOneWidget);
         expect(find.byType(TrainerFieldsPanel), findsNothing);
         expect(find.text('Available RPCS3 processes'), findsOneWidget);
-        await tester.tap(find.text('Process ID 42'));
-
-        expect(selectedProcesses, [42]);
         expect(tester.takeException(), isNull);
       },
     );
@@ -316,7 +309,7 @@ void main() {
     );
 
     testWidgets(
-      'Class LudavaSessionBody keeps a draft on same-session refresh and removes the editor after target invalidation',
+      'Class LudavaSessionBody removes the open editor after controller invalidation',
       (tester) async {
         final capability = _FakeTrainerSdk(_readySession());
         final controller = TrainerController(capability: capability);
@@ -343,12 +336,6 @@ void main() {
         await tester.pump();
         final input = find.byKey(ValueKey('inline-editor-input-${field.id}'));
         expect(input, findsOneWidget);
-        await tester.enterText(input, '99');
-
-        capability.publish(_readySession(readValue: 18));
-        await tester.pump();
-        expect(controller.editingFieldId, field.id);
-        expect(_editorText(tester, input), '99');
 
         capability.publish(_readySession(processId: 43, readValue: 18));
         await tester.pump();

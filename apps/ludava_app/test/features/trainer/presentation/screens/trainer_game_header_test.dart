@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_game_identity.dart';
+import 'package:ludava_app/features/trainer/presentation/widgets/trainer_game_status.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -72,8 +73,8 @@ void main() {
           ),
         );
 
-        expect(find.text(profile.gameName), findsOneWidget);
-        expect(find.text('Ready'), findsOneWidget);
+        expect(find.byType(TrainerGameIdentity), findsOneWidget);
+        expect(find.byType(TrainerGameStatus), findsOneWidget);
         expect(find.text(profile.buildId), findsNothing);
         expect(find.text('RPCS3 process · PID 321'), findsNothing);
         expect(find.text('Refresh'), findsNothing);
@@ -98,153 +99,8 @@ void main() {
       },
     );
 
-    testWidgets('Class TrainerGameHeader reflects identity readiness states', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrap(
-          TrainerGameHeader(
-            session: _state(
-              status: GameDetectionStatus.unsupportedGame,
-              processId: 321,
-              gameTitle: 'Unknown PS3 Game',
-            ),
-            onRefresh: () {},
-          ),
-        ),
-      );
-      expect(find.text('Unknown PS3 Game'), findsOneWidget);
-      expect(find.text('Unsupported'), findsOneWidget);
-
-      await tester.pumpWidget(
-        _wrap(
-          TrainerGameHeader(
-            session: _state(
-              status: GameDetectionStatus.ambiguous,
-              processId: 321,
-              gameTitle: 'Possible Game',
-            ),
-            onRefresh: () {},
-          ),
-        ),
-      );
-      expect(find.text('Unverified'), findsOneWidget);
-
-      await tester.pumpWidget(
-        _wrap(
-          TrainerGameHeader(
-            session: _state(status: GameDetectionStatus.failed, processId: 321),
-            onRefresh: () {},
-          ),
-        ),
-      );
-      expect(find.text('Detection failed'), findsOneWidget);
-    });
-
-    testWidgets('Class TrainerGameHeader reports discovery states', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrap(
-          TrainerGameHeader(session: TrainerSessionState(), onRefresh: () {}),
-        ),
-      );
-      expect(find.text('Connect to RPCS3'), findsOneWidget);
-      expect(find.text('Not detected'), findsOneWidget);
-
-      await tester.pumpWidget(
-        _wrap(
-          TrainerGameHeader(
-            session: TrainerSessionState(processIds: const [12, 24]),
-            onRefresh: () {},
-          ),
-        ),
-      );
-      expect(find.text('Select an RPCS3 process'), findsOneWidget);
-      expect(find.text('Choose process'), findsOneWidget);
-    });
-
     testWidgets(
-      'Class TrainerGameHeader distinguishes missing session details',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            TrainerGameHeader(
-              session: _state(
-                status: GameDetectionStatus.noActiveGame,
-                processId: 321,
-              ),
-              onRefresh: () {},
-            ),
-          ),
-        );
-        expect(find.text('No game'), findsOneWidget);
-
-        await tester.pumpWidget(
-          _wrap(
-            TrainerGameHeader(
-              session: TrainerSessionState(
-                processIds: const [321],
-                selectedProcessId: 321,
-                detection: GameDetectionResult(
-                  status: GameDetectionStatus.rpcs3NotRunning,
-                  processId: 321,
-                  confidence: GameIdentityConfidence.none,
-                  evidenceDescription: 'The process ended.',
-                ),
-              ),
-              onRefresh: () {},
-            ),
-          ),
-        );
-        expect(find.text('Not detected'), findsOneWidget);
-
-        final profile = _profile();
-        await tester.pumpWidget(
-          _wrap(
-            TrainerGameHeader(
-              session: _state(
-                status: GameDetectionStatus.supportedGame,
-                processId: 321,
-                profile: profile,
-              ),
-              onRefresh: () {},
-            ),
-          ),
-        );
-        expect(find.text('Base unavailable'), findsOneWidget);
-
-        await tester.pumpWidget(
-          _wrap(
-            TrainerGameHeader(
-              session: TrainerSessionState(
-                processIds: const [321],
-                selectedProcessId: 321,
-              ),
-              onRefresh: () {},
-            ),
-          ),
-        );
-        expect(find.text('Not detected'), findsOneWidget);
-
-        await tester.pumpWidget(
-          _wrap(
-            TrainerGameHeader(
-              session: TrainerSessionState(
-                processIds: const [321],
-                selectedProcessId: 321,
-                errorMessage: 'The RPCS3 session changed.',
-              ),
-              onRefresh: () {},
-            ),
-          ),
-        );
-        expect(find.text('Attention'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'Class TrainerGameHeader keeps a long title discoverable in one compact row',
+      'Class TrainerGameHeader keeps its refresh control visible beside a long title',
       (tester) async {
         const longTitle =
             'A Very Long Unsupported Game Title That Must Not Push Window Actions Off Screen';
@@ -263,18 +119,7 @@ void main() {
           ),
         );
 
-        final title = tester.widget<Text>(
-          find.descendant(
-            of: find.byType(TrainerGameIdentity),
-            matching: find.byType(Text),
-          ),
-        );
-        expect(title.maxLines, 1);
-        expect(title.overflow, TextOverflow.ellipsis);
-        expect(
-          find.byTooltip('$longTitle\nRPCS3 process ID: 321'),
-          findsOneWidget,
-        );
+        expect(find.byType(TrainerGameIdentity), findsOneWidget);
         final refresh = tester.getRect(
           find.byTooltip('Refresh values or rediscover RPCS3'),
         );

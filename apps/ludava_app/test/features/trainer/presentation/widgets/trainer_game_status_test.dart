@@ -100,5 +100,36 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('Class TrainerGameStatus maps each session readiness state', (
+      tester,
+    ) async {
+      final states = <(TrainerSessionState, String)>[
+        (TrainerSessionState(), 'Not detected'),
+        (TrainerSessionState(processIds: const [42]), 'Choose process'),
+        (
+          _session(
+            status: GameDetectionStatus.supportedGame,
+            profile: _profile(),
+          ),
+          'Base unavailable',
+        ),
+        (_session(status: GameDetectionStatus.noActiveGame), 'No game'),
+        (_session(status: GameDetectionStatus.unsupportedGame), 'Unsupported'),
+        (_session(status: GameDetectionStatus.ambiguous), 'Unverified'),
+        (_session(status: GameDetectionStatus.failed), 'Detection failed'),
+        (_session(status: GameDetectionStatus.rpcs3NotRunning), 'Not detected'),
+        (
+          TrainerSessionState(errorMessage: 'Session refresh failed.'),
+          'Attention',
+        ),
+      ];
+
+      for (final (session, expectedLabel) in states) {
+        await tester.pumpWidget(_wrap(TrainerGameStatus(session: session)));
+        expect(find.text(expectedLabel), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    });
   });
 }

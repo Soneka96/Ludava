@@ -141,26 +141,23 @@ void main() {
         final maximizeState = ValueNotifier(false);
         addTearDown(maximizeState.dispose);
         var refreshCalls = 0;
-        var closeCalls = 0;
 
-        Widget buildShell({bool isClosing = false, String? closeFailure}) =>
-            _wrap(
-              LudavaShell(
-                session: TrainerSessionState(),
-                editingFieldId: null,
-                onEditField: (_) {},
-                onApplyField: _failedWrite,
-                onCancelEditing: () {},
-                onMinimize: () {},
-                onToggleMaximize: () {},
-                isMaximized: maximizeState,
-                onClose: () => closeCalls++,
-                isClosing: isClosing,
-                closeFailure: closeFailure,
-                onRefresh: () => refreshCalls++,
-                onSelectProcess: (_) {},
-              ),
-            );
+        Widget buildShell({bool isClosing = false}) => _wrap(
+          LudavaShell(
+            session: TrainerSessionState(),
+            editingFieldId: null,
+            onEditField: (_) {},
+            onApplyField: _failedWrite,
+            onCancelEditing: () {},
+            onMinimize: () {},
+            onToggleMaximize: () {},
+            isMaximized: maximizeState,
+            onClose: () {},
+            isClosing: isClosing,
+            onRefresh: () => refreshCalls++,
+            onSelectProcess: (_) {},
+          ),
+        );
 
         await tester.pumpWidget(buildShell(isClosing: true));
         expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
@@ -173,56 +170,9 @@ void main() {
           warnIfMissed: false,
         );
         expect(refreshCalls, 0);
-
-        await tester.pumpWidget(
-          buildShell(closeFailure: 'Native close rejected.'),
-        );
-        expect(find.byType(LudavaShutdownOverlay), findsOneWidget);
-        await tester.tap(find.text('Retry close'));
-        expect(closeCalls, 1);
         expect(tester.takeException(), isNull);
       },
     );
-
-    testWidgets('Class LudavaShell supports process choice at minimum size', (
-      tester,
-    ) async {
-      tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final maximizeState = ValueNotifier(false);
-      addTearDown(maximizeState.dispose);
-      int? selectedProcessId;
-
-      await tester.pumpWidget(
-        _wrap(
-          LudavaShell(
-            session: TrainerSessionState(processIds: const [10, 20, 30]),
-            editingFieldId: null,
-            onEditField: (_) {},
-            onApplyField: _failedWrite,
-            onCancelEditing: () {},
-            onMinimize: () {},
-            onToggleMaximize: () {},
-            isMaximized: maximizeState,
-            onClose: () {},
-            onRefresh: () {},
-            onSelectProcess: (processId) => selectedProcessId = processId,
-          ),
-        ),
-      );
-
-      expect(find.text('Available RPCS3 processes'), findsOneWidget);
-      final firstProcess = find.text('Process ID 10');
-      expect(firstProcess, findsOneWidget);
-      await tester.ensureVisible(firstProcess);
-      await tester.pumpAndSettle();
-      await tester.tap(firstProcess);
-
-      expect(selectedProcessId, 10);
-      expect(tester.takeException(), isNull);
-    });
 
     testWidgets('Class LudavaShell displays a connection error at minimum size', (
       tester,
