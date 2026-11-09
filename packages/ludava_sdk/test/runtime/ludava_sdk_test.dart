@@ -7,8 +7,10 @@ import '../support/fake_windows_memory_api.dart';
 
 LudavaSdk _createSdk(
   FakeWindowsMemoryApi api, {
+  required GameProfile profile,
   required GameDetectionResult Function() currentIdentity,
 }) => LudavaSdk.create(
+  profiles: [profile],
   api: api.adapter,
   isWindows: true,
   pointerSize: 8,
@@ -41,6 +43,29 @@ final _metadata = Rpcs3ProcessMetadata(
   startedAtUtc: DateTime.utc(2026, 11, 5, 10),
 );
 
+final _syntheticProfile = GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Synthetic game',
+  buildId: 'SYNTHETIC',
+  executable: 'SYNTHETIC.self',
+  executableHash: 'PPU-1111111111111111111111111111111111111111',
+  readStatus: VerificationStatus.verified,
+  writeStatus: VerificationStatus.researchConfirmed,
+  fields: {
+    'credits': GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      readStatus: VerificationStatus.verified,
+      writeStatus: VerificationStatus.researchConfirmed,
+      minimumValue: 0,
+      maximumValue: 0xffffffff,
+    ),
+  },
+);
+
 final _registeredProfile = GameProfileCatalog.find('rc2-collection')!;
 
 void main() {
@@ -53,6 +78,7 @@ void main() {
         var metadataCalls = 0;
         var detectionCalls = 0;
         final sdk = LudavaSdk.create(
+          profiles: [_syntheticProfile],
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -66,7 +92,7 @@ void main() {
           },
           detectGame: (_, __) {
             detectionCalls++;
-            return _confirmedIdentity(_registeredProfile);
+            return _confirmedIdentity(_syntheticProfile);
           },
         );
 
@@ -80,6 +106,73 @@ void main() {
         expect(detectionCalls, 0);
 
         await sdk.dispose();
+      },
+    );
+
+    test(
+      'Method create() shares its profile snapshot across detection, manual selection, and diagnostics',
+      () async {
+        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 9];
+        final sourceProfiles = [_syntheticProfile];
+        final logDataSource = Rpcs3GameIdentityLogDataSource(
+          fileExists: (path) => path == r'C:\RPCS3\log\RPCS3.log',
+          lastModifiedUtc: (_) => DateTime.utc(2026, 11, 5, 11),
+          readAsString:
+              (_) => '''
+SYS: Path: /dev_bdvd/PS3_GAME/USRDIR/SYNTHETIC.self
+SYS: Title: Synthetic game
+SYS: Serial: SYNTHETIC
+ppu_loader: PPU executable hash: PPU-1111111111111111111111111111111111111111
+''',
+        );
+        final sdk = LudavaSdk.create(
+          profiles: sourceProfiles,
+          api: api.adapter,
+          isWindows: true,
+          pointerSize: 8,
+          discoverProcessIds: () => const [42],
+          readProcessMetadata: (_) => _metadata,
+          resolveMemoryBaseCandidate:
+              (_) => const Rpcs3MemoryBaseCandidate(
+                memoryBase: 0x300000000,
+                logPath: r'C:\RPCS3\log\RPCS3.log',
+              ),
+          gameIdentityLogDataSource: logDataSource,
+        );
+        sourceProfiles.clear();
+
+        try {
+          expect(sdk.profiles, [_syntheticProfile]);
+          expect(
+            () => sdk.profiles.add(_syntheticProfile),
+            throwsUnsupportedError,
+          );
+          sdk.session.connect();
+
+          expect(sdk.session.state.profile?.id, _syntheticProfile.id);
+          expect(sdk.session.state.readResults['credits']?.value, 9);
+          expect(sdk.session.selectManualProfile(sdk.profiles.single), isTrue);
+          expect(
+            sdk.session.state.detection?.confidence,
+            GameIdentityConfidence.manuallySelected,
+          );
+
+          final result = sdk.diagnostics.execute(
+            DiagnosticGameMemoryRequest(
+              gameId: sdk.profiles.single.id,
+              fieldId: 'credits',
+              processId: 42,
+              memoryBase: 0x300000000,
+              action: GameMemoryAction.read,
+            ),
+          );
+
+          expect(result.succeeded, isTrue);
+          expect(result.profile, same(sdk.profiles.single));
+          expect(result.readResult?.value, 9);
+        } finally {
+          await sdk.dispose();
+        }
       },
     );
 
@@ -134,6 +227,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
             sdk.session.state.profile,
             same(sdk.session.state.detection?.profile),
           );
+          expect(sdk.session.state.profile?.id, _registeredProfile.id);
           expect(sdk.session.state.readResults['bolts']?.value, 19);
           expect(discoveryCalls, greaterThan(1));
           expect(logReads, 2);
@@ -147,9 +241,10 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method create() connects, reads, writes, verifies, and publishes state',
       () async {
         final api = FakeWindowsMemoryApi();
-        final profile = _registeredProfile;
+        final profile = _syntheticProfile;
         final sdk = _createSdk(
           api,
+          profile: profile,
           currentIdentity: () => _confirmedIdentity(profile),
         );
         final snapshots = <TrainerSessionState>[];
@@ -157,7 +252,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
         final streamClosed = Completer<void>();
         final subscription = sdk.session.stateChanges.listen((snapshot) {
           snapshots.add(snapshot);
-          if (snapshot.readResults['bolts']?.value == 42 &&
+          if (snapshot.readResults['credits']?.value == 42 &&
               !verifiedWriteState.isCompleted) {
             verifiedWriteState.complete(snapshot);
           }
@@ -174,22 +269,22 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           );
           expect(sdk.session.state.profile?.id, profile.id);
           expect(sdk.session.state.memoryBase, 0x300000000);
-          expect(sdk.session.state.readResults['bolts']?.value, 0x01020304);
+          expect(sdk.session.state.readResults['credits']?.value, 0x01020304);
 
           api.readBytes = [0, 0, 0, 42];
-          final writeResult = sdk.session.writeField('bolts', 42);
+          final writeResult = sdk.session.writeField('credits', 42);
 
           expect(writeResult.status, GameWriteStatus.success);
           expect(writeResult.readBackValue, 42);
           expect(writeResult.succeeded, isTrue);
           expect(sdk.session.state.lastWriteResult, same(writeResult));
-          expect(sdk.session.state.readResults['bolts']?.value, 42);
+          expect(sdk.session.state.readResults['credits']?.value, 42);
           final publishedWriteState = await verifiedWriteState.future.timeout(
             const Duration(seconds: 1),
           );
           expect(publishedWriteState.selectedProcessId, 42);
           expect(publishedWriteState.lastWriteResult?.readBackValue, 42);
-          expect(snapshots.last.readResults['bolts']?.value, 42);
+          expect(snapshots.last.readResults['credits']?.value, 42);
         } finally {
           await sdk.dispose();
           await streamClosed.future.timeout(const Duration(seconds: 1));
@@ -202,9 +297,10 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method create() shares feature-owned memory operations with diagnostics',
       () async {
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 61];
-        final profile = _registeredProfile;
+        final profile = _syntheticProfile;
         final sdk = _createSdk(
           api,
+          profile: profile,
           currentIdentity: () => _confirmedIdentity(profile),
         );
 
@@ -213,14 +309,14 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
           final diagnosticResult = sdk.diagnostics.execute(
             DiagnosticGameMemoryRequest(
               gameId: profile.id,
-              fieldId: 'bolts',
+              fieldId: 'credits',
               processId: 42,
               memoryBase: 0x300000000,
               action: GameMemoryAction.read,
             ),
           );
 
-          expect(sdk.session.state.readResults['bolts']?.value, 61);
+          expect(sdk.session.state.readResults['credits']?.value, 61);
           expect(diagnosticResult.succeeded, isTrue);
           expect(diagnosticResult.readResult?.value, 61);
         } finally {
@@ -259,12 +355,13 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
       'Method dispose() rejects retained capabilities as disposal starts',
       () async {
         final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 41];
-        final profile = _registeredProfile;
+        final profile = _syntheticProfile;
         var discoveryCalls = 0;
         var metadataCalls = 0;
         var detectionCalls = 0;
         var baseResolutionCalls = 0;
         final sdk = LudavaSdk.create(
+          profiles: [profile],
           api: api.adapter,
           isWindows: true,
           pointerSize: 8,
@@ -308,6 +405,7 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
         final secondApi = FakeWindowsMemoryApi();
         final secondRuntime = _createSdk(
           secondApi,
+          profile: profile,
           currentIdentity: () => _confirmedIdentity(profile),
         );
 
@@ -329,12 +427,12 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
         );
         expect(sdk.session.refresh, throwsStateError);
         expect(sdk.session.redetect, throwsStateError);
-        expect(() => sdk.session.writeField('bolts', 42), throwsStateError);
+        expect(() => sdk.session.writeField('credits', 42), throwsStateError);
         expect(
           () => sdk.diagnostics.execute(
             DiagnosticGameMemoryRequest(
               gameId: profile.id,
-              fieldId: 'bolts',
+              fieldId: 'credits',
               processId: 42,
               memoryBase: 0x300000000,
               action: GameMemoryAction.read,
@@ -362,13 +460,13 @@ ppu_loader: PPU executable hash: PPU-8f729e902ad2c7ae0f7f4cbacbfaa17dcb080be9
         secondRuntime.session.connect();
         expect(secondRuntime.session.state.selectedProcessId, 42);
         expect(
-          secondRuntime.session.state.readResults['bolts']?.value,
+          secondRuntime.session.state.readResults['credits']?.value,
           0x01020304,
         );
         final secondDiagnosticResult = secondRuntime.diagnostics.execute(
           DiagnosticGameMemoryRequest(
             gameId: profile.id,
-            fieldId: 'bolts',
+            fieldId: 'credits',
             processId: 42,
             memoryBase: 0x300000000,
             action: GameMemoryAction.read,

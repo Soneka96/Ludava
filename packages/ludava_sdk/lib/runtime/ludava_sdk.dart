@@ -1,3 +1,5 @@
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/game_profile_catalog.dart';
 import 'package:ludava_sdk/features/game_detection/application/rpcs3_game_detection_workflow.dart';
 import 'package:ludava_sdk/features/game_detection/data/datasources/rpcs3_game_identity_log.datasource.dart';
 import 'package:ludava_sdk/features/game_detection/domain/entities/game_detection_result.entity.dart';
@@ -19,8 +21,12 @@ class LudavaSdk {
   /// Structured diagnostic operations for this runtime.
   late final DiagnosticGameMemoryService diagnostics;
 
-  /// Creates an SDK runtime with optional seams for deterministic callers.
+  /// Immutable profile snapshot available to detection and manual selection.
+  List<GameProfile> get profiles => _profiles;
+
+  /// Creates a runtime with one immutable profile snapshot and replaceable adapters.
   LudavaSdk.create({
+    Iterable<GameProfile>? profiles,
     WindowsMemoryApi? api,
     bool? isWindows,
     int? pointerSize,
@@ -34,7 +40,10 @@ class LudavaSdk {
     )?
     detectGame,
     Rpcs3GameIdentityLogDataSource? gameIdentityLogDataSource,
-  }) : _memoryOperations = ProcessGameMemoryOperations(
+  }) : _profiles = List<GameProfile>.unmodifiable(
+         profiles ?? GameProfileCatalog.profiles,
+       ),
+       _memoryOperations = ProcessGameMemoryOperations(
          api: api,
          isWindows: isWindows,
          pointerSize: pointerSize,
@@ -49,6 +58,7 @@ class LudavaSdk {
     diagnostics = _createDiagnosticGameMemoryService(detectGameOperation);
   }
 
+  final List<GameProfile> _profiles;
   final ProcessGameMemoryOperations _memoryOperations;
   final List<int> Function()? _discoverProcessIds;
   final Rpcs3ProcessMetadata Function(int processId)? _readProcessMetadata;
@@ -113,6 +123,7 @@ class LudavaSdk {
     )
     detectGameOperation,
   ) => DiagnosticGameMemoryService(
+    profiles: _profiles,
     memoryOperations: _memoryOperations,
     discoverProcessIds: _findRpcs3ProcessIds,
     readProcessMetadata: _readMetadata,
@@ -151,6 +162,7 @@ class LudavaSdk {
     final injectedDetection = _detectGame;
     if (injectedDetection != null) return injectedDetection;
     return Rpcs3GameDetectionWorkflow(
+      profiles: _profiles,
       discoverProcessIds: _findRpcs3ProcessIds,
       readProcessMetadata: _readMetadata,
       readIdentityLogCandidates:
