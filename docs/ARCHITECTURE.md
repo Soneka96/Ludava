@@ -97,9 +97,9 @@ The allowed dependency direction is:
 ludava_tui → ludava_sdk ← ludava_app
 ```
 
-No production or test import may point from the SDK to a frontend, from one frontend to the other, or across package boundaries using relative paths. Frontends call typed SDK operations directly; do not add a presentation-specific event dispatcher or duplicate engine behavior.
+No production or test import may point from the SDK to a frontend, from one frontend to the other, or across package boundaries using relative paths. The Nocterm TUI calls typed SDK operations directly. Flutter follows the approved Redux boundary: controls dispatch typed actions intercepted by middleware, with the synchronous write bridge as the documented direct-operation callback exception. Do not duplicate engine behavior or add a generic dispatcher.
 
-Within each frontend, organize screens and components by the user-facing feature they implement. Keep shared application operations and authoritative trainer state in the SDK; keep temporary selection, focus, cursor, and unsaved editor text in the owning frontend. A terminal key handler and a Flutter control call the same typed SDK operation directly. Do not route ordinary operations through presentation-specific input events or a generic dispatcher.
+Within each frontend, organize screens and components by the user-facing feature they implement. Keep shared application operations and authoritative trainer state in the SDK; keep temporary selection, focus, cursor, and unsaved editor text in the owning frontend. A Nocterm key handler calls the typed SDK operation directly. In the approved Flutter Redux migration, a control dispatches a typed action for middleware to handle; only the documented synchronous write bridge may expose a direct SDK-operation callback. Do not route ordinary TUI operations through a generic dispatcher.
 
 The approved migration moves existing capabilities without changing runtime behavior. Preserve the feature ownership, safety rules, and evidence limits in this document while adapting source and test paths to their owning package. Organize each frontend by user-facing feature; put reusable UI components in a feature or a frontend-local shared area only when multiple features use them. Do not create empty package or feature scaffolding.
 
@@ -109,7 +109,7 @@ The approved migration moves existing capabilities without changing runtime beha
 - **Game identity evidence:** parse RPCS3 log syntax in `game_detection/data`; update detection policy in `game_detection`. Keep raw file reading and process/session ownership in `rpcs3_connection`.
 - **Trainer field:** add the researched field to its game profile. Reuse the generic address, read, and write use cases in `game_memory`; add focused profile and operation tests.
 - **Emulator integration:** add process/log/session adapters under a dedicated connection feature. Keep emulator-specific process and log details out of `game_memory`.
-- **Frontends:** keep shared operations in the SDK boundary and let each frontend call those operations from its own feature-organized presentation. Do not call Windows adapters directly from widgets or terminal components.
+- **Frontends:** keep shared operations in the SDK boundary. The TUI calls typed SDK operations from its feature-organized presentation; approved Flutter Redux controls dispatch actions for middleware, with the synchronous write bridge as the direct-operation callback exception. Do not call Windows adapters directly from widgets or terminal components.
 
 ## Trainer state and presentation boundaries
 
