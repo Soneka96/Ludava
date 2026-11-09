@@ -1,4 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ludava_app/app/presentation/state/ludava_session_body_view_model.dart';
+import 'package:ludava_app/features/connection/presentation/state/rpcs3_connection_indicator_view_model.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_fields_view_model.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_game_header_view_model.dart';
 import 'package:ludava_app/features/trainer/services/sdk_operation_gate.dart';
 import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/features/trainer/services/trainer_write_bridge.dart';
@@ -23,6 +27,23 @@ void main() {
       expect(sl.isRegistered<Store<AppState>>(), isTrue);
       expect(sl.isRegistered<TrainerWriteBridge>(), isTrue);
       expect(sl<Store<AppState>>(), same(sl<Store<AppState>>()));
+      final store = sl<Store<AppState>>();
+      expect(
+        sl<TrainerFieldsViewModel>(param1: store).state,
+        same(store.state),
+      );
+      expect(
+        sl<TrainerGameHeaderViewModel>(param1: store).state,
+        same(store.state),
+      );
+      expect(
+        sl<LudavaSessionBodyViewModel>(param1: store).state,
+        same(store.state),
+      );
+      expect(
+        sl<Rpcs3ConnectionIndicatorViewModel>(param1: store).session,
+        same(store.state.trainer.session),
+      );
       expect(
         sl<Store<AppState>>().state.trainer.session,
         same(capability.snapshot),

@@ -152,4 +152,28 @@ void main() {
       );
     });
   });
+
+  group('Method isReady() behaves correctly', () {
+    test('Method isReady() requires supported detection and a memory base', () {
+      final ready = AppState(
+        trainer: TrainerState(session: trainerStateFixtureSession()),
+      );
+      final missingBase = AppState(
+        trainer: TrainerState(
+          session: trainerStateFixtureSession(memoryBase: null),
+        ),
+      );
+      final unsupported = AppState(
+        trainer: TrainerState(
+          session: trainerStateFixtureSession(
+            detectionStatus: GameDetectionStatus.unsupportedGame,
+          ),
+        ),
+      );
+
+      expect(TrainerSelectors.isReady(ready), isTrue);
+      expect(TrainerSelectors.isReady(missingBase), isFalse);
+      expect(TrainerSelectors.isReady(unsupported), isFalse);
+    });
+  });
 }

@@ -1,13 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
+import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
+import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:redux/redux.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() {
+  late _FakeTrainerSdkCapability capability;
+
+  setUp(() {
+    sl.pushNewScope();
+    capability = _FakeTrainerSdkCapability();
+    initDependencies(trainerSdkCapability: capability);
+  });
+
+  tearDown(() async {
+    await sl.popScope();
+    await capability.dispose();
+  });
+
   group('Class LudavaWindowTitleBar interaction behavior', () {
     testWidgets('Class LudavaWindowTitleBar uses the supplied theme', (
       tester,
@@ -21,15 +39,17 @@ void main() {
       final theme = ThemeData.dark().copyWith(extensions: [tokens]);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: theme,
-          home: Scaffold(
-            body: LudavaWindowTitleBar(
-              session: TrainerSessionState(),
-              isMaximized: maximizeState,
-              onMinimize: () {},
-              onToggleMaximize: () {},
-              onClose: () {},
+        StoreProvider<AppState>(
+          store: sl<Store<AppState>>(),
+          child: MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: LudavaWindowTitleBar(
+                isMaximized: maximizeState,
+                onMinimize: () {},
+                onToggleMaximize: () {},
+                onClose: () {},
+              ),
             ),
           ),
         ),
@@ -105,15 +125,17 @@ void main() {
       addTearDown(maximizeState.dispose);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: LudavaTheme.graphiteAndTeal,
-          home: Scaffold(
-            body: LudavaWindowTitleBar(
-              session: TrainerSessionState(),
-              isMaximized: maximizeState,
-              onMinimize: () {},
-              onToggleMaximize: () {},
-              onClose: () {},
+        StoreProvider<AppState>(
+          store: sl<Store<AppState>>(),
+          child: MaterialApp(
+            theme: LudavaTheme.graphiteAndTeal,
+            home: Scaffold(
+              body: LudavaWindowTitleBar(
+                isMaximized: maximizeState,
+                onMinimize: () {},
+                onToggleMaximize: () {},
+                onClose: () {},
+              ),
             ),
           ),
         ),
@@ -139,15 +161,17 @@ void main() {
       addTearDown(maximizeState.dispose);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: LudavaTheme.graphiteAndTeal,
-          home: Scaffold(
-            body: LudavaWindowTitleBar(
-              session: TrainerSessionState(processIds: const [10]),
-              isMaximized: maximizeState,
-              onMinimize: () => minimizeCount++,
-              onToggleMaximize: () => maximizeCount++,
-              onClose: () => closeCount++,
+        StoreProvider<AppState>(
+          store: sl<Store<AppState>>(),
+          child: MaterialApp(
+            theme: LudavaTheme.graphiteAndTeal,
+            home: Scaffold(
+              body: LudavaWindowTitleBar(
+                isMaximized: maximizeState,
+                onMinimize: () => minimizeCount++,
+                onToggleMaximize: () => maximizeCount++,
+                onClose: () => closeCount++,
+              ),
             ),
           ),
         ),
@@ -163,4 +187,28 @@ void main() {
       expect(closeCount, 1);
     });
   });
+}
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {}
 }

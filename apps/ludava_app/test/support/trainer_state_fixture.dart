@@ -18,7 +18,7 @@ TrainerSessionState trainerStateFixtureSession({
   String fieldId = 'credits',
   List<String> additionalFieldIds = const [],
   String gameName = 'Synthetic Game',
-  int memoryBase = 0x1000,
+  int? memoryBase = 0x1000,
   int processId = 42,
   DateTime? startedAtUtc,
   GameReadResult? readResult,

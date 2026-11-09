@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_game_header_view_model.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
@@ -15,7 +16,7 @@ class TrainerGameHeaderConnector extends StatelessWidget {
   Widget build(BuildContext context) =>
       StoreConnector<AppState, TrainerGameHeaderViewModel>(
         distinct: true,
-        converter: TrainerGameHeaderViewModel.fromStore,
+        converter: (store) => sl<TrainerGameHeaderViewModel>(param1: store),
         builder: (context, viewModel) => TrainerGameHeader(
           session: TrainerSelectors.session(viewModel.state),
           onRefresh: viewModel.onRefresh,

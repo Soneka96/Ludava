@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/features/trainer/presentation/state/trainer_fields_view_model.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
@@ -16,7 +17,7 @@ class TrainerFieldsPanelConnector extends StatelessWidget {
   Widget build(BuildContext context) =>
       StoreConnector<AppState, TrainerFieldsViewModel>(
         distinct: true,
-        converter: TrainerFieldsViewModel.fromStore,
+        converter: (store) => sl<TrainerFieldsViewModel>(param1: store),
         builder: (context, viewModel) {
           final state = viewModel.state;
           final session = TrainerSelectors.session(state);

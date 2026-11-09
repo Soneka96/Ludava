@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
+import 'package:ludava_app/injection_container.dart';
+import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_style_presets.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_factory.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:redux/redux.dart';
 
 Color _stateOverlayColor(Color color, double opacity) => Color.fromARGB(
   (opacity * 255).round(),
@@ -176,6 +181,13 @@ void main() {
     testWidgets(
       'Method LudavaThemeFactory.build() styles Ludava and Material widgets from alternate colors',
       (tester) async {
+        sl.pushNewScope();
+        final capability = _FakeTrainerSdkCapability();
+        initDependencies(trainerSdkCapability: capability);
+        addTearDown(() async {
+          await sl.popScope();
+          await capability.dispose();
+        });
         final colors = GraphiteTealTheme.colors.copyWith(
           surface: Colors.deepPurple,
           accent: Colors.lime,
@@ -191,23 +203,25 @@ void main() {
         addTearDown(maximizeState.dispose);
 
         await tester.pumpWidget(
-          MaterialApp(
-            theme: theme,
-            home: Scaffold(
-              body: Column(
-                children: [
-                  LudavaWindowTitleBar(
-                    session: TrainerSessionState(),
-                    isMaximized: maximizeState,
-                    onMinimize: () {},
-                    onToggleMaximize: () {},
-                    onClose: () {},
-                  ),
-                  FilledButton(onPressed: () {}, child: const Text('Apply')),
-                  const TextField(
-                    decoration: InputDecoration(labelText: 'Value'),
-                  ),
-                ],
+          StoreProvider<AppState>(
+            store: sl<Store<AppState>>(),
+            child: MaterialApp(
+              theme: theme,
+              home: Scaffold(
+                body: Column(
+                  children: [
+                    LudavaWindowTitleBar(
+                      isMaximized: maximizeState,
+                      onMinimize: () {},
+                      onToggleMaximize: () {},
+                      onClose: () {},
+                    ),
+                    FilledButton(onPressed: () {}, child: const Text('Apply')),
+                    const TextField(
+                      decoration: InputDecoration(labelText: 'Value'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -244,6 +258,30 @@ void main() {
       },
     );
   });
+}
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {}
 }
 
 /// Resolves a Material state opacity through its 8-bit color alpha channel.

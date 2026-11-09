@@ -34,6 +34,11 @@ abstract final class TrainerSelectors {
       state.trainer.editingFieldId == field.id &&
       TrainerWriteEligibility.hasValidTarget(session(state), field);
 
+  /// Returns whether a supported profile has a usable session memory base.
+  static bool isReady(AppState state) =>
+      session(state).detection?.status == GameDetectionStatus.supportedGame &&
+      session(state).memoryBase != null;
+
   /// Returns the field currently being edited, if it still exists.
   static GameField? editingField(AppState state) {
     final fieldId = state.trainer.editingFieldId;

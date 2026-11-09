@@ -3,9 +3,9 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel_connector.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
-import 'package:ludava_app/shared/state/app_reducer.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
+import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 
@@ -15,6 +15,19 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
 void main() {
+  late _FakeTrainerSdkCapability capability;
+
+  setUp(() {
+    sl.pushNewScope();
+    capability = _FakeTrainerSdkCapability();
+    initDependencies(trainerSdkCapability: capability);
+  });
+
+  tearDown(() async {
+    await sl.popScope();
+    await capability.dispose();
+  });
+
   group('Class TrainerFieldsPanelConnector dynamic fields behavior', () {
     testWidgets(
       'Class TrainerFieldsPanelConnector preserves stable field keys',
@@ -27,7 +40,8 @@ void main() {
             value: 25,
           ),
         );
-        final store = _createStore(initialSession);
+        final store = sl<Store<AppState>>();
+        store.dispatch(TrainerSessionChangedAction(initialSession));
 
         await tester.pumpWidget(_wrap(store));
         expect(find.byKey(const ValueKey('credits')), findsOneWidget);
@@ -62,7 +76,8 @@ void main() {
             value: 25,
           ),
         );
-        final store = _createStore(session);
+        final store = sl<Store<AppState>>();
+        store.dispatch(TrainerSessionChangedAction(session));
 
         await tester.pumpWidget(_wrap(store));
         await tester.tap(find.byTooltip('Edit Credits'));
@@ -88,7 +103,8 @@ void main() {
             value: 25,
           ),
         );
-        final store = _createStore(initialSession);
+        final store = sl<Store<AppState>>();
+        store.dispatch(TrainerSessionChangedAction(initialSession));
         await tester.pumpWidget(_wrap(store));
 
         store.dispatch(const BeginEditingAction('credits'));
@@ -132,8 +148,26 @@ Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
   ),
 );
 
-Store<AppState> _createStore(TrainerSessionState session) => Store<AppState>(
-  appReducer,
-  initialState: AppState(trainer: TrainerState(session: session)),
-  syncStream: true,
-);
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {}
+}

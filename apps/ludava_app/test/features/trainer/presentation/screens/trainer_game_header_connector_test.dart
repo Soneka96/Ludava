@@ -3,8 +3,8 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header_connector.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
-import 'package:ludava_app/shared/state/app_reducer.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
+import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -14,20 +14,24 @@ import '../../../../support/trainer_state_fixture.dart';
 import 'package:redux/redux.dart';
 
 void main() {
+  late _FakeTrainerSdkCapability capability;
+
+  setUp(() {
+    sl.pushNewScope();
+    capability = _FakeTrainerSdkCapability();
+    initDependencies(trainerSdkCapability: capability);
+  });
+
+  tearDown(() async {
+    await sl.popScope();
+    await capability.dispose();
+  });
+
   group('Class TrainerGameHeaderConnector connection behavior', () {
     testWidgets('Class TrainerGameHeaderConnector renders one refresh action', (
       tester,
     ) async {
-      final actions = <Object>[];
-      final store = Store<AppState>(
-        (state, action) {
-          actions.add(action);
-          return appReducer(state, action);
-        },
-        initialState: AppState(
-          trainer: TrainerState(session: trainerStateFixtureSession()),
-        ),
-      );
+      final store = sl<Store<AppState>>();
       await tester.pumpWidget(
         StoreProvider<AppState>(
           store: store,
@@ -43,23 +47,20 @@ void main() {
         find.byTooltip('Refresh values or rediscover RPCS3'),
         findsOneWidget,
       );
-      expect(find.text('Synthetic Game'), findsOneWidget);
+      expect(find.text('Connect to RPCS3'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Refresh values or rediscover RPCS3'));
 
-      expect(actions, hasLength(1));
-      expect(actions.single, isA<RefreshTrainerAction>());
+      expect(capability.connectCalls, 1);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets(
       'Class TrainerGameHeaderConnector rebuilds readiness from snapshots',
       (tester) async {
-        final store = Store<AppState>(
-          appReducer,
-          initialState: AppState(
-            trainer: TrainerState(session: trainerStateFixtureSession()),
-          ),
+        final store = sl<Store<AppState>>();
+        store.dispatch(
+          TrainerSessionChangedAction(trainerStateFixtureSession()),
         );
         await tester.pumpWidget(
           StoreProvider<AppState>(
@@ -86,4 +87,30 @@ void main() {
       },
     );
   });
+}
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  int connectCalls = 0;
+
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() => connectCalls++;
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {}
 }
