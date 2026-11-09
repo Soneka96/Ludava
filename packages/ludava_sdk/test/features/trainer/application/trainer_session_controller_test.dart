@@ -831,7 +831,7 @@ void main() {
               ..profile = _profile(twoFields: true)
               ..controller.connect()
               ..readErrorFieldId = 'credits'
-              ..readError = StateError('bolts read failed');
+              ..readError = StateError('credits read failed');
 
         fixture.controller.refresh();
 
@@ -842,7 +842,7 @@ void main() {
         expect(fixture.controller.state.readResults['weapons']?.value, 7);
         expect(
           fixture.controller.state.errorMessage,
-          contains('bolts read failed'),
+          contains('credits read failed'),
         );
       },
     );

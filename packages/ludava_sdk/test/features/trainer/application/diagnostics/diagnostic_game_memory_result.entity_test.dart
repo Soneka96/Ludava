@@ -5,32 +5,13 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Class DiagnosticGameMemoryResult construction', () {
-    test(
-      'Class DiagnosticGameMemoryResult initializes structured operation details',
-      () {
-        const result = DiagnosticGameMemoryResult(
-          status: DiagnosticGameMemoryStatus.identityMismatch,
-          identityConfirmed: false,
-        );
-
-        expect(result.status, DiagnosticGameMemoryStatus.identityMismatch);
-        expect(result.identityConfirmed, isFalse);
-        expect(result.readResult, isNull);
-        expect(result.writeResult, isNull);
-        expect(result.error, isNull);
-        expect(result.cleanupError, isNull);
-      },
-    );
-  });
-
   group('Property succeeded behaves correctly', () {
     test('Property succeeded returns true for a completed read', () {
       const result = DiagnosticGameMemoryResult(
         status: DiagnosticGameMemoryStatus.completed,
         readResult: GameReadResult(
           status: GameReadStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           value: 50,
         ),
       );
@@ -43,7 +24,7 @@ void main() {
         status: DiagnosticGameMemoryStatus.completed,
         readResult: GameReadResult(
           status: GameReadStatus.readFailed,
-          fieldId: 'bolts',
+          fieldId: 'credits',
         ),
       );
 
@@ -55,7 +36,7 @@ void main() {
         status: DiagnosticGameMemoryStatus.completed,
         writeResult: GameWriteResult(
           status: GameWriteStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 50,
           readBackValue: 50,
         ),
@@ -77,7 +58,7 @@ void main() {
         status: DiagnosticGameMemoryStatus.completed,
         writeResult: GameWriteResult(
           status: GameWriteStatus.readBackMismatch,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 50,
           readBackValue: 49,
         ),

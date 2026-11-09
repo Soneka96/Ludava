@@ -13,9 +13,9 @@ void main() {
       () {
         final processes = [42];
         final reads = <String, GameReadResult>{
-          'bolts': const GameReadResult(
+          'credits': const GameReadResult(
             status: GameReadStatus.success,
-            fieldId: 'bolts',
+            fieldId: 'credits',
             value: 100,
           ),
         };
@@ -29,7 +29,7 @@ void main() {
         reads.clear();
 
         expect(state.processIds, [42]);
-        expect(state.readResults['bolts']?.value, 100);
+        expect(state.readResults['credits']?.value, 100);
         expect(state.profile, isNull);
         expect(() => state.processIds.add(44), throwsUnsupportedError);
         expect(() => state.readResults.clear(), throwsUnsupportedError);

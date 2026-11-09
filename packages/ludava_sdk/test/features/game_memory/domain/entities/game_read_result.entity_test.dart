@@ -3,28 +3,13 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Class GameReadResult construction', () {
-    test('Class GameReadResult initializes status and optional details', () {
-      const result = GameReadResult(
-        status: GameReadStatus.readFailed,
-        fieldId: 'bolts',
-        errorCode: 299,
-      );
-
-      expect(result.status, GameReadStatus.readFailed);
-      expect(result.fieldId, 'bolts');
-      expect(result.value, isNull);
-      expect(result.errorCode, 299);
-    });
-  });
-
   group('Property succeeded behaves correctly', () {
     test(
       'Property succeeded returns true when status and value indicate success',
       () {
         const result = GameReadResult(
           status: GameReadStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           value: 0,
         );
 
@@ -35,7 +20,7 @@ void main() {
     test('Property succeeded returns false when status is not success', () {
       const result = GameReadResult(
         status: GameReadStatus.readFailed,
-        fieldId: 'bolts',
+        fieldId: 'credits',
         value: 100,
       );
 

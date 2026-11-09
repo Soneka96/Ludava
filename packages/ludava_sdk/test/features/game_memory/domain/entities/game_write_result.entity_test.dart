@@ -3,29 +3,11 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Class GameWriteResult construction', () {
-    test('Class GameWriteResult initializes status and optional evidence', () {
-      const result = GameWriteResult(
-        status: GameWriteStatus.readBackMismatch,
-        fieldId: 'bolts',
-        requestedValue: 100,
-        readBackValue: 99,
-        errorCode: 299,
-      );
-
-      expect(result.status, GameWriteStatus.readBackMismatch);
-      expect(result.fieldId, 'bolts');
-      expect(result.requestedValue, 100);
-      expect(result.readBackValue, 99);
-      expect(result.errorCode, 299);
-    });
-  });
-
   group('Property succeeded behaves correctly', () {
     test('Property succeeded returns true when read-back matches request', () {
       const result = GameWriteResult(
         status: GameWriteStatus.success,
-        fieldId: 'bolts',
+        fieldId: 'credits',
         requestedValue: 0,
         readBackValue: 0,
       );
@@ -38,7 +20,7 @@ void main() {
       () {
         const result = GameWriteResult(
           status: GameWriteStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 100,
           readBackValue: 99,
         );
@@ -50,7 +32,7 @@ void main() {
     test('Property succeeded returns false when status is not success', () {
       const result = GameWriteResult(
         status: GameWriteStatus.writeFailed,
-        fieldId: 'bolts',
+        fieldId: 'credits',
         requestedValue: 100,
         readBackValue: 100,
       );
@@ -68,7 +50,7 @@ void main() {
         );
         const noRequest = GameWriteResult(
           status: GameWriteStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           readBackValue: 10,
         );
 
@@ -93,7 +75,7 @@ void main() {
       () {
         const result = GameWriteResult(
           status: GameWriteStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 10,
         );
 

@@ -11,12 +11,12 @@ void main() {
       () {
         final readResult = GameReadResult(
           status: GameReadStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           value: 61,
         );
         final writeResult = GameWriteResult(
           status: GameWriteStatus.success,
-          fieldId: 'bolts',
+          fieldId: 'credits',
           requestedValue: 61,
           readBackValue: 61,
         );

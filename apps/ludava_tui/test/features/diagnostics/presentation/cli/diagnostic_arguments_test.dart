@@ -9,8 +9,8 @@ void main() {
       () {
         const arguments = DiagnosticArguments(
           action: GameMemoryAction.read,
-          gameId: 'rc2-collection',
-          fieldId: 'bolts',
+          gameId: 'synthetic-profile',
+          fieldId: 'credits',
           processId: 42,
           memoryBase: 0x300000000,
           confirmed: false,
