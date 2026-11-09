@@ -1,179 +1,101 @@
 # Development policy — personal project
 
-Ludava is a **personal project maintained solely by Soneka96**. The owner does not solicit or accept external source-code contributions, unsolicited patches, feature implementations, or third-party pull requests.
+This document owns development workflow, Dart source conventions, frontend presentation style, and workspace tooling. Package boundaries and SDK safety contracts live in [architecture](ARCHITECTURE.md), test rules in [testing](TESTING.md), documentation governance in [documentation](DOCUMENTATION.md), and future Flutter Redux specifics in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
-Public visibility is intended to let anyone **read, study, and learn from** Ludava. People are welcome to write their own original implementations of ideas they learn. Public visibility is **not** an invitation to contribute or an open-source grant to reuse protected source code. Copying protected code, distributing modifications, or incorporating Ludava into another product requires separate permission unless applicable law or GitHub platform rights allow the activity. See [LICENSE](../LICENSE).
+Ludava is a personal project maintained solely by Soneka96. The owner does not solicit or accept external source contributions, unsolicited patches, feature implementations, or third-party pull requests.
 
-Commercial or other code-reuse permission may be requested from the repository owner and considered case by case, under a separate written agreement. No fixed fee has been set. Sending money does not automatically grant usage rights.
+Public visibility is for reading and learning; it is not an open-source license or an invitation to contribute. Copying protected code, distributing modifications, or incorporating Ludava into another product requires separate permission unless applicable law or GitHub platform rights allow it. See [LICENSE](../LICENSE). Commercial or other reuse permission may be requested from the owner and considered under a separate written agreement. No fixed fee is set, and payment alone grants no rights.
 
-## Internal development workflow
+## Development workflow
 
-The project's own development work follows these rules:
+- Keep each branch and pull request focused on one task. Record the problem, evidence, scope, verification, and limitations in the task or PR.
+- Do not claim a game/build is compatible without reproducible live-game validation. Automated tests and plausible values are not compatibility evidence.
+- Enable writes only for profile fields with research-confirmed or verified evidence. Keep Ludava live-runtime validation distinct from external research; process discovery and manual profile selection alone do not identify a live game/build.
+- Prefer incremental changes with clear responsibilities. Cross-package architecture is owned by [ARCHITECTURE.md](ARCHITECTURE.md); future Flutter Redux architecture is owned by [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
-1. One focused task per development branch and pull request.
-2. Each task records problem, evidence, implementation scope, test results and limitations.
-3. Test behavior where it belongs using fake or mocked dependencies; exercise a small set of important integrations.
-4. Do not label a game/build compatible without reproducible real-game validation.
-5. Enable writes only for fields whose profile records research-confirmed or verified evidence. Keep Ludava's live-runtime validation status distinct from external research; process discovery or manual profile selection alone does not identify the active game/build.
-6. Prefer simple, well-separated responsibilities and incremental refactors.
+## Researching game fields
 
-## Research-first game field workflow
+Check existing trainer references before adding a game or field, including Cheat Engine tables, community sources, emulator cheat tools, and original research. In that game's `docs/games/` record, capture sources, versions, observed address and guest-offset derivation, value representation/endianness, and what was actually tested.
 
-When adding a game or field, **check existing trainer references first** (including Cheat Engine tables, community references, emulator cheat tools, and original research). Record sources, versions, observed address and guest-offset derivation, value type/endianness, and what was actually tested in that game's document under `docs/games/`. Treat external source code and license restrictions separately: use independently corroborated facts; do not copy GPL implementation into Ludava.
+- An address copied from a third party without live corroboration remains a candidate; it does not enable writes.
+- Documented external live testing of the matching build and field can qualify as `researchConfirmed` when it includes source, observed behavior, address derivation, representation, and limitations. It does not claim Ludava itself was tested.
+- Reserve `verified` for corresponding recorded live Ludava results. Preserve uncertainty across builds.
+- Regardless of research status, writes retain current process/session, executable hash, guest base, bounds, preliminary read, complete transfer, and matching read-back checks. See [game memory](features/game-memory.md).
+- Research and test on the development machine where practical. Use the ROG Ally for final interactive testing; do not require lengthy handheld commands or add data-collection tooling when local evidence is available.
+- Reuse generic engine tests. Add focused mapping coverage and a proportionate smoke test where useful; do not require repeated approval ceremonies for each field.
 
-An **address copied from a third party without live corroboration remains a candidate**, not automatically write-enabled. Documented external live testing of a matching build and field, with behavioral evidence, can qualify as `researchConfirmed` and permit existing guarded writes **without a redundant full Ludava manual research ceremony**. This does not justify marking Ludava live compatibility `verified` or bypassing current-process, executable hash, guest base, bounds, preliminary-read, complete-write and read-back checks. Reserve `verified` for recorded corresponding Ludava runtime results. Preserve uncertainty when builds differ.
+## Dart source conventions
 
-Research and test values on the development machine where practical; the ROG Ally need only be a final interactive testing device. Do not require lengthy handheld terminal commands, or new diagnostic UI/tooling solely to collect data already available locally. Reuse generic engine tests; add focused mapping tests and one proportionate smoke test where possible. No compulsory repeated approval sequence per field.
+### Files, classes, and methods
 
-## Surgical documentation updates
+- Put each public class, entity, model, use case, repository, and data source in its own file. Name the file after its primary type and add a role suffix where it clarifies the type, such as `.entity.dart`, `.model.dart`, `.usecase.dart`, `.repository.dart`, or `.datasource.dart`.
+- Order class members consistently: public fields/properties first; constructors next (primary/unnamed, then named, then factory); private fields next; public methods/getters/setters next; private methods/getters last. Keep static constants before ordinary fields within their visibility group. Constructor-initialized public data stays above the constructor; private dependencies/state stay below it.
+- Keep small non-enum declarations with their owning concept when that keeps the file focused; give a type its own file when it has independent meaning or behavior. Enums follow the central-file rule below.
+- Methods belong to the class that owns the behavior. Put stateless calculations in a focused utility class in the owning feature; do not add orphan top-level helper methods or generic `utils`/`services` dumping grounds.
+- Keep each package's `main()` minimal: perform only essential entry-point initialization, then delegate to its application bootstrap or command runner. Keep business logic, feature orchestration, and incidental setup in their owning components; `main()` is not a general configuration or initialization container.
+- Keep profile definitions in separate files by game and build. A profile catalog may register them, but the memory-reading flow remains shared.
 
-Update **only the document that owns a changed fact**. Feature mechanism changes belong under `docs/features/`; one game's memory address or build finding belongs in its `docs/games/<profile>.md`; build instructions belong in `docs/guides/`; future priorities belong in `ROADMAP.md`. Never update unrelated files to synchronize status summaries. Keep the roadmap a concise list of meaningful future initiatives (goal, scope, done condition); remove completed initiatives instead of retaining a PR/test history.
+### Enums, constants, and type aliases
 
-## Source and test conventions
+- Put handwritten SDK and cross-package enums in `packages/ludava_sdk/lib/shared/constants/enums.dart`. Frontend-only enums stay with their frontend. Keep enum behavior in the enum declaration itself; use enhanced enums for labels, parsing, and other enum-owned behavior rather than separate extensions.
+- Put `none` first in every handwritten enum, including frontend-local enums. Treat it as an invalid or unset sentinel, never as a valid selected state or implicit success. Handle an encountered `none` explicitly with an appropriate warning, error, or safe rejection; do not invent a meaningful transition solely for the sentinel. Give the enum and each member a concise `///` comment.
+- Put SDK business constants in `packages/ludava_sdk/lib/shared/constants/app_constants.dart`, grouped into one `abstract final class` per feature or concern. Do not use bare top-level magic constants or one flat catch-all constants class.
+- Keep layout and widget sizing constants in the owning frontend, such as `apps/ludava_tui/lib/shared/constants/layout_constants.dart`; do not mix presentation sizing into SDK business constants. Create a constants file only when there are constants of that kind to own.
+- Keep platform/API implementation details such as Windows access flags beside the adapter that owns them, as private `static const` members. Do not move implementation-only values into shared application constants.
+- Do not add handwritten `typedef`s, including function aliases or aliases for record-shaped results. Use a named class with fields for data and an owning class/interface for behavior or injected callbacks. Generated/third-party declarations are exempt. Keep a typedef only where Dart or a native/framework interop API requires it, and document why at the declaration.
+- Central enum and constants files are deliberate grouping exceptions to the one-class-per-file rule within the owning package: SDK enums share `enums.dart`; each constants class is grouped in the file for its constant kind.
 
-These conventions apply to new code and files materially changed by a task:
+### Dart documentation
 
-1. Organize code under the package and feature that own the capability, then by the layer that owns each responsibility. The SDK owns `game_catalog`, `rpcs3_connection`, `game_detection`, `game_memory`, and shared trainer application behavior. The TUI owns Nocterm presentation, navigation, editor interaction state, and diagnostic CLI presentation. The Flutter app owns its GUI presentation, window, navigation, theme, layout, and temporary interaction state. Follow [`ARCHITECTURE.md`](ARCHITECTURE.md); do not create empty layers or a new game feature when a new game profile can reuse an existing capability.
-2. Give each public class its own focused file and put behavior on the class that owns it. Centralize SDK enums and constants under `packages/ludava_sdk/lib/shared/constants/`; frontend-only declarations stay in the owning frontend. The intentional SDK grouping exceptions are enums in `enums.dart` and constants classes grouped by kind in `app_constants.dart` when that file contains relevant declarations.
-3. Order class members as public fields, primary/unnamed constructor, named constructors, factory constructors, private fields, public methods/getters, then private methods/getters. Put static constants before ordinary fields within their visibility group.
-4. Document every public and private class method and getter with concise Dart `///` comments. Public classes and properties also require documentation. Explain contracts, constraints, or non-obvious reasons; do not narrate an obvious implementation. Link code references as `[Type]`, `[Type.member]`, or an in-scope `[parameter]` so IDE hovers can navigate. Documentation-only references do not add runtime coupling.
-5. Put every handwritten SDK enum in `packages/ludava_sdk/lib/shared/constants/enums.dart`, with `none` first as the unset/error sentinel and a doc comment on the enum and each member. Put cross-cutting SDK business constants in feature- or concern-specific classes inside the SDK's `app_constants.dart`. Keep Flutter layout values in `apps/ludava_app/lib/shared/constants/ludava_constants.dart`; other frontends own their own presentation constants. Keep platform/API implementation constants with their owning class. Do not create empty constants files.
-6. Do not add handwritten `typedef`s, including function aliases or record aliases. Use named classes for data and class/interface collaborators for behavior. Keep typedefs only when generated code or a Dart/native/framework interop API requires them, and document the reason.
-7. Put focused tests at the mirrored path under `test/` in the owning package when that path clarifies responsibility. For example, `packages/ludava_sdk/lib/features/game_memory/domain/usecases/read_game_field.usecase.dart` maps to `packages/ludava_sdk/test/features/game_memory/domain/usecases/read_game_field.usecase_test.dart`. This locates dedicated tests; it does not require a test for every production class or profile. Windows runtime seams stay under the owning package's `test/integration/features/<owning-feature>/`.
-8. Group unit tests by public method: `Method methodName() behaves correctly`. Name each test `Method methodName() <outcome>` and add `when <condition>` when the condition is not already clear from the outcome. Use an outcome that says what the method returns, preserves, rejects, or throws.
-9. Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
-10. Test through public behavior. Generic SDK tests use synthetic `GameProfile` and `GameField` values; TUI and Flutter tests use synthetic profiles and session snapshots. Generic tests do not depend on production game names, IDs, hashes, offsets, catalog order, or a shared mutable catalog. The shared catalog-integrity suite and focused integration tests may use the production catalog for those specific responsibilities. Never access a live game from an automated test.
-11. Keep one top-level group per method and no nested groups. Test failure and boundary paths, including that a dependency is not called when a precondition rejects the operation.
-12. Test names and comments describe behavior and contracts. Keep implementation details in the code, not duplicated as prose.
-13. Do not require mirrored tests for every game. One shared, data-driven catalog suite checks each registered profile against structural invariants without maintaining a hardcoded profile list or count. Ordinary profile additions require no generic SDK, TUI, or Flutter behavior-test changes. Add game-specific tests only for exceptional behavior, regressions, or special mappings; preserve game research and real-game evidence under `docs/games/`.
-14. Test ownership follows package responsibility: SDK tests cover SDK behavior, TUI tests cover terminal behavior, and Flutter tests cover widget behavior. Parent widget tests cover composition and wiring, while focused child tests cover child behavior. Keep only a small number of integration tests for important seams and orchestration risks.
-15. Tests prove observable behavior, a contract, invariant, failure mode, or regression. Avoid tests that only restate constructor assignments, raw palette values, static configuration, ordinary per-game literals, child behavior already covered at its owner, or private implementation details. Retain meaningful immutability, validation, semantic theme, layout, accessibility, and safety coverage.
-16. In nontrivial test files, place imports first, then local setup/build helpers and fake or fixture classes, then `void main()`. Keep helpers above `main()`, small, descriptive, and local by default; give parameters useful defaults and optional named overrides. Use package-local `test/support/` only for helpers genuinely shared by multiple files in that package. Do not add universal fixture frameworks, test service locators, cross-package test support, or unnecessary dependency containers. Framework `setUp()` and test declarations remain inside `main()`.
-17. Keep tests independent: profile-data changes must not require generic behavior-test changes, mutable state must not leak between cases, and tests must not depend on execution order. Preserve distinct safety and lifecycle failure paths and negative collaborator-call assertions; do not combine separate rejected preconditions only to shorten a suite.
-18. Apply the primary-owner, consumer-isolation, distinct-integration, and policy-ownership rules in [`ARCHITECTURE.md`](ARCHITECTURE.md#testing) whenever a test exercises behavior implemented by another component or layer.
+- Add concise `///` documentation to every public class, method, and property, and to every public or private method. Explain the contract, constraints, or non-obvious reason; do not narrate an obvious implementation.
+- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.canRead]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
+- Import symbols to resolve Dart documentation references when needed for IDE navigation. Documentation-only imports are permitted when the target is already an allowed, declared package dependency; they do not justify new dependencies or executable cross-package access. Boundary checks must distinguish documentation-only imports from executable usage (see [package ownership](ARCHITECTURE.md#dart-workspace-and-package-ownership)).
+- Use `[Class]` and `[Class.member]` rather than plain-text names when referring to code. Keep comments aligned with what the symbol guarantees, especially compatibility and memory-write safety.
 
-## Application state and dependency injection
+## Frontend interaction conventions
 
-The application controller owns authoritative trainer-session state and publishes immutable snapshots through a UI-toolkit-independent Dart observation API. Subscribers must have a defined way to obtain current state, receive changes after transitions, and stop receiving updates after deterministic cleanup. A state snapshot must not expose mutable collections. Disposal tests retain capability references, verify later operations throw before collaborators run, and verify subscriptions close without later state events; see [`ARCHITECTURE.md`](ARCHITECTURE.md#sdk-runtime-api) for the contract.
+### Nocterm
 
-Presentation may own temporary interaction state such as focus, selected rows, cursor/selection, and unsaved text. It must not keep a second copy of process identity, profile, memory base, or verified field values. Clear or re-evaluate interaction state when its session becomes obsolete. Application services and replaceable boundaries are passed explicitly through constructors from the composition root. Do not use a global service locator or introduce a state-management framework without a demonstrated need. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for ownership and dependency direction.
+- Keep Nocterm components focused on rendering and explicit actions; process discovery, identity detection, and memory operations remain in SDK application/data layers. The root owns screen selection, navigation, and subscription cleanup.
+- Handle keys in the focused screen or editor. Scope number shortcuts to their screen; editing keys do not also trigger menu actions. Escape cancels without applying or leaking terminal protocol bytes into text. Preserve cursor, selection, and focus across edits and navigation.
+- Windows input comes from the Win32 console adapter, which translates complete console key records to bytes. Do not negotiate Kitty or `modifyOtherKeys`: this backend does not consume those protocols. Forward input chunks; do not infer key boundaries with an Escape timeout. Negotiate only when a backend reads the matching terminal protocol.
 
-## Terminal interaction and component tests
+For terminal input and component tests, see [testing conventions](TESTING.md#nocterm-input-tests).
 
-Nocterm components render state and dispatch explicit actions; process discovery, identity detection, and memory operations stay in the application/data layers. Keep the root component responsible for screen selection, navigation, and subscription cleanup. Give screens and reusable components a focused rendering or interaction responsibility; do not create wrappers that add no behavior or layout ownership.
+### Flutter presentation and design system
 
-Handle keyboard input in the focused screen or editor. Number shortcuts act only in the screen that owns them, and editing keys must not also trigger menu actions. Escape cancels editing without applying a value or leaking terminal protocol bytes into text. Keep cursor, selection, and focus behavior stable when editing and when returning to a screen.
+The Flutter app is a compact Windows utility that consumes public SDK capabilities. Widgets do not import SDK internals, open process handles, duplicate detection/decoding, or decide write authorization. Keep game fields dynamic and SDK-driven; use a scrollable vertical field list with one horizontal row per numeric field. Keep rows stable through edit, hover, validation, and write feedback; constrain long names/values, and keep keyboard focus, mouse/touch targets, and Windows touch keyboard usable.
 
-On Windows, Nocterm receives keys from the Win32 console input adapter, which translates console key records into complete byte sequences. Do not negotiate Kitty keyboard or `modifyOtherKeys` input modes for this backend: the terminal would encode keys using a protocol that the native console adapter does not consume. Forward its key-event chunks directly; do not infer Windows key boundaries with an Escape timeout. Protocol negotiation is appropriate only for a backend that reads the matching terminal protocol.
+Organize feature UI under `presentation/`: `screens/` owns substantial compositions (including panels and headers), and `widgets/` owns meaningful supporting components. Folder placement does not require a `Screen` suffix. Give each meaningful widget a focused file; compose named widget classes instead of hiding components in private `Widget` subclasses or private widget-returning builders. Private `State` classes and non-UI helpers are fine. Extract meaningful behavior, not every `Row` or `Padding`; avoid behaviorless wrappers. Keep shared UI under `shared/widgets/` only when multiple features use it. Add directories only for real responsibilities.
 
-Test Nocterm behavior through public component and input APIs where possible. Cover raw terminal sequences at the input boundary, including fragmented and coalesced chunks, when protocol decoding affects user-visible behavior; do not import unsupported package internals into production code. Component tests should assert visible output and dispatched actions, including negative cases such as cancellation not writing, unavailable values not becoming zero, and invalid input not reaching a writer. Keep each behavior test at the component or adapter that owns it and follow the test naming and path rules above.
+Theme responsibilities stay separate:
 
-For a stateful or rendering Nocterm component whose behavior is exercised by pumping the public component tree and sending input, with no single public method as the test entry point, use one top-level group named `Class ComponentName <observable area> behavior` and scenarios named `Class ComponentName <observable outcome>`. Keep these tests at the component's mirrored test path, assert displayed state or dispatched actions, and do not nest groups. This exception applies only to component-tree behavior tests; adapter, controller, and property tests continue to use the method/property naming above.
+| Owner | Responsibility |
+| --- | --- |
+| `shared/theme/ludava_colors.dart` | Concrete palette colors named by identity; no semantic widget roles or layout. |
+| `shared/theme/ludava_theme_tokens.dart` | The 19 typed semantic visual roles (for example `surface`, `textPrimary`, `borderSubtle`, `success`, `warning`) with one authoritative value per role. Widgets use theme tokens, not raw `LudavaColors`. |
+| `shared/theme/themes/` | One raw-palette-to-token mapping and brightness per theme. Production ships dark Graphite & Teal; the factory supports brightness for future definitions. No separate `ThemeData` or widget-specific roles here. |
+| `shared/theme/ludava_theme_factory.dart` | One builder for `ThemeData`, explicit Material 3 `ColorScheme` mapping, and component styles from tokens, brightness, and preset. Do not use seed-generated or competing semantic colors. The `LudavaTheme` entry point exposes the stable theme without rebuilding it on every app rebuild. |
+| `shared/theme/ludava_style_presets.dart` | The single production Comfortable preset: typography, numeric text, shapes, buttons, inputs, and other shared component styling. No runtime registry, selector UI, persistence, or styling framework. |
+| `shared/constants/ludava_constants.dart` | Documented shared spacing and window/layout/breakpoint values grouped by concern. Reuse equivalent measurements; do not create a token for every occurrence. |
+| Component | A genuinely independent local implementation detail. |
 
-## Flutter presentation and design system
+For widget, theme, layout, focus, and native-window test requirements, see [Flutter widget testing conventions](TESTING.md#flutter-widget-and-presentation-tests).
 
-The Flutter app is a small, focused Windows utility. It consumes the public `ludava_sdk` API; widgets do not import SDK implementation files, open native process handles, duplicate game detection or field decoding, or decide write authorization. Keep the window compact and resizable, with the active game and its SDK-provided fields as the main content. Prefer a simple vertical layout over dashboard grids or speculative responsive variants. Use Flutter's `ThemeData`, `ColorScheme`, `TextTheme`, component themes, and typed `ThemeExtension` tokens for shared styling. Keep visual roles, raw colors, style presets, and layout measurements under their respective owners below. A widget must be styleable through its supplied theme, including a test-only alternate theme, without changing its implementation.
+The approved Redux migration's architectural contract is in [Flutter conventions](FLUTTER_ARCHITECTURE_CONVENTIONS.md); its temporary acceptance criteria live in its implementation PR or plan.
 
-### Flutter presentation hierarchy
+## Workspace development and CI
 
-Organize UI-owning features by responsibility. When a feature has major compositions and supporting widgets, use:
-
-```text
-features/<feature>/
-└── presentation/
-    ├── screens/
-    │   └── <major_composition>.dart
-    └── widgets/
-        └── <supporting_widget>.dart
-```
-
-`presentation/screens/` owns substantial compositions: a whole interface, panel, header, page section, group of components, or another major widget embedded in a larger interface. A widget in this folder does not have to be a route or full-window screen. Folder responsibility does not require a `Screen` suffix: `trainer_fields_panel.dart` may define `TrainerFieldsPanel`, and `trainer_game_header.dart` may define `TrainerGameHeader`.
-
-Put smaller, meaningful supporting components in `presentation/widgets/`, such as a field value, process picker, or inline editor. Give meaningful widgets focused files and keep the parent responsible for composition and orchestration. Avoid large rendering methods such as `_buildCard()` when the content has an independent visual responsibility. Do not extract every `Row`, `Padding`, or `Text`; extract meaningful boundaries. Ordinary private Flutter state classes such as `_InlineValueEditorState` remain private, and private helpers for calculations, formatting, or trivial one-off expressions are appropriate.
-
-Production Flutter code must not define private `Widget` subclasses or use private methods, getters, or top-level functions returning a `Widget` or widget collection to construct UI components. Each meaningful UI component must be a named `Widget` class in its own focused file, even when used only once; screen and composition widgets compose these named components instead of hiding them in private rendering helpers. Normal `build()` overrides and private `State` implementations are allowed, as are private non-UI calculation, formatting, and validation helpers. Framework-required builder callbacks may create simple layout or compose named widgets, but must not conceal a substantial component. Test extracted components in mirrored test files. Do not create meaningless wrapper classes merely to increase the component count.
-
-Keep a component in its owning feature unless unrelated features genuinely reuse it. Use application-wide `shared/widgets/` only for UI that is shared across those features. Add folders only when they own a real responsibility; do not create empty or speculative structure.
-
-Read game fields and capabilities from the SDK profile; do not hardcode per-game field UI. Render fields in a scrollable vertical list with one horizontal row per numeric field. Keep each field row at the same fixed height in normal and editing states, and constrain dynamic names and values with ellipsis or tooltips so they cannot expand the row. Hover, focus, validation, write feedback, and editing transitions must not change row positions or heights. Keep keyboard focus, mouse actions, touch targets, and Windows touch-keyboard input usable.
-
-### Theme and layout ownership
-
-Keep these responsibilities distinct:
-
-1. **Raw color catalog:** `shared/theme/ludava_colors.dart` contains only concrete Flutter `Color` values named for palette identity, such as `graphite900` or `teal400`. It has no widget meanings or layout values.
-2. **Semantic theme contract:** `shared/theme/ludava_theme_tokens.dart` defines the 19 typed visual roles such as `surface`, `textPrimary`, `borderSubtle`, `success`, and `warning`. Roles describe visual meaning, not a particular widget. Keep one authoritative semantic color value; map every Material `ColorScheme` role explicitly from the tokens rather than using seed-generated or conflicting copies. Widgets consume semantic roles through the theme and do not import `LudavaColors`.
-3. **Color theme mapping:** each file under `shared/theme/themes/` maps one raw palette to all 19 semantic roles and declares its own brightness. It does not define a separate `ThemeData`, component themes, or widget-specific color roles. The only shipped production color theme is dark Graphite & Teal; the factory accepts light or dark brightness for future theme definitions.
-4. **Shared theme factory:** `shared/theme/ludava_theme_factory.dart` builds `ThemeData`, its explicitly mapped Material 3 `ColorScheme`, and shared component styling from semantic tokens, declared brightness, and a style preset. Keep this construction in one implementation so a new color mapping does not duplicate Material configuration.
-5. **Shared style preset:** `shared/theme/ludava_style_presets.dart` owns the default Comfortable style decisions, using Flutter types such as `TextTheme`, shapes, and component themes where they fit. Centralize typography hierarchy, numeric text, shape scale, buttons, and inputs here. Keep only one production style preset. Do not add runtime theme registries, selection UI, persistence, or a styling framework.
-6. **Shared layout constants:** `shared/constants/ludava_constants.dart` groups documented Flutter layout values by concern, using separate classes for spacing, window/layout dimensions, and breakpoints. Reuse shared values for equivalent gaps and measurements; do not create a token for each occurrence.
-7. **Component-local details:** a genuinely independent implementation measurement may live beside its owner. Do not put every local value in the shared constants file.
-
-For example, a field surface should use `tokens.surface` and the shared spacing class in `ludava_constants.dart`. The Graphite & Teal mapping assigns a raw color to `surface`; the widget does not use `LudavaColors.graphite900` directly, add a `trainerCardBackground` token, or define another global padding value for an equivalent gap. The Comfortable preset supplies shared text, shape, button, and input styling. The small `LudavaTheme` entry point exposes the app's stable theme without rebuilding it on every application rebuild.
-
-Test each meaningful Flutter widget in its own dedicated test file, using mocked SDK or controller dependencies where needed. Test a component's responsibility at that component; do not repeat child-widget, SDK, controller, or inherited theme behavior tests. Keep focused SDK tests for write eligibility, validation, revalidation, and verified read-back; controller tests own subscriptions, state propagation, refresh choice, editing invalidation, and disposal; row tests own field/value presentation, conditional Edit visibility, and callback wiring; editor tests own draft preservation, Enter/Escape, single submission, failure feedback, and editing transitions. Theme tests own semantic mappings and central styling rules. Test explicit style overrides in the component that owns them.
-
-Cover startup and connection states, SDK-driven field values and permission combinations, explicit inline edit/cancel behavior, failed and confirmed writes, and stale-session invalidation. Test token completeness, alternate semantic colors flowing into app widgets and standard Material controls, shared style-preset behavior, configured initial/minimum window sizes, compact-width layout, overflow, large values, long titles, scrolling, process selection, semantics, and keyboard focus. Keep SDK-provided fields dynamic, including when a profile contains more than one field. Test normal, editing, and error states at both 520 × 360 and 480 × 340 logical pixels; assert stable row geometry and no Flutter overflow exceptions. Inject only native window actions that need a widget-test seam; verify real window dragging, resizing, minimize/maximize/restore, and DPI behavior on Windows separately. Prefer behavior assertions over pixel-perfect goldens unless a stable golden gives clear value.
-
-The Windows packaging validation owns distribution checks: inspect both ZIP contents, extract each into a relocated directory, and verify the TUI diagnostic launch and desktop application launch there. The app lifecycle test also verifies that native close waits for SDK disposal and that repeated close requests share one cleanup operation.
-
-## Keeping conventions authoritative
-
-Treat `docs/ARCHITECTURE.md` and this document as the repository source of truth for engineering conventions. When a task establishes a durable rule, update the appropriate document before applying it in implementation, and cross-link shared guidance rather than copying competing versions. Keep the README as an entry point to these conventions, not a second policy source.
-
-## Low-maintenance documentation
-
-Document stable knowledge: how the system works, why decisions exist, how to build and use Ludava, where responsibilities belong, technical limits, and reproducible research. Update documentation when functionality, public interfaces, supported games, research conclusions, architectural rules, or instructions change; do not edit it just because a commit, test run, or CI run occurred.
-
-Give each fact one authoritative home and link to it elsewhere. `ARCHITECTURE.md` owns architecture rules, this document owns development and documentation conventions, `guides/windows-build.md` owns Windows build instructions, `ROADMAP.md` owns future initiatives, and `games/` records own detailed game evidence; `features/` explains feature behavior. The README introduces Ludava and links to deeper documentation. Game-specific research belongs in one document per game under `docs/games/`; shared Collection evidence belongs in `docs/games/collection.md`. General architecture may explain detection without repeating game hashes or memory addresses. Keep future additions self-contained; avoid hand-maintained game indexes.
-
-GitHub Actions is authoritative for current CI results. Permanent documentation must not repeat changing run numbers, automated test counts, or pass/fail status; link to [GitHub Actions](https://github.com/Soneka96/Ludava/actions) instead and describe the validation categories the workflow covers. PR descriptions may preserve run-specific results as historical records. Keep meaningful historical research observations, such as recorded gameplay values and exact RPCS3 builds; remove only duplicated, volatile status metadata.
-
-The permanent structural rules are defined in [`ARCHITECTURE.md`](ARCHITECTURE.md#directory-ownership-and-composition-rules). Apply this checklist when adding or moving code:
-
-1. Give every significant directory a clear owner, purpose, and admission criteria.
-2. Do not use `app`, `shared`, `runtime`, or similar names as miscellaneous containers.
-3. Keep trainer workflows, diagnostics, validation, and request/result models in the trainer application feature.
-4. Limit SDK composition to assembly and resource lifetime; keep business behavior in its feature.
-5. Make frontends use typed public SDK capabilities instead of constructing engine internals or duplicating policy.
-6. Keep Nocterm as the only interactive terminal and retain explicit diagnostic commands; remove the old text menu.
-7. Add abstractions only for a concrete responsibility or replaceable/testable boundary.
-8. Document accepted durable conventions before implementation, and commit the convention change first.
-9. Keep SDK runtime capabilities/lifetimes, feature behavior, controller-owned session state, and immutable state snapshots as separate responsibilities.
-
-Behaviorless type declarations do not need artificial tests. Every class with behavior does; see the test strategy in [`ARCHITECTURE.md`](ARCHITECTURE.md).
-
-## Workspace development
-
-The repository root owns Dart Pub Workspace membership, the shared lockfile, top-level documentation, and build/CI orchestration. Do not add package-local lockfiles or commit generated `.dart_tool/` directories. Each package owns its manifest, production sources, tests, and dependencies. Use `ludava_sdk` from frontends through declared package dependencies; do not use relative paths across package boundaries. Run analysis and tests for each package explicitly because root commands are not assumed to discover all workspace members. Preserve tests for any root compatibility entry points and run those tests in workspace CI too.
-
-The SDK and TUI manifests support Dart `>=3.7.0 <4.0.0`. The Flutter app requires Dart 3.13 or newer and Flutter 3.47 or newer. Since Pub resolves the complete workspace, development machines need Flutter 3.47 or newer on `PATH`; the TUI executable itself still bundles no Flutter runtime. The CI workflow uses Flutter's bundled Dart SDK to keep both toolchains aligned.
-
-Windows CI runs `tool/test_workspace_boundaries.ps1` and `tool/check_workspace_boundaries.ps1`. The checker enforces declared package boundaries, public SDK entry-point use, removed legacy paths, and cross-package imports. CI also analyzes and tests the root compatibility package, SDK, TUI, and Flutter app; checks changed-file Dart formatting; builds both Windows apps; validates the two portable ZIPs from extracted directories; verifies diagnostic help; and uploads both archives as run artifacts. It cannot decide whether a directory has a coherent feature responsibility or whether code duplicates business policy; review those against [`ARCHITECTURE.md`](ARCHITECTURE.md).
-
-Pub workspaces were introduced in Dart 3.6; `dart pub workspace list` was added in Dart 3.13. The Flutter app raises the complete workspace minimum to Dart 3.13 and requires Flutter 3.47 or newer. See the official [Pub workspace guide](https://dart.dev/tools/pub/workspaces) and [Dart changelog](https://dart.dev/changelog).
-
-From the repository root, run `dart pub get` and `dart analyze`; on Dart 3.13 or newer, also run `dart pub workspace list`. Then run `dart analyze` and `dart test` from each of `packages/ludava_sdk` and `apps/ludava_tui`, `flutter analyze` and `flutter test` from `apps/ludava_app`, and `dart test` at the repository root for compatibility entry points. Create and validate the portable Windows packages with `tool/package_windows.ps1`. It writes `build/distributions/Ludava-Desktop-Windows-x64.zip` (`Ludava.exe`) and `build/distributions/Ludava-TUI-Windows-x64.zip` (`Ludava-TUI.exe`), then extracts and launches each package to verify it. The lower-level Windows build scripts are `tool/build_windows.ps1` for the TUI and `tool/build_flutter_windows.ps1` for Flutter release output; the packaging entry point composes both and can be invoked outside the repository root.
-
-## Dart formatting in CI
-
-The Windows CI formatting check must inspect only Dart files added or changed relative to the pull request's target base. Branch pushes compare with `main`; pushes to `main` compare with the previous commit. The comparison base must be available; the checker fetches a missing branch base and fails if Git cannot resolve or compare it, rather than treating an error as an empty file list. Renames are checked at their new path, deleted files are ignored, and paths containing spaces must be handled safely. The formatter check is read-only: it reports unformatted changed files without rewriting them. A historical Dart file must be formatted when the task materially changes it, while unrelated historical formatting findings are not pulled into the change.
-
-The SDK owns the native process-discovery source and its reusable integration boundary. `tool/package_windows.ps1` creates `build/distributions/Ludava-Desktop-Windows-x64.zip` with `Ludava.exe` and `build/distributions/Ludava-TUI-Windows-x64.zip` with `Ludava-TUI.exe`. The TUI archive includes the companion `ludava_process_discovery.dll`; the desktop archive includes the complete Flutter release resources, `cnativeapi.dll`, the same SDK-owned library, and the app-local Visual C++ runtime DLLs. Windows CI extracts both archives into relocated folders, verifies runtime library loading and launch behavior, and uploads both downloads. Keep same-directory loading and the Windows x64 target stable. See the [Windows build and ROG Ally guide](guides/windows-build.md) for transfer and manual acceptance steps.
-
-These rules are internal quality standards; they are **not** contributor instructions or an invitation to submit changes.
-
-## Windows last-error capture
-
-For Tool Help calls that report errors through `GetLastError`, the
-`rpcs3_connection` adapter calls a small native wrapper. The wrapper invokes the
-Win32 operation, reads `GetLastError` immediately on failure, and returns both
-values together through its output parameter. Dart must not make a later,
-separate `GetLastError` call: the Dart FFI transition can lose the thread-local
-value. The build script compiles the wrapper as
-`build/ludava_process_discovery.dll`; keep this native code limited to the
-process-discovery boundary.
+- The root owns Dart Pub Workspace membership, the shared lockfile, top-level docs, and build/CI orchestration. Packages own manifests, sources, tests, and dependencies. Do not add package lockfiles or commit generated `.dart_tool/` directories.
+- Use declared SDK package dependencies, never relative paths across package boundaries. Run analysis and tests explicitly for each package; root commands are not assumed to discover workspace members. Keep root compatibility-entry-point tests in CI.
+- SDK and TUI require Dart `>=3.7.0 <4.0.0`; Flutter requires Dart 3.13+ and Flutter 3.47+. Because Pub resolves the whole workspace, development machines need Flutter 3.47+ on `PATH`. CI uses Flutter's bundled Dart SDK.
+- From the root, run `dart pub get` and `dart analyze`; on Dart 3.13+, also run `dart pub workspace list`. Then run `dart analyze` and `dart test` in `packages/ludava_sdk` and `apps/ludava_tui`, `flutter analyze` and `flutter test` in `apps/ludava_app`, and root `dart test` for compatibility entry points.
+- Create and validate portable Windows packages with `tool/package_windows.ps1`. It produces `build/distributions/Ludava-Desktop-Windows-x64.zip` (`Ludava.exe`) and `build/distributions/Ludava-TUI-Windows-x64.zip` (`Ludava-TUI.exe`), extracts and launches each, and may run outside the repository root. Lower-level builders are `tool/build_windows.ps1` (TUI) and `tool/build_flutter_windows.ps1` (Flutter).
+- Keep the TUI archive's companion `ludava_process_discovery.dll`; the desktop archive includes Flutter runtime resources, `cnativeapi.dll`, the same SDK-owned library, and app-local Visual C++ runtime DLLs. Preserve same-directory loading and Windows x64. CI extracts relocated archives, verifies launches, and uploads them. See the [Windows build guide](guides/windows-build.md) for transfer and manual acceptance.
+- `tool/check_workspace_boundaries.ps1` enforces package boundaries, public SDK entry points, removed legacy paths, and cross-package imports; `tool/test_workspace_boundaries.ps1` tests the checker. Review directory purpose and duplicated policy against [ARCHITECTURE.md](ARCHITECTURE.md), which cannot be fully enforced mechanically.
+- CI formatting checks only Dart files added or changed from the PR base (`main` on branch pushes; previous commit on `main`). It resolves a missing comparison base or fails; it does not treat Git errors as an empty file list. Renames use the new path, deletions are skipped, paths with spaces are safe, and the check is read-only. Format a historical Dart file when materially changing it; do not pull unrelated findings into a task.
+- These are internal engineering standards, not contributor instructions.
 
 ## Third-party research and licensing
 
-Ludava is intended as an independently implemented project. Historical research may be cited, but do not copy or mechanically translate copyright-protected source or curated data without checking its terms and obtaining any necessary permission. Credits and licensing requirements of third-party materials remain applicable.
+Ludava is independently implemented. Research may be cited, but do not copy or mechanically translate protected source or curated data without checking terms and obtaining necessary permission. Preserve applicable credits and third-party licenses. Historical research may be reused as evidence when independently corroborated; do not copy GPL implementation into Ludava.
