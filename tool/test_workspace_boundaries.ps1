@@ -128,6 +128,90 @@ import 'package:ludava_app/app/ludava_app.dart';
     Assert-BoundaryCheck 'TUI SDK internals imports' $false
 
     Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart' show GameProfile;
+
+/// Describes a [GameProfile].
+class ProfileLabel {}
+'@
+    Assert-BoundaryCheck 'TUI SDK doc-only import' $true
+
+    Write-FixtureFile 'apps/ludava_app/lib/ludava_app.dart' @'
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart' show GameProfile;
+
+/// Describes a [GameProfile].
+class ProfileLabel {}
+'@
+    Assert-BoundaryCheck 'Flutter SDK doc-only import' $true
+    Write-FixtureFile 'apps/ludava_app/lib/ludava_app.dart' @'
+import 'package:flutter/material.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
+'@
+
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart' show GameProfile;
+
+/// Documents [GameProfile].
+class ProfileLabel {
+  GameProfile? profile;
+}
+'@
+    Assert-BoundaryCheck 'doc symbol used by executable code' $false
+
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart' show GameProfile;
+
+/// No links in the documentation.
+class ProfileLabel {}
+'@
+    Assert-BoundaryCheck 'doc-only import without matching doc link' $false
+
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart' show GameProfile, GameField;
+
+/// Documents [GameProfile].
+class ProfileLabel {}
+'@
+    Assert-BoundaryCheck 'each shown symbol needs a doc link' $false
+
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
+
+/// Documents [GameProfile].
+class ProfileLabel {}
+'@
+    Assert-BoundaryCheck 'wildcard import is forbidden' $false
+
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+export 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart' show GameProfile;
+
+/// Documents [GameProfile].
+class ProfileLabel {}
+'@
+    Assert-BoundaryCheck 'export cannot be documentation-only' $false
+
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart' show GameProfile;
+
+/** Documents [GameProfile]. */
+class ProfileLabel {}
+'@
+    Assert-BoundaryCheck 'block doc comments permit imports' $true
+
+    Write-FixtureFile 'apps/ludava_tui/pubspec.yaml' @'
+name: ludava_tui
+'@
+    Assert-BoundaryCheck 'doc import cannot add undeclared dependency' $false
+    Write-FixtureFile 'apps/ludava_tui/pubspec.yaml' @'
+name: ludava_tui
+dependencies:
+  ludava_sdk: ^0.1.0
+'@
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
+import 'package:ludava_sdk/ludava_sdk.dart';
+'@
+    Assert-BoundaryCheck 'restored public SDK import' $true
+
+    Write-FixtureFile 'apps/ludava_tui/lib/ludava_tui.dart' @'
 import 'package:ludava_app/app/ludava_app.dart';
 '@
     Assert-BoundaryCheck 'TUI app imports' $false
