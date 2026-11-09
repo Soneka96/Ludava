@@ -54,6 +54,7 @@ The Dart workspace contains a reusable SDK (`packages/ludava_sdk`), the Nocterm 
 ## Documentation
 
 - [Architecture and workspace](docs/ARCHITECTURE.md)
+- [Flutter architecture conventions](docs/FLUTTER_ARCHITECTURE_CONVENTIONS.md)
 - [Development and research conventions](docs/DEVELOPMENT.md)
 - [Feature behavior](docs/features/game-detection.md)
 - [Game research and compatibility](docs/games/collection.md)
