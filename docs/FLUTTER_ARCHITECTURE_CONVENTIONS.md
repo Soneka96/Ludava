@@ -13,7 +13,8 @@ These rules define the approved future Redux architecture for `apps/ludava_app`;
 
 - Use one root `injection_container.dart` to register app dependencies and initialize feature containers in dependency order. Put trainer registrations and the `TrainerSdkCapability` interface/adapter in the trainer feature (`trainer.injection_container.dart`, `services/`).
 - Register exactly one `TrainerSdkCapability` singleton; do not separately register its underlying `LudavaSdk`.
-- Eagerly construct exactly one `Store<AppState>` singleton at the root. Pass its initial `AppState` explicitly to `CreateStore`; build reducers and middleware directly into the store rather than registering them in GetIt.
+- During GetIt composition, read the registered SDK capability's current `TrainerSessionState` snapshot exactly once, and use it to build the initial `AppState` passed explicitly to `CreateStore`. Do not subscribe to SDK state or dispatch initialization snapshots while constructing the store.
+- Eagerly construct exactly one `Store<AppState>` singleton at the root; build reducers and middleware directly into it rather than registering them in GetIt.
 - Use that same store for `StoreProvider`, ViewModel factories, and lifecycle dispatch. Register each ViewModel with `registerFactoryParam`; its only runtime parameter and its `.fromStore` constructor argument are `Store<AppState>`.
 - `LudavaApp` resolves migrated app services from GetIt; remove its obsolete controller and SDK constructor overrides as part of the migration.
 - Pass ordinary callbacks from `LudavaApp` to native window buttons; buttons do not resolve GetIt or dispatch Redux actions.
@@ -25,8 +26,8 @@ These rules define the approved future Redux architecture for `apps/ludava_app`;
 - Reducers perform no lookup, SDK call, I/O, or widget work. Return the original object for a genuine no-op. Reconcile an SDK snapshot and any edit invalidation atomically; ignore the identical snapshot object already held.
 - Keep an active edit only while all of these still match the authoritative session: process ID and start time; detection status and confidence; profile ID, executable hash, and memory base; field existence; and SDK write-target eligibility.
 - Preserve the failed-read exception: a failed read for the edited field alone does not clear its draft when `lastWriteResult.fieldId` identifies that field. Any other stale or invalid safety condition cancels editing.
-- Use plain, typed, minimal actions ending in `Action`. `BeginEditingAction` carries only `fieldId`; its reducer resolves the field from the SDK snapshot. Put global `InitializeAppAction` and `ShutdownRequestedAction` in `shared/state/app.actions.dart`, and trainer actions in the trainer feature.
-- An action may be handled by a reducer, middleware, both when each has work, or neither. Do not require pass-through handling, add forwarding actions when an SDK snapshot already represents the result, or make actions `Equatable`. The one approved mutable action payload is the cleanup-future collection on `ShutdownRequestedAction`.
+- Use plain, typed, minimal actions ending in `Action`, with `final` fields and `const` constructors where applicable; do not use `Equatable` for actions. `BeginEditingAction` carries only `fieldId`; its reducer resolves the field from the SDK snapshot. Put global `InitializeAppAction` and `ShutdownRequestedAction` in `shared/state/app.actions.dart`, and trainer actions in the trainer feature.
+- An action may be handled by a reducer, middleware, both when each has work, or neither. Do not require pass-through handling or add forwarding actions when an SDK snapshot already represents the result. The sole approved mutable action payload is `ShutdownRequestedAction`'s cleanup-future collection.
 
 ## Middleware and observation
 
@@ -66,10 +67,11 @@ The SDK remains responsible for current process/session identity, executable has
 
 - Configure native-window lifecycle handling before dispatching `InitializeAppAction`. Initialize middleware through that action; subscribe before connection/discovery. Initialization is idempotent and cannot restart the SDK after shutdown begins. Do not call middleware lifecycle methods directly.
 - On shutdown, close the shared one-way SDK operation guard immediately before dispatching global `ShutdownRequestedAction`. Keep Redux dispatch available; do not globally disable it.
-- Only middleware that owns cleanup registers its future in the action's single mutable collection during synchronous dispatch. Preserve next-first middleware order. Convert synchronous cleanup invocation or registration failures into failed futures so other cleanup can register; await every cleanup and report each failure without hiding the others.
+- `ShutdownRequestedAction` exposes `addCleanup(Future<void>)` and `waitForCleanup()` as its explicit cleanup contract. Only middleware that owns cleanup registers its future synchronously through `addCleanup` during dispatch; preserve next-first middleware order. Convert synchronous cleanup invocation or registration failures into failed futures so other middleware can still register. `waitForCleanup()` must await every attempt and surface every failure without short-circuiting SDK disposal.
 - After middleware cleanup settles, attempt SDK disposal exactly once and await it before allowing native close. Report disposal errors through close-failure handling. Do not race disposal with active observation, dispose the SDK through GetIt, or depend on widget disposal as the primary path.
 - `LudavaApp` owns native-window lifecycle state. It coalesces overlapping close requests, honors native-close veto, shows close failure, and allows retry. A retry does not repeat cleanup or recreate resources. If native close fails, the app stays terminal and the store remains alive while the UI is mounted; disposed SDK resources are never reused.
 - Tree-disposal cleanup is a fallback: if shutdown has not started, close the guard and dispatch the same shutdown action; then await the same registered middleware cleanup and terminal SDK-disposal future. Begin observation cancellation only once.
+- During shutdown and after a failed native close, use an application-level `AbsorbPointer` plus `ExcludeFocus` around the trainer content to disable interaction without layout shifts. Preserve accessible shutdown status and keep the close-retry control reachable outside the blocked subtree; do not block global Redux dispatch.
 - Window buttons receive callbacks from the close coordinator and keep minimize, maximize, and restore behavior.
 
 ## Migration test ownership
@@ -80,10 +82,10 @@ Follow the shared [testing conventions](TESTING.md) for naming, fixtures, safety
 | --- | --- |
 | Reducers | No-op identity, eligibility, snapshot replacement, same-session draft preservation, the failed-read exception, and stale-session invalidation. |
 | Middleware | Action routing, refresh/process selection, stream projection, subscribe-before-connect, idempotent initialization, error reporting, and terminal guards. |
-| Lifecycle | Startup idempotence, cleanup collection/failures, exactly-once disposal, native veto, close failure/retry, overlapping requests, tree-disposal fallback, and store lifetime. |
+| Lifecycle | Startup idempotence, cleanup collection/failures, exactly-once disposal, native veto, close failure/retry, overlapping requests, tree-disposal fallback, shutdown interaction/focus gating, and store lifetime. |
 | Write bridge | Synchronous results, failures, shutdown rejection, and reentrant SDK events. |
 | Selectors/ViewModels | Derived values, callback dispatch, equality, and connected-widget behavior. |
-| Dependency injection | Root/feature registrations, eager store identity, one SDK capability, isolated GetIt scopes, and lifetime ownership. |
+| Dependency injection | Root/feature registrations, exactly-once initial SDK snapshot read, eager store identity, one SDK capability, isolated GetIt scopes, and lifetime ownership. |
 | Widgets | Inline editing, local draft/focus, keyboard behavior, fixed geometry, stable dynamic fields, and shutdown interaction. |
 
 Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. Follow [shared testing conventions](TESTING.md#naming-and-placement) for test paths and behavior ownership. The migration must pass the [documented Flutter analysis and test commands](DEVELOPMENT.md#workspace-development-and-ci).

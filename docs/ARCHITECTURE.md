@@ -95,7 +95,7 @@ The allowed dependency direction is:
 ludava_tui → ludava_sdk ← ludava_app
 ```
 
-No production or test import may point from the SDK to a frontend, from one frontend to the other, or across package boundaries using relative paths. The Nocterm TUI calls typed SDK operations directly. Flutter's approved action/middleware boundary and synchronous write exception are defined in [`FLUTTER_ARCHITECTURE_CONVENTIONS.md`](FLUTTER_ARCHITECTURE_CONVENTIONS.md). Frontends do not duplicate engine behavior or add generic dispatchers.
+No executable production or test import may point from the SDK to a frontend, from one frontend to the other, or across package boundaries using relative paths. Imports used exclusively for Dart documentation links are permitted only where package dependencies are already declared; they must not introduce executable coupling or new package dependencies. See [Dart documentation conventions](DEVELOPMENT.md#dart-documentation). The Nocterm TUI calls typed SDK operations directly. Flutter's approved action/middleware boundary and synchronous write exception are defined in [`FLUTTER_ARCHITECTURE_CONVENTIONS.md`](FLUTTER_ARCHITECTURE_CONVENTIONS.md). Frontends do not duplicate engine behavior or add generic dispatchers.
 
 Within each frontend, organize screens and components by the user-facing feature they implement. Keep shared application operations and authoritative trainer state in the SDK; keep temporary selection, focus, cursor, and unsaved editor text in the owning frontend. A Nocterm key handler calls the typed SDK operation directly. Flutter follows its linked Redux conventions. Do not route ordinary TUI operations through a generic dispatcher.
 

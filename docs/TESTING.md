@@ -26,13 +26,19 @@ These rules apply across the SDK, Nocterm TUI, Flutter app, and Windows integrat
 
 ## Naming and placement
 
-- Use one top-level group per public method, named `Method methodName() behaves correctly`. Name each scenario `Method methodName() <outcome>` and add `when <condition>` when the condition is not already clear from the outcome. Use clear outcomes such as `returns`, `preserves`, `rejects`, and `throws`.
-- Group behavior-bearing getters as `Property propertyName behaves correctly`; name scenarios `Property propertyName <outcome>` and add `when <condition>` when it clarifies the case. Do not add parentheses to property names.
-- For entity/model construction tests, use `Class TypeName construction` and `Class TypeName initializes ...`. Keep each test name specific about the input and expected result.
-- Do not use nested test groups. Cover negative and boundary cases for every safety check, and pair a test that expects a collaborator call with a test proving it is not called when the precondition fails.
-- Use Dart/Flutter's conventional source-to-test mapping for focused tests: `<package>/lib/<relative-path>/file.dart` → `<package>/test/<relative-path>/file_test.dart`. This supports IDE **Go to Test** navigation. It locates tests that exist; it does not require one for every production class or game profile.
-- SDK tests must run without Nocterm or interactive stdin; TUI tests use SDK fakes at the package boundary. CI must analyze and run each package suite explicitly rather than assuming a root test command discovers every package.
-- Name test groups by the public behavior under test: `Method methodName() behaves correctly` for methods, `Property propertyName behaves correctly` for behavior-bearing getters, `Class TypeName construction` for constructors, and `Class ComponentName <observable area> behavior` for UI components (both Nocterm and Flutter). Component scenarios use `Class ComponentName <observable outcome>` and assert visible output or callbacks/actions through public interfaces. Use the same subject-based naming consistently, rather than introducing frontend-specific naming exceptions.
+Use one top-level group per public method or independently tested property, constructor, or component behavior. Name the group and its scenarios by the subject under test:
+
+| Subject | Group | Scenario |
+| --- | --- | --- |
+| Method | `Method methodName() behaves correctly` | `Method methodName() <outcome>` |
+| Property | `Property propertyName behaves correctly` | `Property propertyName <outcome>` |
+| Constructor | `Class TypeName construction` | `Class TypeName initializes <observable result>` |
+| UI component (Nocterm or Flutter) | `Class ComponentName <observable area> behavior` | `Class ComponentName <observable outcome>` |
+
+- Use observable outcomes such as `returns`, `preserves`, `rejects`, and `throws`; add `when <condition>` when the condition is not already clear. Property names have no parentheses. Assert component output, interactions, and callbacks/actions through public interfaces.
+- Do not use nested test groups. Test negative and boundary cases for safety checks, and pair a test expecting a collaborator call with a test showing it is not called when a precondition fails.
+- Use Dart/Flutter's source-to-test mapping for focused tests: `<package>/lib/<relative-path>/file.dart` → `<package>/test/<relative-path>/file_test.dart`. Preserve IDE **Go to Test** navigation; do not require tests for every class or game profile.
+- SDK tests must run without Nocterm or interactive stdin; TUI tests use SDK fakes at the package boundary. Workspace CI must analyze and test each package explicitly rather than assuming root commands discover every workspace package.
 
 ## Nocterm input tests
 
