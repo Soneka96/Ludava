@@ -17,6 +17,36 @@ void main() {
     });
   });
 
+  group('Method focused selectors behave correctly', () {
+    test('Method focused selectors expose profile identity values', () {
+      final state = AppState(
+        trainer: TrainerState(session: trainerStateFixtureSession()),
+      );
+
+      expect(TrainerSelectors.profile(state)?.id, 'synthetic-profile');
+      expect(TrainerSelectors.hasProfile(state), isTrue);
+      expect(TrainerSelectors.detectedTitle(state), isNull);
+      expect(
+        TrainerSelectors.detectionStatus(state),
+        GameDetectionStatus.supportedGame,
+      );
+    });
+
+    test(
+      'Method focused selectors return empty identity without detection',
+      () {
+        final state = AppState(
+          trainer: TrainerState(session: TrainerSessionState()),
+        );
+
+        expect(TrainerSelectors.profile(state), isNull);
+        expect(TrainerSelectors.hasProfile(state), isFalse);
+        expect(TrainerSelectors.detectedTitle(state), isNull);
+        expect(TrainerSelectors.detectionStatus(state), isNull);
+      },
+    );
+  });
+
   group('Method fields() behaves correctly', () {
     test('Method fields() selects the synthetic profile fields', () {
       final state = AppState(
@@ -37,6 +67,138 @@ void main() {
       );
 
       expect(TrainerSelectors.fields(state), isEmpty);
+    });
+  });
+
+  group('Method fieldRows() behaves correctly', () {
+    test('Method fieldRows() projects ordered SDK row values', () {
+      final session = trainerStateFixtureSession(
+        additionalFieldIds: ['scrap'],
+        readResult: const GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: 'credits',
+          value: 25,
+        ),
+        lastWriteResult: const GameWriteResult(
+          status: GameWriteStatus.writeFailed,
+          fieldId: 'credits',
+          requestedValue: 26,
+        ),
+      );
+      final state = AppState(
+        trainer: TrainerState(session: session, editingFieldId: 'credits'),
+      );
+
+      final rows = TrainerSelectors.fieldRows(state);
+
+      expect(rows.map((row) => row.field.id), ['credits', 'scrap']);
+      expect(rows.first.readResult?.value, 25);
+      expect(rows.first.writeResult?.requestedValue, 26);
+      expect(rows.first.canRead, isTrue);
+      expect(rows.first.canWrite, isTrue);
+      expect(rows.first.isEditing, isTrue);
+      expect(rows.last.readResult, isNull);
+      expect(rows.last.writeResult, isNull);
+      expect(rows.last.isEditing, isFalse);
+    });
+
+    test('Method fieldRows() keeps SDK write eligibility authoritative', () {
+      final session = trainerStateFixtureSession(
+        fieldWriteStatus: VerificationStatus.experimental,
+        readResult: const GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: 'credits',
+          value: 25,
+        ),
+      );
+      final state = AppState(
+        trainer: TrainerState(session: session, editingFieldId: 'credits'),
+      );
+
+      final row = TrainerSelectors.fieldRows(state).single;
+
+      expect(row.canWrite, isFalse);
+      expect(row.isEditing, isFalse);
+      expect(
+        TrainerSelectors.canEdit(state, session.profile!.fields['credits']!),
+        isFalse,
+      );
+    });
+
+    test('Method fieldRows() respects profile read permission', () {
+      final field = trainerStateFixtureField();
+      final profile = GameProfile(
+        id: 'synthetic-profile',
+        gameName: 'Synthetic Game',
+        buildId: 'test-build',
+        executable: 'synthetic.exe',
+        readStatus: VerificationStatus.none,
+        fields: {field.id: field},
+      );
+      final session = TrainerSessionState(
+        detection: GameDetectionResult(
+          status: GameDetectionStatus.supportedGame,
+          confidence: GameIdentityConfidence.confirmed,
+          profile: profile,
+          evidenceDescription: 'Synthetic test evidence',
+        ),
+      );
+      final state = AppState(trainer: TrainerState(session: session));
+
+      expect(TrainerSelectors.fieldRows(state).single.canRead, isFalse);
+      expect(TrainerSelectors.canRead(state, field), isFalse);
+    });
+
+    test('Method fieldRows() respects field read permission', () {
+      final field = trainerStateFixtureField(
+        readStatus: VerificationStatus.none,
+      );
+      final profile = GameProfile(
+        id: 'synthetic-profile',
+        gameName: 'Synthetic Game',
+        buildId: 'test-build',
+        executable: 'synthetic.exe',
+        readStatus: VerificationStatus.verified,
+        fields: {field.id: field},
+      );
+      final session = TrainerSessionState(
+        detection: GameDetectionResult(
+          status: GameDetectionStatus.supportedGame,
+          confidence: GameIdentityConfidence.confirmed,
+          profile: profile,
+          evidenceDescription: 'Synthetic test evidence',
+        ),
+      );
+      final state = AppState(trainer: TrainerState(session: session));
+
+      expect(TrainerSelectors.fieldRows(state).single.canRead, isFalse);
+      expect(TrainerSelectors.canRead(state, field), isFalse);
+    });
+
+    test('Method fieldRows() returns no rows without a selected profile', () {
+      final state = AppState(
+        trainer: TrainerState(session: TrainerSessionState()),
+      );
+
+      expect(TrainerSelectors.fieldRows(state), isEmpty);
+    });
+
+    test('Method fieldRows() returns an immutable projection', () {
+      final state = AppState(
+        trainer: TrainerState(session: trainerStateFixtureSession()),
+      );
+      final rows = TrainerSelectors.fieldRows(state);
+
+      expect(() => rows.add(rows.single), throwsUnsupportedError);
+    });
+  });
+
+  group('Method processIds() behaves correctly', () {
+    test('Method processIds() returns the SDK immutable collection', () {
+      final session = trainerStateFixtureSession();
+      final state = AppState(trainer: TrainerState(session: session));
+
+      expect(TrainerSelectors.processIds(state), same(session.processIds));
     });
   });
 

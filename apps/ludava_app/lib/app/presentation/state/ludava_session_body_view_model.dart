@@ -58,7 +58,13 @@ class LudavaSessionBodyViewModel extends Equatable {
     isReady,
     processIds,
     selectedProcessId,
-    detection,
+    detection == null
+        ? null
+        : (
+            detection!.status,
+            detection!.gameTitle,
+            detection!.evidenceDescription,
+          ),
     hasMemoryBase,
     errorMessage,
   ];

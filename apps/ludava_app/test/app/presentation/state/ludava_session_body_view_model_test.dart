@@ -38,6 +38,44 @@ void main() {
         expect(first, second);
       },
     );
+
+    test('Property props compares equal selected presentation values', () {
+      LudavaSessionBodyViewModel fromSession({int? memoryBase}) {
+        final store = Store<AppState>(
+          (state, action) => state,
+          initialState: AppState(
+            trainer: TrainerState(
+              session: trainerStateFixtureSession(memoryBase: memoryBase),
+            ),
+          ),
+        );
+        return LudavaSessionBodyViewModel.fromStore(store);
+      }
+
+      expect(fromSession(memoryBase: 0x1000), fromSession(memoryBase: 0x1000));
+      expect(
+        fromSession(memoryBase: 0x1000),
+        isNot(fromSession(memoryBase: null)),
+      );
+    });
+
+    test('Property props ignores unrelated editing state changes', () {
+      final session = trainerStateFixtureSession();
+      LudavaSessionBodyViewModel fromEditingId(String? editingFieldId) {
+        final store = Store<AppState>(
+          (state, action) => state,
+          initialState: AppState(
+            trainer: TrainerState(
+              session: session,
+              editingFieldId: editingFieldId,
+            ),
+          ),
+        );
+        return LudavaSessionBodyViewModel.fromStore(store);
+      }
+
+      expect(fromEditingId(null), fromEditingId('missing-field'));
+    });
   });
 
   group('Class LudavaSessionBodyViewModel construction', () {

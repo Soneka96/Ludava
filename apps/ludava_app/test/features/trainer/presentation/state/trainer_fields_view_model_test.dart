@@ -48,6 +48,82 @@ void main() {
         expect(first, second);
       },
     );
+
+    test('Property props compares row contents by presentation value', () {
+      TrainerFieldsViewModel fromValues({
+        int readValue = 25,
+        int writeValue = 26,
+        VerificationStatus writeStatus = VerificationStatus.researchConfirmed,
+        String? editingFieldId,
+      }) {
+        final store = Store<AppState>(
+          appReducer,
+          initialState: AppState(
+            trainer: TrainerState(
+              session: trainerStateFixtureSession(
+                fieldWriteStatus: writeStatus,
+                readResult: GameReadResult(
+                  status: GameReadStatus.success,
+                  fieldId: 'credits',
+                  value: readValue,
+                ),
+                lastWriteResult: GameWriteResult(
+                  status: GameWriteStatus.writeFailed,
+                  fieldId: 'credits',
+                  requestedValue: writeValue,
+                ),
+              ),
+              editingFieldId: editingFieldId,
+            ),
+          ),
+        );
+        return TrainerFieldsViewModel.fromStore(store);
+      }
+
+      final first = fromValues();
+
+      expect(first, fromValues());
+      expect(first, isNot(fromValues(readValue: 27)));
+      expect(first, isNot(fromValues(writeValue: 27)));
+      expect(
+        first,
+        isNot(fromValues(writeStatus: VerificationStatus.experimental)),
+      );
+      expect(first, isNot(fromValues(editingFieldId: 'credits')));
+    });
+
+    test('Property props ignores unrelated editing state changes', () {
+      final session = trainerStateFixtureSession();
+      TrainerFieldsViewModel fromEditingId(String? editingFieldId) {
+        final store = Store<AppState>(
+          appReducer,
+          initialState: AppState(
+            trainer: TrainerState(
+              session: session,
+              editingFieldId: editingFieldId,
+            ),
+          ),
+        );
+        return TrainerFieldsViewModel.fromStore(store);
+      }
+
+      expect(fromEditingId(null), fromEditingId('missing-field'));
+    });
+
+    test('Property fields cannot mutate the selected row projection', () {
+      final store = Store<AppState>(
+        appReducer,
+        initialState: AppState(
+          trainer: TrainerState(session: trainerStateFixtureSession()),
+        ),
+      );
+      final viewModel = TrainerFieldsViewModel.fromStore(store);
+
+      expect(
+        () => viewModel.fields.add(viewModel.fields.single),
+        throwsUnsupportedError,
+      );
+    });
   });
 
   group('Class TrainerFieldsViewModel construction', () {

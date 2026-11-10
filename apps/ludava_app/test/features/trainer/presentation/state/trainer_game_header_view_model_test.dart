@@ -7,6 +7,7 @@ import 'package:ludava_app/shared/state/app_state.dart';
 
 import '../../../../support/trainer_state_fixture.dart';
 
+import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
 void main() {
@@ -31,6 +32,56 @@ void main() {
 
       expect(first.props, second.props);
       expect(first, second);
+    });
+
+    test('Property props compares equal selected presentation values', () {
+      TrainerGameHeaderViewModel fromSession({
+        String gameName = 'Synthetic Game',
+        int processId = 42,
+        GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame,
+      }) {
+        final store = Store<AppState>(
+          (state, action) => state,
+          initialState: AppState(
+            trainer: TrainerState(
+              session: trainerStateFixtureSession(
+                gameName: gameName,
+                processId: processId,
+                detectionStatus: detectionStatus,
+              ),
+            ),
+          ),
+        );
+        return TrainerGameHeaderViewModel.fromStore(store);
+      }
+
+      expect(fromSession(), fromSession());
+      expect(fromSession(), isNot(fromSession(gameName: 'Another Game')));
+      expect(fromSession(), isNot(fromSession(processId: 84)));
+      expect(
+        fromSession(),
+        isNot(
+          fromSession(detectionStatus: GameDetectionStatus.unsupportedGame),
+        ),
+      );
+    });
+
+    test('Property props ignores unrelated editing state changes', () {
+      final session = trainerStateFixtureSession();
+      TrainerGameHeaderViewModel fromEditingId(String? editingFieldId) {
+        final store = Store<AppState>(
+          (state, action) => state,
+          initialState: AppState(
+            trainer: TrainerState(
+              session: session,
+              editingFieldId: editingFieldId,
+            ),
+          ),
+        );
+        return TrainerGameHeaderViewModel.fromStore(store);
+      }
+
+      expect(fromEditingId(null), fromEditingId('missing-field'));
     });
   });
 

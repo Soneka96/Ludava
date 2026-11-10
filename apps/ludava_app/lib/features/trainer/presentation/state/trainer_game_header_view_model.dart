@@ -47,13 +47,12 @@ class TrainerGameHeaderViewModel extends Equatable {
   /// Creates presentation state and refresh dispatch from [store].
   factory TrainerGameHeaderViewModel.fromStore(Store<AppState> store) {
     final state = store.state;
-    final session = TrainerSelectors.session(state);
     return TrainerGameHeaderViewModel(
-      profile: session.profile,
-      detectedTitle: session.detection?.gameTitle,
+      profile: TrainerSelectors.profile(state),
+      detectedTitle: TrainerSelectors.detectedTitle(state),
       processIds: TrainerSelectors.processIds(state),
       selectedProcessId: TrainerSelectors.selectedProcessId(state),
-      detectionStatus: session.detection?.status,
+      detectionStatus: TrainerSelectors.detectionStatus(state),
       hasMemoryBase: TrainerSelectors.hasMemoryBase(state),
       errorMessage: TrainerSelectors.errorMessage(state),
       onRefresh: () => store.dispatch(const RefreshTrainerAction()),
@@ -62,7 +61,7 @@ class TrainerGameHeaderViewModel extends Equatable {
 
   @override
   List<Object?> get props => [
-    profile,
+    (profile?.gameName, profile?.buildId),
     detectedTitle,
     processIds,
     selectedProcessId,

@@ -48,19 +48,8 @@ class TrainerFieldsViewModel extends Equatable {
   factory TrainerFieldsViewModel.fromStore(Store<AppState> store) {
     final state = store.state;
     return TrainerFieldsViewModel(
-      hasProfile: TrainerSelectors.session(state).profile != null,
-      fields: TrainerSelectors.fields(state)
-          .map(
-            (field) => (
-              field: field,
-              readResult: TrainerSelectors.readResult(state, field),
-              writeResult: TrainerSelectors.writeResult(state, field),
-              canRead: TrainerSelectors.canRead(state, field),
-              canWrite: TrainerSelectors.canEdit(state, field),
-              isEditing: TrainerSelectors.isEditing(state, field),
-            ),
-          )
-          .toList(growable: false),
+      hasProfile: TrainerSelectors.hasProfile(state),
+      fields: TrainerSelectors.fieldRows(state),
       onEditField: (fieldId) => store.dispatch(BeginEditingAction(fieldId)),
       onApplyField: (fieldId, value) =>
           GetIt.instance<TrainerWriteBridge>().writeField(fieldId, value),
@@ -69,5 +58,38 @@ class TrainerFieldsViewModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [fields, hasProfile];
+  List<Object?> get props => [
+    fields.map(
+      (row) => (
+        field: (
+          row.field.id,
+          row.field.name,
+          row.field.guestOffset,
+          row.field.valueType,
+          row.field.byteOrder,
+          row.field.readStatus,
+          row.field.writeStatus,
+          row.field.minimumValue,
+          row.field.maximumValue,
+        ),
+        readResult: (
+          row.readResult?.status,
+          row.readResult?.fieldId,
+          row.readResult?.value,
+          row.readResult?.errorCode,
+        ),
+        writeResult: (
+          row.writeResult?.status,
+          row.writeResult?.fieldId,
+          row.writeResult?.requestedValue,
+          row.writeResult?.readBackValue,
+          row.writeResult?.errorCode,
+        ),
+        canRead: row.canRead,
+        canWrite: row.canWrite,
+        isEditing: row.isEditing,
+      ),
+    ),
+    hasProfile,
+  ];
 }
