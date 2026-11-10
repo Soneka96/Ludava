@@ -18,7 +18,7 @@ These rules define the approved future Redux architecture for `apps/ludava_app`;
 - Use that same store for `StoreProvider`, ViewModel factories, and lifecycle dispatch. Register each ViewModel with `registerFactoryParam`; its only runtime parameter and its `.fromStore` constructor argument are `Store<AppState>`.
 - `LudavaApp` resolves migrated app services from GetIt; remove its obsolete controller and SDK constructor overrides as part of the migration.
 - Pass ordinary callbacks from `LudavaApp` to native window buttons; buttons do not resolve GetIt or dispatch Redux actions.
-- ViewModels expose final presentation fields and callbacks only. A final callback may resolve a genuinely needed app service, but it does not call the SDK directly except through the synchronous write bridge below. Do not wrap SDK operations in repositories, data sources, or use cases without a real application-owned responsibility.
+- ViewModels obtain Redux-derived presentation data exclusively through selectors in `.fromStore` and expose the selected results as final fields. Never expose `Store<AppState>`, `AppState`, `TrainerState`, or an entire `TrainerSessionState` to widgets. Provide final typed callbacks for Redux dispatch; a callback may resolve a genuinely needed app service but must not call the SDK directly except through the synchronous write bridge below. Do not wrap SDK operations in repositories, data sources, or use cases without a real application-owned responsibility.
 
 ## State, actions, and reducers
 
@@ -40,9 +40,12 @@ These rules define the approved future Redux architecture for `apps/ludava_app`;
 
 ## Selectors, ViewModels, and widgets
 
-- Start with one trainer-level selector class. Keep selectors pure: state selection, filtering, and derived presentation calculations only; no GetIt, commands, I/O, selector framework, or memoization without demonstrated need.
-- Each widget that directly consumes Redux owns its `StoreConnector` and widget-specific ViewModel, with `distinct: true`. Include all presentation-relevant state in `Equatable.props`, excluding callback identity. Do not use one general ViewModel for unrelated widgets or give ViewModels operation methods, rules, filtering, or subscriptions.
-- Keep generic presentation widgets independent of Redux, GetIt, and SDK services. Pass typed values and callbacks. Use one connected field-list widget with generic presentational rows, keyed by stable field ID; generated rows do not get separate ViewModels.
+- Selectors are the sole path for reading or deriving Redux state for presentation. Start with one trainer-level selector class. Keep selectors pure: select fields, read/write results, edit eligibility, and other derived values without GetIt, dispatch, I/O, widget logic, a selector framework, or premature memoization. Selectors may group related selected values into Dart records when useful, but must not require presentation-only entities or wrappers.
+- Each widget that independently consumes Redux owns exactly one dedicated ViewModel used exclusively by that widget. The widget contains its own `StoreConnector<AppState, ViewModel>`; do not introduce connector-only widgets, share ViewModels between widgets, or pass one widget's ViewModel to another. Widgets without independent Redux responsibilities do not need ViewModels.
+- A connected widget may receive the store inside its `StoreConnector` converter solely to pass it to its GetIt-registered ViewModel factory. Its builder consumes only ViewModel fields and invokes ViewModel callbacks for Redux actions. Otherwise, widgets must not read `store.state`, invoke selectors, dispatch Redux actions, or resolve Redux/SDK services through GetIt. The connector's `AppState` generic parameter is wiring, not permission to expose state.
+- ViewModels expose selector results needed by their owning widget, not whole Redux state or unrelated data. Reuse SDK types such as `GameField` and `GameReadResult` where helpful. Do not create UI entities, duplicate SDK models, or add records and wrappers just to transport values. Simple display formatting belongs in the widget or a focused reusable utility. ViewModels expose final callbacks, not operation methods, policy, filtering, or subscriptions.
+- Use `StoreConnector(distinct: true)` and include every presentation-relevant ViewModel field in `Equatable.props` while excluding callback identity. Do not include unrelated Redux state merely to simplify access or equality.
+- Presentation children are optional, not a mandatory layer. Extract them only for meaningful visual responsibilities, and pass ordinary values, SDK objects, and callbacks, never the parent's ViewModel. A child that independently consumes Redux instead owns its own ViewModel and `StoreConnector`. Keep one connected field-list widget with generic presentational rows keyed by stable field ID; rows do not need ViewModels merely for display.
 - Keep meaningful visual components in named `Widget` classes in focused files. Do not hide them in private visual subclasses or private widget-returning builders. Do not create wrappers or layers without a responsibility.
 
 ## Synchronous write bridge
@@ -84,11 +87,11 @@ Follow the shared [testing conventions](TESTING.md) for naming, fixtures, safety
 | Middleware | Action routing, refresh/process selection, stream projection, subscribe-before-connect, idempotent initialization, error reporting, and terminal guards. |
 | Lifecycle | Startup idempotence, cleanup collection/failures, exactly-once disposal, native veto, close failure/retry, overlapping requests, tree-disposal fallback, shutdown interaction/focus gating, and store lifetime. |
 | Write bridge | Synchronous results, failures, shutdown rejection, and reentrant SDK events. |
-| Selectors/ViewModels | Derived values, callback dispatch, equality, and connected-widget behavior. |
+| Selectors/ViewModels | Selector-derived presentation data, action callbacks, equality that excludes unrelated Redux changes, and connected-widget behavior. |
 | Dependency injection | Root/feature registrations, exactly-once initial SDK snapshot read, eager store identity, one SDK capability, isolated GetIt scopes, and lifetime ownership. |
 | Widgets | Inline editing, local draft/focus, keyboard behavior, fixed geometry, stable dynamic fields, and shutdown interaction. |
 
-Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. Follow [shared testing conventions](TESTING.md#naming-and-placement) for test paths and behavior ownership. The migration must pass the [documented Flutter analysis and test commands](DEVELOPMENT.md#workspace-development-and-ci).
+Test reducers and selectors without GetIt; mock SDK capabilities in Flutter tests and use isolated GetIt scopes only where injection is under test. For connected-widget tests, use a lightweight `StoreProvider` and inject a controlled ViewModel factory through GetIt when useful; Mocktail is optional and requires no generated mocks. Test observable contracts rather than trivial constructor assignments or repeated SDK policy. Enforce these ownership boundaries through conventions, focused tests, and PR review, not a new custom checker without demonstrated need. Follow [shared testing conventions](TESTING.md#naming-and-placement) for test paths and behavior ownership. The migration must pass the [documented Flutter analysis and test commands](DEVELOPMENT.md#workspace-development-and-ci).
 
 ## Organization and references
 
