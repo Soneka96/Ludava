@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Class ProcessMemoryReadModel construction', () {
-    test('Class ProcessMemoryReadModel snapshots native bytes and counts', () {
+    test('Class ProcessMemoryReadModel snapshots native bytes immutably', () {
       final bytes = [1, 2, 3, 4];
       final model = ProcessMemoryReadModel(
         status: MemoryReadStatus.complete,
@@ -15,6 +15,7 @@ void main() {
       bytes[0] = 99;
 
       expect(model.bytes, [1, 2, 3, 4]);
+      expect(() => model.bytes[0] = 0, throwsUnsupportedError);
     });
   });
 }

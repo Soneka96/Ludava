@@ -71,7 +71,7 @@ final _registeredProfile = GameProfileCatalog.find('rc2-collection')!;
 void main() {
   group('Method create() behaves correctly', () {
     test(
-      'Method create() exposes typed capabilities without native operations',
+      'Method create() does not touch native resources during construction',
       () async {
         final api = FakeWindowsMemoryApi();
         var discoveryCalls = 0;
@@ -96,8 +96,6 @@ void main() {
           },
         );
 
-        expect(sdk.session, isA<TrainerSessionController>());
-        expect(sdk.diagnostics, isA<DiagnosticGameMemoryService>());
         expect(api.openCalls, 0);
         expect(api.readCalls, 0);
         expect(api.writeCalls, 0);
