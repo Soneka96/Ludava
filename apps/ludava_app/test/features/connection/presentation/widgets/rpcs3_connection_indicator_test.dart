@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ludava_app/features/connection/presentation/state/rpcs3_connection_indicator_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
-import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
-import 'package:ludava_app/injection_container.dart';
-import 'package:ludava_app/shared/state/app_reducer.dart';
+import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
-
-import '../../../../support/mock_trainer_sdk_capability.dart';
 import 'package:redux/redux.dart';
 
+class _MockConnectionIndicatorViewModel extends Mock
+    implements Rpcs3ConnectionIndicatorViewModel {}
 
 Widget _wrap(Store<AppState> store, {Key? key}) => StoreProvider<AppState>(
   key: key,
@@ -27,103 +25,80 @@ Widget _wrap(Store<AppState> store, {Key? key}) => StoreProvider<AppState>(
 );
 
 void main() {
-  late MockTrainerSdkCapability capability;
+  late _MockConnectionIndicatorViewModel viewModel;
 
   setUp(() {
     sl.pushNewScope();
-    capability = MockTrainerSdkCapability();
-    when(() => capability.state).thenReturn(TrainerSessionState());
-    initDependencies(trainerSdkCapability: capability);
+    sl.registerFactoryParam<
+      Rpcs3ConnectionIndicatorViewModel,
+      Store<AppState>,
+      void
+    >((store, _) => viewModel);
   });
 
-  tearDown(() async {
-    await sl.popScope();
-  });
+  tearDown(() async => sl.popScope());
 
-  group('Class Rpcs3ConnectionIndicator connected behavior', () {
-    testWidgets('Class Rpcs3ConnectionIndicator updates from Redux state', (
+  group('Class Rpcs3ConnectionIndicator presentation behavior', () {
+    testWidgets('Class Rpcs3ConnectionIndicator shows process status and semantics', (
       tester,
     ) async {
-      final store = sl<Store<AppState>>();
-      await tester.pumpWidget(_wrap(store));
-      expect(
-        tester.widgetList<Tooltip>(find.byType(Tooltip)).single.message,
-        'RPCS3 not detected',
-      );
-
-      store.dispatch(
-        TrainerSessionChangedAction(
-          TrainerSessionState(processIds: const [42]),
+      final semanticsHandle = tester.ensureSemantics();
+      addTearDown(semanticsHandle.dispose);
+      final tokens = LudavaTheme.graphiteAndTeal
+          .extension<LudavaThemeTokens>()!;
+      final store = Store<AppState>(
+        (state, action) => state,
+        initialState: AppState(
+          trainer: TrainerState(session: TrainerSessionState()),
         ),
       );
-      await tester.pump();
+      final cases = <(List<int>, int?, String, Color)>[
+        (const [], null, 'RPCS3 not detected', tokens.textMuted),
+        (
+          const [42],
+          null,
+          'RPCS3 detected · awaiting process selection',
+          tokens.warning,
+        ),
+        (
+          const [42, 84],
+          null,
+          'RPCS3 detected · select one of 2 processes',
+          tokens.warning,
+        ),
+        (
+          const [42],
+          42,
+          'RPCS3 connected · process 42',
+          tokens.success,
+        ),
+        (
+          const [84],
+          42,
+          'RPCS3 detected · awaiting process selection',
+          tokens.warning,
+        ),
+      ];
 
-      expect(
-        tester.widgetList<Tooltip>(find.byType(Tooltip)).single.message,
-        'RPCS3 detected · awaiting process selection',
-      );
-      expect(tester.takeException(), isNull);
+      for (var index = 0; index < cases.length; index++) {
+        final (ids, selectedId, message, color) = cases[index];
+        viewModel = _MockConnectionIndicatorViewModel();
+        when(() => viewModel.processIds).thenReturn(ids);
+        when(() => viewModel.selectedProcessId).thenReturn(selectedId);
+        await tester.pumpWidget(_wrap(store, key: ValueKey(index)));
+
+        expect(
+          tester.widgetList<Tooltip>(find.byType(Tooltip)).single.message,
+          message,
+        );
+        expect(find.bySemanticsLabel(message), findsOneWidget);
+        expect(
+          tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color,
+          color,
+        );
+        expect(tester.widget<Text>(find.text('RPCS3')).style?.color, color);
+        expect(tester.takeException(), isNull);
+      }
     });
-
-    testWidgets(
-      'Class Rpcs3ConnectionIndicator shows status, tooltip, semantics, and theme color',
-      (tester) async {
-        final semanticsHandle = tester.ensureSemantics();
-        final tokens = LudavaTheme.graphiteAndTeal
-            .extension<LudavaThemeTokens>()!;
-        final cases = <(TrainerSessionState, String, Color)>[
-          (TrainerSessionState(), 'RPCS3 not detected', tokens.textMuted),
-          (
-            TrainerSessionState(processIds: const [42]),
-            'RPCS3 detected · awaiting process selection',
-            tokens.warning,
-          ),
-          (
-            TrainerSessionState(processIds: const [42, 84]),
-            'RPCS3 detected · select one of 2 processes',
-            tokens.warning,
-          ),
-          (
-            TrainerSessionState(processIds: const [42], selectedProcessId: 42),
-            'RPCS3 connected · process 42',
-            tokens.success,
-          ),
-          (
-            TrainerSessionState(processIds: const [84], selectedProcessId: 42),
-            'RPCS3 detected · awaiting process selection',
-            tokens.warning,
-          ),
-        ];
-
-        for (final (session, message, color) in cases) {
-          final store = Store<AppState>(
-            appReducer,
-            initialState: AppState(trainer: TrainerState(session: session)),
-          );
-          await tester.pumpWidget(_wrap(store, key: ValueKey(message)));
-
-          expect(
-            tester.widgetList<Tooltip>(find.byType(Tooltip)).single.message,
-            message,
-          );
-          final semanticsWidgets = tester
-              .widgetList<Semantics>(find.byType(Semantics))
-              .toList();
-          final statusIndex = semanticsWidgets.indexWhere(
-            (widget) => widget.properties.label == message,
-          );
-          expect(statusIndex, greaterThanOrEqualTo(0));
-          expect(semanticsWidgets[statusIndex].properties.label, message);
-          expect(find.bySemanticsLabel(message), findsOneWidget);
-          expect(
-            tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color,
-            color,
-          );
-          expect(tester.widget<Text>(find.text('RPCS3')).style?.color, color);
-          expect(tester.takeException(), isNull);
-        }
-        semanticsHandle.dispose();
-      },
-    );
   });
 }
