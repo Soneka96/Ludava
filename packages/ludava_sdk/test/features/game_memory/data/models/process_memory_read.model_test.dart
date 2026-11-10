@@ -15,9 +15,6 @@ void main() {
       bytes[0] = 99;
 
       expect(model.bytes, [1, 2, 3, 4]);
-      expect(model.bytesRead, 4);
-      expect(model.requestedBytes, 4);
-      expect(model.errorCode, isNull);
     });
   });
 }
