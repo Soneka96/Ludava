@@ -11,11 +11,30 @@ class TrainerGameStatus extends StatelessWidget {
   /// Outline opacity separates the badge from its surrounding surface.
   static const double _outlineOpacity = 0.35;
 
-  /// Latest immutable state published by the trainer SDK.
-  final TrainerSessionState session;
+  /// Whether RPCS3 has a selected process.
+  final bool hasSelectedProcess;
 
-  /// Creates a badge from the current SDK readiness state.
-  const TrainerGameStatus({required this.session, super.key});
+  /// Whether any RPCS3 processes were discovered.
+  final bool hasProcesses;
+
+  /// Current game detection status.
+  final GameDetectionStatus? detectionStatus;
+
+  /// Whether the session has a usable guest memory base.
+  final bool hasMemoryBase;
+
+  /// Whether the SDK reported a session error.
+  final bool hasError;
+
+  /// Creates a badge from selected SDK readiness values.
+  const TrainerGameStatus({
+    required this.hasSelectedProcess,
+    required this.hasProcesses,
+    required this.detectionStatus,
+    required this.hasMemoryBase,
+    required this.hasError,
+    super.key,
+  });
 
   /// Renders a concise status label using semantic theme roles.
   @override
@@ -45,13 +64,13 @@ class TrainerGameStatus extends StatelessWidget {
 
   /// Returns the current game readiness label.
   String get _statusLabel {
-    if (session.errorMessage != null) return 'Attention';
-    if (session.selectedProcessId == null) {
-      return session.processIds.isEmpty ? 'Not detected' : 'Choose process';
+    if (hasError) return 'Attention';
+    if (!hasSelectedProcess) {
+      return hasProcesses ? 'Choose process' : 'Not detected';
     }
-    return switch (session.detection?.status) {
+    return switch (detectionStatus) {
       GameDetectionStatus.supportedGame =>
-        session.memoryBase == null ? 'Base unavailable' : 'Ready',
+        hasMemoryBase ? 'Ready' : 'Base unavailable',
       GameDetectionStatus.noActiveGame => 'No game',
       GameDetectionStatus.unsupportedGame => 'Unsupported',
       GameDetectionStatus.ambiguous => 'Unverified',
@@ -63,13 +82,11 @@ class TrainerGameStatus extends StatelessWidget {
 
   /// Selects the semantic color for the SDK detection outcome.
   Color _statusColor(ThemeData theme, LudavaThemeTokens tokens) {
-    if (session.errorMessage != null ||
-        session.detection?.status == GameDetectionStatus.failed) {
+    if (hasError || detectionStatus == GameDetectionStatus.failed) {
       return theme.colorScheme.error;
     }
-    return switch (session.detection?.status) {
-      GameDetectionStatus.supportedGame when session.memoryBase != null =>
-        tokens.success,
+    return switch (detectionStatus) {
+      GameDetectionStatus.supportedGame when hasMemoryBase => tokens.success,
       GameDetectionStatus.ambiguous ||
       GameDetectionStatus.unsupportedGame => tokens.warning,
       _ => tokens.textMuted,

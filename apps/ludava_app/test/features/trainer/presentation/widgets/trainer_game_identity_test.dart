@@ -51,7 +51,7 @@ void main() {
           profile: profile,
         );
 
-        await tester.pumpWidget(_wrap(TrainerGameIdentity(session: session)));
+        await tester.pumpWidget(_wrap(_identity(session)));
 
         expect(find.text(profile.gameName), findsOneWidget);
         expect(
@@ -75,8 +75,8 @@ void main() {
           _wrap(
             SizedBox(
               width: 260,
-              child: TrainerGameIdentity(
-                session: _session(
+              child: _identity(
+                _session(
                   status: GameDetectionStatus.unsupportedGame,
                   processId: 321,
                   title: title,
@@ -95,3 +95,10 @@ void main() {
     );
   });
 }
+
+Widget _identity(TrainerSessionState session) => TrainerGameIdentity(
+  profile: session.profile,
+  detectedTitle: session.detection?.gameTitle,
+  processIds: session.processIds,
+  selectedProcessId: session.selectedProcessId,
+);

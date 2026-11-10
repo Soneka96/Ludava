@@ -3,7 +3,7 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
-import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header_connector.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_choice.dart';
 import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
@@ -58,7 +58,7 @@ void main() {
         ),
       );
 
-      final header = tester.getRect(find.byType(TrainerGameHeaderConnector));
+      final header = tester.getRect(find.byType(TrainerGameHeader));
       expect(header.width, LudavaDimensions.maximumContentWidth);
       expect(tester.takeException(), isNull);
     });

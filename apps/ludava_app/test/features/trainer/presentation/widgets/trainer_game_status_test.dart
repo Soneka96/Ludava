@@ -44,8 +44,8 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _wrap(
-          TrainerGameStatus(
-            session: _session(
+          _status(
+            _session(
               status: GameDetectionStatus.supportedGame,
               profile: _profile(),
               memoryBase: 0x1000,
@@ -74,11 +74,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(
-          TrainerGameStatus(
-            session: _session(status: GameDetectionStatus.unsupportedGame),
-          ),
-        ),
+        _wrap(_status(_session(status: GameDetectionStatus.unsupportedGame))),
       );
       expect(find.text('Unsupported'), findsOneWidget);
       expect(
@@ -87,11 +83,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _wrap(
-          TrainerGameStatus(
-            session: _session(status: GameDetectionStatus.failed),
-          ),
-        ),
+        _wrap(_status(_session(status: GameDetectionStatus.failed))),
       );
       expect(find.text('Detection failed'), findsOneWidget);
       expect(
@@ -126,10 +118,18 @@ void main() {
       ];
 
       for (final (session, expectedLabel) in states) {
-        await tester.pumpWidget(_wrap(TrainerGameStatus(session: session)));
+        await tester.pumpWidget(_wrap(_status(session)));
         expect(find.text(expectedLabel), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
     });
   });
 }
+
+Widget _status(TrainerSessionState session) => TrainerGameStatus(
+  hasSelectedProcess: session.selectedProcessId != null,
+  hasProcesses: session.processIds.isNotEmpty,
+  detectionStatus: session.detection?.status,
+  hasMemoryBase: session.memoryBase != null,
+  hasError: session.errorMessage != null,
+);

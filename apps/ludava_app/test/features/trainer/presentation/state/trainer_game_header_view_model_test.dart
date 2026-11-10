@@ -15,13 +15,21 @@ void main() {
       final state = AppState(
         trainer: TrainerState(session: trainerStateFixtureSession()),
       );
-      final first = TrainerGameHeaderViewModel(state: state, onRefresh: () {});
+      final first = TrainerGameHeaderViewModel.fromStore(
+        Store<AppState>((state, action) => state, initialState: state),
+      );
       final second = TrainerGameHeaderViewModel(
-        state: state,
+        profile: first.profile,
+        detectedTitle: first.detectedTitle,
+        processIds: first.processIds,
+        selectedProcessId: first.selectedProcessId,
+        detectionStatus: first.detectionStatus,
+        hasMemoryBase: first.hasMemoryBase,
+        errorMessage: first.errorMessage,
         onRefresh: () => throw StateError('callback identity is ignored'),
       );
 
-      expect(first.props, [state]);
+      expect(first.props, second.props);
       expect(first, second);
     });
   });

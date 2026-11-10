@@ -10,10 +10,15 @@ import 'package:redux/redux.dart';
 void main() {
   group('Property props behaves correctly', () {
     test('Property props includes the SDK snapshot', () {
-      final session = trainerStateFixtureSession();
-      final viewModel = Rpcs3ConnectionIndicatorViewModel(session: session);
+      final viewModel = Rpcs3ConnectionIndicatorViewModel(
+        processIds: const [42],
+        selectedProcessId: 42,
+      );
 
-      expect(viewModel.props, [session]);
+      expect(viewModel.props, [
+        const [42],
+        42,
+      ]);
     });
   });
 
@@ -26,8 +31,8 @@ void main() {
       );
 
       expect(
-        Rpcs3ConnectionIndicatorViewModel.fromStore(store).session,
-        same(session),
+        Rpcs3ConnectionIndicatorViewModel.fromStore(store).processIds,
+        session.processIds,
       );
     });
   });

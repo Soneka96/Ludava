@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_session_body.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
-import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header_connector.dart';
+import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -70,7 +70,7 @@ class LudavaShell extends StatelessWidget {
                             child: SizedBox.expand(
                               child: Column(
                                 children: [
-                                  const TrainerGameHeaderConnector(),
+                                  const TrainerGameHeader(),
                                   Expanded(
                                     child: SafeArea(
                                       child: const LudavaSessionBody(),

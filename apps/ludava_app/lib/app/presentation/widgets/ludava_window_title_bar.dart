@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_control_button.dart';
-import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator_connector.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:window_manager/window_manager.dart';
@@ -71,7 +71,7 @@ class LudavaWindowTitleBar extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      const Rpcs3ConnectionIndicatorConnector(),
+                      const Rpcs3ConnectionIndicator(),
                       const SizedBox(width: LudavaSpacing.md),
                     ],
                   ),

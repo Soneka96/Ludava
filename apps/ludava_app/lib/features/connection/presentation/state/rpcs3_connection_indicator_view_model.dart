@@ -1,20 +1,29 @@
 import 'package:equatable/equatable.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
-import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
 /// Presentation data for the title-bar process connection indicator.
 class Rpcs3ConnectionIndicatorViewModel extends Equatable {
-  /// Current immutable SDK session snapshot.
-  final TrainerSessionState session;
+  /// Currently discovered RPCS3 process IDs.
+  final List<int> processIds;
 
-  /// Creates an indicator view model from [session].
-  const Rpcs3ConnectionIndicatorViewModel({required this.session});
+  /// Currently selected RPCS3 process ID.
+  final int? selectedProcessId;
+
+  /// Creates indicator presentation data from selected process values.
+  const Rpcs3ConnectionIndicatorViewModel({
+    required this.processIds,
+    required this.selectedProcessId,
+  });
 
   /// Selects the latest session from [store].
   factory Rpcs3ConnectionIndicatorViewModel.fromStore(Store<AppState> store) =>
-      Rpcs3ConnectionIndicatorViewModel(session: store.state.trainer.session);
+      Rpcs3ConnectionIndicatorViewModel(
+        processIds: TrainerSelectors.processIds(store.state),
+        selectedProcessId: TrainerSelectors.selectedProcessId(store.state),
+      );
 
   @override
-  List<Object?> get props => [session];
+  List<Object?> get props => [processIds, selectedProcessId];
 }
