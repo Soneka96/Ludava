@@ -79,5 +79,4 @@ abstract final class TrainerSelectors {
       ),
     );
   }
-
 }
