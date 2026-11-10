@@ -58,9 +58,13 @@ class _FakeTrainerSdkCapability implements TrainerSdkCapability {
   int connectCalls = 0;
   int refreshCalls = 0;
   int disposeCalls = 0;
+  int initialSnapshotReads = 0;
 
   @override
-  TrainerSessionState get state => stateForTest;
+  TrainerSessionState get state {
+    initialSnapshotReads++;
+    return stateForTest;
+  }
 
   TrainerSessionState stateForTest = TrainerSessionState();
 
@@ -187,6 +191,11 @@ void main() {
         await tester.pumpWidget(LudavaApp(windowController: windowController));
 
         expect(events.take(3), ['configure', 'subscribe', 'connect']);
+        expect(capability.initialSnapshotReads, 1);
+        expect(
+          sl<Store<AppState>>().state.trainer.session,
+          same(capability.stateForTest),
+        );
         expect(windowController.onCloseRequested, isNotNull);
         expect(find.byType(StoreProvider<AppState>), findsOneWidget);
         expect(tester.takeException(), isNull);
