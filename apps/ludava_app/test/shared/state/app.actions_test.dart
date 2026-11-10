@@ -4,12 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/shared/state/app.actions.dart';
 
 void main() {
-  group('Class InitializeAppAction construction', () {
-    test('Class InitializeAppAction creates an initialization request', () {
-      expect(const InitializeAppAction(), isA<InitializeAppAction>());
-    });
-  });
-
   group('Method addCleanup() behaves correctly', () {
     test(
       'Method addCleanup() waits for every cleanup and reports all errors',

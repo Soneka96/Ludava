@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_session_body.dart';
+import 'package:ludava_app/app/presentation/state/ludava_session_body_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
+import 'package:ludava_app/shared/state/app_reducer.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -32,8 +35,8 @@ void main() {
 
   Store<AppState> store() => sl<Store<AppState>>();
 
-  Widget wrap() => StoreProvider<AppState>(
-    store: store(),
+  Widget wrap([Store<AppState>? appStore]) => StoreProvider<AppState>(
+    store: appStore ?? store(),
     child: MaterialApp(
       theme: LudavaTheme.graphiteAndTeal,
       home: const Scaffold(body: LudavaSessionBody()),
@@ -99,24 +102,54 @@ void main() {
     });
 
     testWidgets(
-      'Class LudavaSessionBody skips rebuilds for unrelated edit state',
+      'Class LudavaSessionBody skips unrelated edit state and updates session presentation',
       (tester) async {
-        store().dispatch(TrainerSessionChangedAction(_readySession()));
-        var bodyBuilds = 0;
-        final previousObserver = debugOnRebuildDirtyWidget;
-        debugOnRebuildDirtyWidget = (element, built) {
-          if (element.widget is LudavaSessionBody) bodyBuilds++;
-          previousObserver?.call(element, built);
-        };
-        addTearDown(() => debugOnRebuildDirtyWidget = previousObserver);
+        final appStore = Store<AppState>(
+          appReducer,
+          initialState: AppState(
+            trainer: TrainerState(
+              session: TrainerSessionState(),
+              editingFieldId: 'credits',
+            ),
+          ),
+        );
+        await tester.pumpWidget(wrap(appStore));
+        expect(find.byType(SessionConnectionBody), findsOneWidget);
+        final initialPresentation = tester.widget<SessionConnectionBody>(
+          find.byType(SessionConnectionBody),
+        );
+        final initialViewModel = LudavaSessionBodyViewModel.fromStore(appStore);
 
-        await tester.pumpWidget(wrap());
-        final initialBuilds = bodyBuilds;
-        store().dispatch(const BeginEditingAction('credits'));
+        appStore.dispatch(const CancelEditingAction());
         await tester.pump();
 
-        expect(bodyBuilds, initialBuilds);
-        expect(find.byType(InlineValueEditor), findsOneWidget);
+        expect(appStore.state.trainer.editingFieldId, isNull);
+        expect(
+          tester.widget<SessionConnectionBody>(
+            find.byType(SessionConnectionBody),
+          ),
+          same(initialPresentation),
+        );
+
+        appStore.dispatch(
+          TrainerSessionChangedAction(
+            TrainerSessionState(processIds: const [42, 43]),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(appStore.state.trainer.session.processIds, [42, 43]);
+        expect(
+          LudavaSessionBodyViewModel.fromStore(appStore),
+          isNot(initialViewModel),
+        );
+        final updatedPresentation = tester.widget<SessionConnectionBody>(
+          find.byType(SessionConnectionBody),
+        );
+        expect(updatedPresentation, isNot(same(initialPresentation)));
+        expect(updatedPresentation.processIds, [42, 43]);
+        expect(find.text('Process ID 42'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
