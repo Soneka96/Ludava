@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:ludava_app/features/connection/presentation/state/rpcs3_connection_indicator_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/shared/state/app_state.dart';
-import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
+import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';

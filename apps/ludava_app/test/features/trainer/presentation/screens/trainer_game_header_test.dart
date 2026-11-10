@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_game_header_view_model.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';

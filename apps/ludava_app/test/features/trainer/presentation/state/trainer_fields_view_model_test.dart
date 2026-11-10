@@ -1,21 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_fields_view_model.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/trainer/services/sdk_operation_gate.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/features/trainer/services/trainer_write_bridge.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
-
-import '../../../../support/trainer_state_fixture.dart';
-
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
 import '../../../../support/mock_trainer_sdk_capability.dart';
-
-
+import '../../../../support/trainer_state_fixture.dart';
 
 void main() {
   setUp(() {

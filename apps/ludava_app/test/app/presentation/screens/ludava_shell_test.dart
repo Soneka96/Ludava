@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart';
+import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_choice.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
-import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_choice.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
@@ -15,8 +15,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
 import '../../../support/mock_trainer_sdk_capability.dart';
-
-
 
 void main() {
   late MockTrainerSdkCapability capability;

@@ -10,9 +10,9 @@ import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:redux/redux.dart';
 
 import 'support/mock_trainer_sdk_capability.dart';
-import 'package:redux/redux.dart';
 
 void main() {
   setUp(() => sl.pushNewScope());
