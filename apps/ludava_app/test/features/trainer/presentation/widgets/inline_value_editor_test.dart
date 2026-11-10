@@ -749,5 +749,3 @@ void main() {
     );
   });
 }
-
-/// Creates a fixed inline editor with overridable interaction callbacks.

@@ -28,7 +28,12 @@ void main() {
       when(() => capability.writeField('credits', 44)).thenReturn(result);
 
       expect(bridge.writeField('credits', 44), same(result));
-      verify(() => capability.writeField('credits', 44)).called(1);
+      expect(
+        verify(
+          () => capability.writeField(captureAny(), captureAny()),
+        ).captured,
+        ['credits', 44],
+      );
     });
 
     test('Method writeField() returns the actual unsuccessful SDK result', () {
@@ -41,7 +46,12 @@ void main() {
       when(() => capability.writeField('credits', 44)).thenReturn(result);
 
       expect(bridge.writeField('credits', 44), same(result));
-      verify(() => capability.writeField('credits', 44)).called(1);
+      expect(
+        verify(
+          () => capability.writeField(captureAny(), captureAny()),
+        ).captured,
+        ['credits', 44],
+      );
     });
 
     test('Method writeField() propagates SDK exceptions', () {
@@ -52,7 +62,12 @@ void main() {
         () => bridge.writeField('credits', 44),
         throwsA(isA<StateError>()),
       );
-      verify(() => capability.writeField('credits', 44)).called(1);
+      expect(
+        verify(
+          () => capability.writeField(captureAny(), captureAny()),
+        ).captured,
+        ['credits', 44],
+      );
     });
 
     test(

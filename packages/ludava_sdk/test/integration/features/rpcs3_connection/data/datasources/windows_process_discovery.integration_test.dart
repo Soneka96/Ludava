@@ -66,6 +66,26 @@ Future<List<int>> _discoverInFreshProcess(String executablePath) async {
   return encodedIds.split(',').map(int.parse).toList(growable: false);
 }
 
+
+
+String get _childHelperPath =>
+    '${_sdkDirectory.path}${Platform.pathSeparator}test${Platform.pathSeparator}'
+    'integration${Platform.pathSeparator}features${Platform.pathSeparator}'
+    'rpcs3_connection${Platform.pathSeparator}data${Platform.pathSeparator}'
+    'datasources${Platform.pathSeparator}'
+    'windows_process_discovery_child.dart';
+
+String get _nativeLibraryPath =>
+    '${_repositoryRoot.path}${Platform.pathSeparator}build${Platform.pathSeparator}'
+    'ludava_process_discovery.dll';
+
+Directory get _sdkDirectory =>
+    Directory.fromUri(
+      Isolate.resolvePackageUriSync(Uri.parse('package:ludava_sdk/'))!,
+    ).parent;
+
+Directory get _repositoryRoot => _sdkDirectory.parent.parent;
+
 void main() {
   group('Integration Windows process discovery behaves correctly', () {
     test(
@@ -121,21 +141,3 @@ void main() {
     );
   });
 }
-
-String get _childHelperPath =>
-    '${_sdkDirectory.path}${Platform.pathSeparator}test${Platform.pathSeparator}'
-    'integration${Platform.pathSeparator}features${Platform.pathSeparator}'
-    'rpcs3_connection${Platform.pathSeparator}data${Platform.pathSeparator}'
-    'datasources${Platform.pathSeparator}'
-    'windows_process_discovery_child.dart';
-
-String get _nativeLibraryPath =>
-    '${_repositoryRoot.path}${Platform.pathSeparator}build${Platform.pathSeparator}'
-    'ludava_process_discovery.dll';
-
-Directory get _sdkDirectory =>
-    Directory.fromUri(
-      Isolate.resolvePackageUriSync(Uri.parse('package:ludava_sdk/'))!,
-    ).parent;
-
-Directory get _repositoryRoot => _sdkDirectory.parent.parent;

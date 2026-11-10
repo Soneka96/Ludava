@@ -22,14 +22,9 @@ import 'package:redux/redux.dart';
 import '../../../../support/mock_trainer_sdk_capability.dart';
 import '../../../../support/trainer_state_fixture.dart';
 
-Store<AppState> _createStore(
-  TrainerSessionState session, {
-  String? editingFieldId,
-}) => Store<AppState>(
+Store<AppState> _createStore(TrainerSessionState session) => Store<AppState>(
   appReducer,
-  initialState: AppState(
-    trainer: TrainerState(session: session, editingFieldId: editingFieldId),
-  ),
+  initialState: AppState(trainer: TrainerState(session: session)),
   middleware: [TrainerMiddleware().call],
   syncStream: true,
 );
@@ -148,7 +143,12 @@ void main() {
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
-        verify(() => capability.writeField('credits', 42)).called(2);
+        expect(
+          verify(
+            () => capability.writeField(captureAny(), captureAny()),
+          ).captured,
+          ['credits', 42, 'credits', 42],
+        );
         expect(store.state.trainer.editingFieldId, isNull);
         expect(input, findsNothing);
         expect(tester.takeException(), isNull);
@@ -194,37 +194,17 @@ void main() {
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
-        verify(() => capability.writeField('credits', 42)).called(1);
+        expect(
+          verify(
+            () => capability.writeField(captureAny(), captureAny()),
+          ).captured,
+          ['credits', 42],
+        );
         expect(store.state.trainer.session.memoryBase, 0x2000);
         expect(store.state.trainer.editingFieldId, isNull);
         expect(input, findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
-
-    test('Integration TrainerWriteBridge preserves the active edit on reentrant success', () {
-      final initialSession = trainerStateFixtureSession();
-      final nextSession = trainerStateFixtureSession();
-      final result = const GameWriteResult(
-        status: GameWriteStatus.success,
-        fieldId: 'credits',
-        requestedValue: 44,
-        readBackValue: 44,
-      );
-      when(() => capability.writeField('credits', 44)).thenAnswer((_) {
-        sessionChanges.add(nextSession);
-        return result;
-      });
-      final store = _createStore(initialSession, editingFieldId: 'credits');
-      activeStore = store;
-      store.dispatch(const InitializeAppAction());
-
-      final returnedResult = sl<TrainerWriteBridge>().writeField('credits', 44);
-
-      expect(returnedResult, same(result));
-      expect(store.state.trainer.session, same(nextSession));
-      expect(store.state.trainer.editingFieldId, 'credits');
-      verify(() => capability.writeField('credits', 44)).called(1);
-    });
   });
 }

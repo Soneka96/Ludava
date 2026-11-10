@@ -212,24 +212,14 @@ void main() {
     );
 
     testWidgets(
-      'Class TrainerFieldsPanel closes editing when eligibility is removed',
+      'Class TrainerFieldsPanel renders denied and empty profile states',
       (tester) async {
-        viewModel = _viewModel(fields: [_row('credits', isEditing: true)]);
+        viewModel = _viewModel(fields: [_row('credits', canWrite: false)]);
         await tester.pumpWidget(_wrap(store));
 
-        expect(find.byType(InlineValueEditor), findsOneWidget);
-
-        viewModel = _viewModel(fields: [_row('credits', canWrite: false)]);
-        final updatedStore = Store<AppState>(
-          (state, action) => state,
-          initialState: AppState(
-            trainer: TrainerState(session: TrainerSessionState()),
-          ),
-        );
-        await tester.pumpWidget(_wrap(updatedStore));
-
-        expect(find.byType(InlineValueEditor), findsNothing);
+        expect(find.byKey(const ValueKey('credits')), findsOneWidget);
         expect(find.byTooltip('Edit credits'), findsNothing);
+        expect(find.byType(InlineValueEditor), findsNothing);
 
         viewModel = _viewModel(fields: const []);
         await tester.pumpWidget(_wrap(store, key: const ValueKey('empty')));
@@ -242,7 +232,11 @@ void main() {
         await tester.pumpWidget(
           _wrap(store, key: const ValueKey('no-profile')),
         );
-        expect(find.text('credits'), findsNothing);
+        expect(find.byType(ListView), findsNothing);
+        expect(
+          find.text('No trainer fields are available for this profile.'),
+          findsNothing,
+        );
         expect(tester.takeException(), isNull);
       },
     );

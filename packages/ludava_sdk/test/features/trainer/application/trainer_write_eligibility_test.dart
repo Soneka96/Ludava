@@ -287,5 +287,3 @@ void main() {
     );
   });
 }
-
-/// Builds a synthetic confirmed session with configurable eligibility evidence.

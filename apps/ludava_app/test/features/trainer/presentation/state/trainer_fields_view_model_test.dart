@@ -76,7 +76,12 @@ void main() {
         final viewModel = TrainerFieldsViewModel.fromStore(store);
 
         expect(viewModel.onApplyField('credits', 44), same(result));
-        verify(() => capability.writeField('credits', 44)).called(1);
+        expect(
+          verify(
+            () => capability.writeField(captureAny(), captureAny()),
+          ).captured,
+          ['credits', 44],
+        );
       },
     );
   });
