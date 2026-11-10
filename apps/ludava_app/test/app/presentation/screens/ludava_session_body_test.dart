@@ -2,161 +2,115 @@ import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_session_body.dart';
+import 'package:ludava_app/app/presentation/state/ludava_session_body_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
-import 'package:ludava_app/injection_container.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_fields_view_model.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
+import 'package:ludava_app/injection_container.dart' show sl;
+import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
-import '../../../support/mock_trainer_sdk_capability.dart';
+class _MockLudavaSessionBodyViewModel extends Mock
+    implements LudavaSessionBodyViewModel {}
 
-
-TrainerSessionState _readySession({
-  int processId = 42,
-  int readValue = 17,
-  int? memoryBase = 0x100000,
-  GameDetectionStatus status = GameDetectionStatus.supportedGame,
+_MockLudavaSessionBodyViewModel _viewModel({
+  bool isReady = false,
+  List<int> processIds = const [],
+  int? selectedProcessId,
+  GameDetectionResult? detection,
+  bool hasMemoryBase = false,
   String? errorMessage,
+  ValueChanged<int>? onSelectProcess,
 }) {
-  final profile = _testProfile();
-  return TrainerSessionState(
-    processIds: [processId],
-    selectedProcessId: processId,
-    processMetadata: Rpcs3ProcessMetadata(
-      executablePath: r'C:\RPCS3\rpcs3.exe',
-      startedAtUtc: DateTime.utc(2026, 11, 6, 10),
-    ),
-    detection: GameDetectionResult(
-      status: status,
-      processId: processId,
-      titleId: profile.buildId,
-      gameTitle: profile.gameName,
-      executable: profile.executable,
-      executableHash: 'session-body-test-hash',
-      confidence: GameIdentityConfidence.confirmed,
-      profile: status == GameDetectionStatus.supportedGame ? profile : null,
-      evidenceDescription: 'Synthetic session-body state.',
-    ),
-    memoryBase: memoryBase,
-    readResults: {
-      'credits': GameReadResult(
-        status: GameReadStatus.success,
-        fieldId: 'credits',
-        value: readValue,
-      ),
-    },
-    errorMessage: errorMessage,
-  );
+  final viewModel = _MockLudavaSessionBodyViewModel();
+  when(() => viewModel.isReady).thenReturn(isReady);
+  when(() => viewModel.processIds).thenReturn(processIds);
+  when(() => viewModel.selectedProcessId).thenReturn(selectedProcessId);
+  when(() => viewModel.detection).thenReturn(detection);
+  when(() => viewModel.hasMemoryBase).thenReturn(hasMemoryBase);
+  when(() => viewModel.errorMessage).thenReturn(errorMessage);
+  when(
+    () => viewModel.onSelectProcess,
+  ).thenReturn(onSelectProcess ?? (_) {});
+  return viewModel;
 }
 
-GameProfile _testProfile() => GameProfile(
-  id: 'session-body-test',
-  gameName: 'Test Trainer',
-  buildId: 'TST00001',
-  executable: 'test-trainer.self',
-  executableHash: 'session-body-test-hash',
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.verified,
-  fields: {
-    'credits': GameField(
-      id: 'credits',
-      name: 'Credits',
-      guestOffset: 0x1000,
-      valueType: MemoryValueType.unsigned32,
-      byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.verified,
-      writeStatus: VerificationStatus.verified,
-      minimumValue: 0,
-      maximumValue: 0xffffffff,
-    ),
-  },
+Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
+  store: store,
+  child: MaterialApp(
+    theme: LudavaTheme.graphiteAndTeal,
+    home: const Scaffold(body: LudavaSessionBody()),
+  ),
 );
 
-
 void main() {
-  late MockTrainerSdkCapability capability;
+  late Store<AppState> store;
+  late _MockLudavaSessionBodyViewModel viewModel;
 
   setUp(() {
     sl.pushNewScope();
-    capability = MockTrainerSdkCapability();
-    when(() => capability.state).thenReturn(TrainerSessionState());
-    initDependencies(trainerSdkCapability: capability);
+    store = Store<AppState>(
+      (state, action) => state,
+      initialState: AppState(
+        trainer: TrainerState(session: TrainerSessionState()),
+      ),
+    );
+    sl.registerFactoryParam<LudavaSessionBodyViewModel, Store<AppState>, void>(
+      (store, _) => viewModel,
+    );
+    sl.registerFactoryParam<TrainerFieldsViewModel, Store<AppState>, void>(
+      (store, _) => TrainerFieldsViewModel.fromStore(store),
+    );
   });
 
-  tearDown(() async {
-    await sl.popScope();
-  });
+  tearDown(() async => sl.popScope());
 
-  Store<AppState> store() => sl<Store<AppState>>();
-
-  Widget wrap() => StoreProvider<AppState>(
-    store: store(),
-    child: MaterialApp(
-      theme: LudavaTheme.graphiteAndTeal,
-      home: const Scaffold(body: LudavaSessionBody()),
-    ),
-  );
-
-  group('Class LudavaSessionBody session composition behavior', () {
+  group('Class LudavaSessionBody composition behavior', () {
     testWidgets(
-      'Class LudavaSessionBody shows process choices from Redux state',
+      'Class LudavaSessionBody forwards connection state and selection callback',
       (tester) async {
-        store().dispatch(
-          TrainerSessionChangedAction(
-            TrainerSessionState(processIds: const [42, 43]),
-          ),
+        final selected = <int>[];
+        viewModel = _viewModel(
+          processIds: const [42, 43],
+          onSelectProcess: selected.add,
         );
-
-        await tester.pumpWidget(wrap());
+        await tester.pumpWidget(_wrap(store));
 
         expect(find.byType(SessionConnectionBody), findsOneWidget);
         expect(find.byType(TrainerFieldsPanel), findsNothing);
-        expect(find.text('Available RPCS3 processes'), findsOneWidget);
-        expect(find.text('Process ID 42'), findsOneWidget);
+        final connection = tester.widget<SessionConnectionBody>(
+          find.byType(SessionConnectionBody),
+        );
+        expect(connection.processIds, const [42, 43]);
+        connection.onSelectProcess(43);
+        expect(selected, [43]);
         expect(tester.takeException(), isNull);
       },
     );
 
     testWidgets(
-      'Class LudavaSessionBody requires supported detection and a base',
+      'Class LudavaSessionBody composes trainer fields and fixed feedback when ready',
       (tester) async {
-        store().dispatch(
-          TrainerSessionChangedAction(_readySession(memoryBase: null)),
+        const errorMessage = 'Synthetic session failure';
+        viewModel = _viewModel(isReady: true, errorMessage: errorMessage);
+        await tester.pumpWidget(_wrap(store));
+
+        expect(find.byType(SessionConnectionBody), findsNothing);
+        expect(find.byType(TrainerFieldsPanel), findsOneWidget);
+        expect(
+          tester.getSize(
+            find.byKey(const ValueKey('session-feedback-region')),
+          ).height,
+          LudavaDimensions.sessionFeedbackHeight,
         );
-
-        await tester.pumpWidget(wrap());
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanel), findsNothing);
-
-        store().dispatch(
-          TrainerSessionChangedAction(
-            _readySession(status: GameDetectionStatus.unsupportedGame),
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanel), findsNothing);
+        expect(find.byTooltip(errorMessage), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
-
-    testWidgets('Class LudavaSessionBody shows SDK fields when ready', (
-      tester,
-    ) async {
-      store().dispatch(TrainerSessionChangedAction(_readySession()));
-
-      await tester.pumpWidget(wrap());
-
-      expect(find.byType(SessionConnectionBody), findsNothing);
-      expect(find.byType(TrainerFieldsPanel), findsOneWidget);
-      expect(find.text('Credits'), findsOneWidget);
-      expect(find.text('17'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
   });
 }
