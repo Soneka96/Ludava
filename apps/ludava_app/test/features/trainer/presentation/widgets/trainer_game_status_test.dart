@@ -37,6 +37,15 @@ TrainerSessionState _session({
   memoryBase: memoryBase,
 );
 
+
+Widget _status(TrainerSessionState session) => TrainerGameStatus(
+  hasSelectedProcess: session.selectedProcessId != null,
+  hasProcesses: session.processIds.isNotEmpty,
+  detectionStatus: session.detection?.status,
+  hasMemoryBase: session.memoryBase != null,
+  hasError: session.errorMessage != null,
+);
+
 void main() {
   group('Class TrainerGameStatus readiness behavior', () {
     testWidgets('Class TrainerGameStatus marks a ready game as successful', (
@@ -125,11 +134,3 @@ void main() {
     });
   });
 }
-
-Widget _status(TrainerSessionState session) => TrainerGameStatus(
-  hasSelectedProcess: session.selectedProcessId != null,
-  hasProcesses: session.processIds.isNotEmpty,
-  detectionStatus: session.detection?.status,
-  hasMemoryBase: session.memoryBase != null,
-  hasError: session.errorMessage != null,
-);

@@ -39,6 +39,14 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: child),
 );
 
+
+Widget _identity(TrainerSessionState session) => TrainerGameIdentity(
+  profile: session.profile,
+  detectedTitle: session.detection?.gameTitle,
+  processIds: session.processIds,
+  selectedProcessId: session.selectedProcessId,
+);
+
 void main() {
   group('Class TrainerGameIdentity presentation behavior', () {
     testWidgets(
@@ -95,10 +103,3 @@ void main() {
     );
   });
 }
-
-Widget _identity(TrainerSessionState session) => TrainerGameIdentity(
-  profile: session.profile,
-  detectedTitle: session.detection?.gameTitle,
-  processIds: session.processIds,
-  selectedProcessId: session.selectedProcessId,
-);

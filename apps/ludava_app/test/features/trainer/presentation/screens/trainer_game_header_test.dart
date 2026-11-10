@@ -13,6 +13,42 @@ import 'package:redux/redux.dart';
 
 import '../../../../support/trainer_state_fixture.dart';
 
+
+Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
+  store: store,
+  child: MaterialApp(
+    theme: LudavaTheme.graphiteAndTeal,
+    home: const Scaffold(body: TrainerGameHeader()),
+  ),
+);
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  int connectCalls = 0;
+  int refreshCalls = 0;
+
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() => connectCalls++;
+
+  @override
+  void refresh() => refreshCalls++;
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {}
+}
+
 void main() {
   const refreshLabel = 'Refresh values or rediscover RPCS3';
   late _FakeTrainerSdkCapability capability;
@@ -155,39 +191,4 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
-}
-
-Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
-  store: store,
-  child: MaterialApp(
-    theme: LudavaTheme.graphiteAndTeal,
-    home: const Scaffold(body: TrainerGameHeader()),
-  ),
-);
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  int connectCalls = 0;
-  int refreshCalls = 0;
-
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() => connectCalls++;
-
-  @override
-  void refresh() => refreshCalls++;
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
 }

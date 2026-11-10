@@ -13,6 +13,38 @@ import '../../../../support/trainer_state_fixture.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  _FakeTrainerSdkCapability(this.result);
+
+  final GameWriteResult result;
+  int writeCalls = 0;
+
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) {
+    writeCalls++;
+    return result;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
 void main() {
   setUp(() {
     GetIt.instance.pushNewScope();
@@ -78,35 +110,4 @@ void main() {
       },
     );
   });
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  _FakeTrainerSdkCapability(this.result);
-
-  final GameWriteResult result;
-  int writeCalls = 0;
-
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) {
-    writeCalls++;
-    return result;
-  }
-
-  @override
-  Future<void> dispose() async {}
 }

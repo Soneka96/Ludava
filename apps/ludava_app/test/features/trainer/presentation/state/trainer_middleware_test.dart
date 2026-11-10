@@ -14,6 +14,143 @@ import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  final StreamController<TrainerSessionState> _changes =
+      StreamController<TrainerSessionState>.broadcast(sync: true);
+  TrainerSessionState _state = TrainerSessionState();
+  final List<String> calls = [];
+  final List<int> selectedProcessIds = [];
+  int subscriptionCount = 0;
+  int connectCalls = 0;
+  int refreshCalls = 0;
+  int commandCalls = 0;
+  Object? connectError;
+  Object? refreshError;
+  Object? selectionError;
+  Stream<TrainerSessionState>? customStateChanges;
+  bool Function()? nextCalledWhenSubscriptionRequested;
+  bool nextWasCalledWhenSubscribed = false;
+
+  @override
+  TrainerSessionState get state => _state;
+
+  @override
+  Stream<TrainerSessionState> get stateChanges {
+    nextWasCalledWhenSubscribed =
+        nextCalledWhenSubscriptionRequested?.call() ?? false;
+    subscriptionCount++;
+    calls.add('subscribe');
+    return customStateChanges ?? _changes.stream;
+  }
+
+  @override
+  void connect() {
+    calls.add('connect');
+    connectCalls++;
+    commandCalls++;
+    if (connectError case final error?) throw error;
+  }
+
+  @override
+  void refresh() {
+    refreshCalls++;
+    commandCalls++;
+    if (refreshError case final error?) throw error;
+  }
+
+  @override
+  bool selectProcess(int processId) {
+    commandCalls++;
+    if (selectionError case final error?) throw error;
+    selectedProcessIds.add(processId);
+    return true;
+  }
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() => close();
+
+  /// Emits an SDK-authoritative session update.
+  void emit(TrainerSessionState session) {
+    _state = session;
+    _changes.add(session);
+  }
+
+  /// Emits an SDK stream error.
+  void emitError(Object error) => _changes.addError(error, StackTrace.current);
+
+  /// Closes the fake observation stream.
+  Future<void> close() => _changes.close();
+}
+
+class _ListenThrowingStream<T> extends Stream<T> {
+  _ListenThrowingStream(this._error);
+
+  final Object _error;
+
+  @override
+  StreamSubscription<T> listen(
+    void Function(T event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) => throw _error;
+}
+
+class _ThrowingCancelStream extends Stream<TrainerSessionState> {
+  @override
+  StreamSubscription<TrainerSessionState> listen(
+    void Function(TrainerSessionState event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) => _ThrowingCancelSubscription();
+}
+
+class _ThrowingCancelSubscription
+    implements StreamSubscription<TrainerSessionState> {
+  @override
+  Future<void> cancel() => throw StateError('subscription cancellation failed');
+
+  @override
+  bool get isPaused => false;
+
+  @override
+  void onData(void Function(TrainerSessionState event)? handleData) {}
+
+  @override
+  void onDone(void Function()? handleDone) {}
+
+  @override
+  void onError(Function? handleError) {}
+
+  @override
+  void pause([Future<void>? resumeSignal]) {}
+
+  @override
+  void resume() {}
+
+  @override
+  Future<E> asFuture<E>([E? futureValue]) => Future<E>.value(futureValue);
+}
+
+class _FailsFirstCleanupRegistrationAction extends ShutdownRequestedAction {
+  bool _failed = false;
+
+  @override
+  void addCleanup(Future<void> cleanup) {
+    if (!_failed) {
+      _failed = true;
+      throw StateError('cleanup registration failed');
+    }
+    super.addCleanup(cleanup);
+  }
+}
+
 void main() {
   late _FakeTrainerSdkCapability capability;
 
@@ -292,140 +429,4 @@ void main() {
       },
     );
   });
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  final StreamController<TrainerSessionState> _changes =
-      StreamController<TrainerSessionState>.broadcast(sync: true);
-  TrainerSessionState _state = TrainerSessionState();
-  final List<String> calls = [];
-  final List<int> selectedProcessIds = [];
-  int subscriptionCount = 0;
-  int connectCalls = 0;
-  int refreshCalls = 0;
-  int commandCalls = 0;
-  Object? connectError;
-  Object? refreshError;
-  Object? selectionError;
-  Stream<TrainerSessionState>? customStateChanges;
-  bool Function()? nextCalledWhenSubscriptionRequested;
-  bool nextWasCalledWhenSubscribed = false;
-
-  @override
-  TrainerSessionState get state => _state;
-
-  @override
-  Stream<TrainerSessionState> get stateChanges {
-    nextWasCalledWhenSubscribed =
-        nextCalledWhenSubscriptionRequested?.call() ?? false;
-    subscriptionCount++;
-    calls.add('subscribe');
-    return customStateChanges ?? _changes.stream;
-  }
-
-  @override
-  void connect() {
-    calls.add('connect');
-    connectCalls++;
-    commandCalls++;
-    if (connectError case final error?) throw error;
-  }
-
-  @override
-  void refresh() {
-    refreshCalls++;
-    commandCalls++;
-    if (refreshError case final error?) throw error;
-  }
-
-  @override
-  bool selectProcess(int processId) {
-    commandCalls++;
-    if (selectionError case final error?) throw error;
-    selectedProcessIds.add(processId);
-    return true;
-  }
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() => close();
-
-  /// Emits an SDK-authoritative session update.
-  void emit(TrainerSessionState session) {
-    _state = session;
-    _changes.add(session);
-  }
-
-  /// Emits an SDK stream error.
-  void emitError(Object error) => _changes.addError(error, StackTrace.current);
-
-  /// Closes the fake observation stream.
-  Future<void> close() => _changes.close();
-}
-
-class _ListenThrowingStream<T> extends Stream<T> {
-  _ListenThrowingStream(this._error);
-
-  final Object _error;
-
-  @override
-  StreamSubscription<T> listen(
-    void Function(T event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => throw _error;
-}
-
-class _ThrowingCancelStream extends Stream<TrainerSessionState> {
-  @override
-  StreamSubscription<TrainerSessionState> listen(
-    void Function(TrainerSessionState event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => _ThrowingCancelSubscription();
-}
-
-class _ThrowingCancelSubscription
-    implements StreamSubscription<TrainerSessionState> {
-  @override
-  Future<void> cancel() => throw StateError('subscription cancellation failed');
-
-  @override
-  bool get isPaused => false;
-
-  @override
-  void onData(void Function(TrainerSessionState event)? handleData) {}
-
-  @override
-  void onDone(void Function()? handleDone) {}
-
-  @override
-  void onError(Function? handleError) {}
-
-  @override
-  void pause([Future<void>? resumeSignal]) {}
-
-  @override
-  void resume() {}
-
-  @override
-  Future<E> asFuture<E>([E? futureValue]) => Future<E>.value(futureValue);
-}
-
-class _FailsFirstCleanupRegistrationAction extends ShutdownRequestedAction {
-  bool _failed = false;
-
-  @override
-  void addCleanup(Future<void> cleanup) {
-    if (!_failed) {
-      _failed = true;
-      throw StateError('cleanup registration failed');
-    }
-    super.addCleanup(cleanup);
-  }
 }

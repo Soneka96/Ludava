@@ -16,6 +16,73 @@ import '../../../support/trainer_state_fixture.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
+
+Store<AppState> _createStore(
+  TrainerSessionState session,
+  String? editingFieldId,
+) => Store<AppState>(
+  appReducer,
+  initialState: AppState(
+    trainer: TrainerState(session: session, editingFieldId: editingFieldId),
+  ),
+  middleware: [TrainerMiddleware().call],
+  syncStream: true,
+);
+
+Future<void> _shutdown(Store<AppState> store) async {
+  final action = ShutdownRequestedAction();
+  store.dispatch(action);
+  await action.waitForCleanup();
+}
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  final StreamController<TrainerSessionState> _changes =
+      StreamController<TrainerSessionState>.broadcast(sync: true);
+  TrainerSessionState currentState = TrainerSessionState();
+  TrainerSessionState? sessionDuringWrite;
+  GameWriteResult? writeResult;
+  Object? writeError;
+  int writeCalls = 0;
+
+  @override
+  TrainerSessionState get state => currentState;
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => _changes.stream;
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) {
+    writeCalls++;
+    if (writeError case final error?) throw error;
+    final nextSession = sessionDuringWrite;
+    if (nextSession != null) {
+      currentState = nextSession;
+      _changes.add(nextSession);
+    }
+    return writeResult ??
+        GameWriteResult(
+          status: GameWriteStatus.none,
+          fieldId: fieldId,
+          requestedValue: value,
+        );
+  }
+
+  @override
+  Future<void> dispose() => close();
+
+  /// Closes the fake session stream after middleware cleanup.
+  Future<void> close() => _changes.close();
+}
+
 void main() {
   late _FakeTrainerSdkCapability capability;
   late SdkOperationGate operationGate;
@@ -141,70 +208,4 @@ void main() {
       await _shutdown(store);
     });
   });
-}
-
-Store<AppState> _createStore(
-  TrainerSessionState session,
-  String? editingFieldId,
-) => Store<AppState>(
-  appReducer,
-  initialState: AppState(
-    trainer: TrainerState(session: session, editingFieldId: editingFieldId),
-  ),
-  middleware: [TrainerMiddleware().call],
-  syncStream: true,
-);
-
-Future<void> _shutdown(Store<AppState> store) async {
-  final action = ShutdownRequestedAction();
-  store.dispatch(action);
-  await action.waitForCleanup();
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  final StreamController<TrainerSessionState> _changes =
-      StreamController<TrainerSessionState>.broadcast(sync: true);
-  TrainerSessionState currentState = TrainerSessionState();
-  TrainerSessionState? sessionDuringWrite;
-  GameWriteResult? writeResult;
-  Object? writeError;
-  int writeCalls = 0;
-
-  @override
-  TrainerSessionState get state => currentState;
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => _changes.stream;
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) {
-    writeCalls++;
-    if (writeError case final error?) throw error;
-    final nextSession = sessionDuringWrite;
-    if (nextSession != null) {
-      currentState = nextSession;
-      _changes.add(nextSession);
-    }
-    return writeResult ??
-        GameWriteResult(
-          status: GameWriteStatus.none,
-          fieldId: fieldId,
-          requestedValue: value,
-        );
-  }
-
-  @override
-  Future<void> dispose() => close();
-
-  /// Closes the fake session stream after middleware cleanup.
-  Future<void> close() => _changes.close();
 }
