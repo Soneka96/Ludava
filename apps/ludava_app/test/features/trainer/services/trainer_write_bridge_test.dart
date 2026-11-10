@@ -10,11 +10,12 @@ import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/shared/state/app.actions.dart';
 import 'package:ludava_app/shared/state/app_reducer.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
-
-import '../../../support/trainer_state_fixture.dart';
-
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
+
+import '../../../support/mock_trainer_sdk_capability.dart';
+import '../../../support/trainer_state_fixture.dart';
 
 Store<AppState> _createStore(
   TrainerSessionState session,
@@ -34,62 +35,21 @@ Future<void> _shutdown(Store<AppState> store) async {
   await action.waitForCleanup();
 }
 
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  final StreamController<TrainerSessionState> _changes =
-      StreamController<TrainerSessionState>.broadcast(sync: true);
-  TrainerSessionState currentState = TrainerSessionState();
-  TrainerSessionState? sessionDuringWrite;
-  GameWriteResult? writeResult;
-  Object? writeError;
-  int writeCalls = 0;
-
-  @override
-  TrainerSessionState get state => currentState;
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => _changes.stream;
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) {
-    writeCalls++;
-    if (writeError case final error?) throw error;
-    final nextSession = sessionDuringWrite;
-    if (nextSession != null) {
-      currentState = nextSession;
-      _changes.add(nextSession);
-    }
-    return writeResult ??
-        GameWriteResult(
-          status: GameWriteStatus.none,
-          fieldId: fieldId,
-          requestedValue: value,
-        );
-  }
-
-  @override
-  Future<void> dispose() => close();
-
-  /// Closes the fake session stream after middleware cleanup.
-  Future<void> close() => _changes.close();
-}
-
 void main() {
-  late _FakeTrainerSdkCapability capability;
+  late MockTrainerSdkCapability capability;
+  late StreamController<TrainerSessionState> sessionChanges;
   late SdkOperationGate operationGate;
   late TrainerWriteBridge bridge;
 
   setUp(() {
     sl.pushNewScope();
-    capability = _FakeTrainerSdkCapability();
+    capability = MockTrainerSdkCapability();
+    sessionChanges = StreamController<TrainerSessionState>.broadcast(
+      sync: true,
+    );
+    when(() => capability.stateChanges)
+        .thenAnswer((_) => sessionChanges.stream);
+    when(() => capability.connect()).thenAnswer((_) {});
     operationGate = SdkOperationGate();
     sl.registerSingleton<TrainerSdkCapability>(capability);
     sl.registerSingleton<SdkOperationGate>(operationGate);
@@ -98,7 +58,7 @@ void main() {
 
   tearDown(() async {
     await sl.popScope();
-    await capability.close();
+    await sessionChanges.close();
   });
 
   group('Method writeField() behaves correctly', () {
@@ -109,10 +69,10 @@ void main() {
         requestedValue: 44,
         readBackValue: 44,
       );
-      capability.writeResult = result;
+      when(() => capability.writeField('credits', 44)).thenReturn(result);
 
       expect(bridge.writeField('credits', 44), same(result));
-      expect(capability.writeCalls, 1);
+      verify(() => capability.writeField('credits', 44)).called(1);
     });
 
     test('Method writeField() returns the actual unsuccessful SDK result', () {
@@ -122,20 +82,21 @@ void main() {
         requestedValue: 44,
         readBackValue: 43,
       );
-      capability.writeResult = result;
+      when(() => capability.writeField('credits', 44)).thenReturn(result);
 
       expect(bridge.writeField('credits', 44), same(result));
-      expect(capability.writeCalls, 1);
+      verify(() => capability.writeField('credits', 44)).called(1);
     });
 
     test('Method writeField() propagates SDK exceptions', () {
-      capability.writeError = StateError('write failed');
+      when(() => capability.writeField('credits', 44))
+          .thenThrow(StateError('write failed'));
 
       expect(
         () => bridge.writeField('credits', 44),
         throwsA(isA<StateError>()),
       );
-      expect(capability.writeCalls, 1);
+      verify(() => capability.writeField('credits', 44)).called(1);
     });
 
     test(
@@ -149,7 +110,7 @@ void main() {
         expect(result.fieldId, 'credits');
         expect(result.requestedValue, 44);
         expect(result.readBackValue, isNull);
-        expect(capability.writeCalls, 0);
+        verifyNever(() => capability.writeField('credits', 44));
       },
     );
   });
@@ -166,10 +127,10 @@ void main() {
           requestedValue: 44,
           readBackValue: 44,
         );
-        capability
-          ..currentState = initialSession
-          ..writeResult = result
-          ..sessionDuringWrite = nextSession;
+        when(() => capability.writeField('credits', 44)).thenAnswer((_) {
+          sessionChanges.add(nextSession);
+          return result;
+        });
         final store = _createStore(initialSession, 'credits');
         store.dispatch(const InitializeAppAction());
 
@@ -178,7 +139,7 @@ void main() {
         expect(returnedResult, same(result));
         expect(store.state.trainer.session, same(nextSession));
         expect(store.state.trainer.editingFieldId, 'credits');
-        expect(capability.writeCalls, 1);
+        verify(() => capability.writeField('credits', 44)).called(1);
         await _shutdown(store);
       },
     );
@@ -191,10 +152,10 @@ void main() {
         fieldId: 'credits',
         requestedValue: 44,
       );
-      capability
-        ..currentState = initialSession
-        ..writeResult = result
-        ..sessionDuringWrite = staleSession;
+      when(() => capability.writeField('credits', 44)).thenAnswer((_) {
+        sessionChanges.add(staleSession);
+        return result;
+      });
       final store = _createStore(initialSession, 'credits');
       store.dispatch(const InitializeAppAction());
 
@@ -203,7 +164,7 @@ void main() {
       expect(returnedResult, same(result));
       expect(store.state.trainer.session, same(staleSession));
       expect(store.state.trainer.editingFieldId, isNull);
-      expect(capability.writeCalls, 1);
+      verify(() => capability.writeField('credits', 44)).called(1);
       await _shutdown(store);
     });
   });

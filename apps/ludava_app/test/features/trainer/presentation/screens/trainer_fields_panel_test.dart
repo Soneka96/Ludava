@@ -6,17 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
-import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app.actions.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
-
-import '../../../../support/trainer_state_fixture.dart';
-
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
+
+import '../../../../support/mock_trainer_sdk_capability.dart';
+import '../../../../support/trainer_state_fixture.dart';
 
 /// Opens the credits editor after its SDK target has been made eligible.
 Future<void> _openCreditsEditor(
@@ -35,52 +35,8 @@ Future<void> _shutdownStore(Store<AppState> store) async {
   await action.waitForCleanup();
 }
 
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  final StreamController<TrainerSessionState> _changes =
-      StreamController<TrainerSessionState>.broadcast(sync: true);
-  TrainerSessionState stateForTest = TrainerSessionState();
-  TrainerSessionState? sessionDuringWrite;
-  GameWriteResult? writeResult;
-  int writeCalls = 0;
-
-  @override
-  TrainerSessionState get state => stateForTest;
-
-  @override
-  Stream<TrainerSessionState> get stateChanges =>
-      _ControlledStateStream(_changes.stream);
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) {
-    writeCalls++;
-    final session = sessionDuringWrite;
-    if (session != null) {
-      stateForTest = session;
-      _changes.add(session);
-    }
-    return writeResult ??
-        GameWriteResult(
-          status: GameWriteStatus.none,
-          fieldId: fieldId,
-          requestedValue: value,
-        );
-  }
-
-  @override
-  Future<void> dispose() => _changes.close();
-}
-
-class _ControlledStateStream extends Stream<TrainerSessionState> {
-  _ControlledStateStream(this._source);
+class _NonblockingCancelStream extends Stream<TrainerSessionState> {
+  _NonblockingCancelStream(this._source);
 
   final Stream<TrainerSessionState> _source;
 
@@ -90,7 +46,7 @@ class _ControlledStateStream extends Stream<TrainerSessionState> {
     Function? onError,
     void Function()? onDone,
     bool? cancelOnError,
-  }) => _ControlledStateSubscription(
+  }) => _NonblockingCancelSubscription(
     _source.listen(
       onData,
       onError: onError,
@@ -100,9 +56,9 @@ class _ControlledStateStream extends Stream<TrainerSessionState> {
   );
 }
 
-class _ControlledStateSubscription
+class _NonblockingCancelSubscription
     implements StreamSubscription<TrainerSessionState> {
-  _ControlledStateSubscription(this._subscription);
+  _NonblockingCancelSubscription(this._subscription);
 
   final StreamSubscription<TrainerSessionState> _subscription;
 
@@ -137,17 +93,25 @@ class _ControlledStateSubscription
 }
 
 void main() {
-  late _FakeTrainerSdkCapability capability;
+  late MockTrainerSdkCapability capability;
+  late StreamController<TrainerSessionState> sessionChanges;
 
   setUp(() {
     sl.pushNewScope();
-    capability = _FakeTrainerSdkCapability();
+    capability = MockTrainerSdkCapability();
+    sessionChanges = StreamController<TrainerSessionState>.broadcast(
+      sync: true,
+    );
+    when(() => capability.stateChanges)
+        .thenAnswer((_) => _NonblockingCancelStream(sessionChanges.stream));
+    when(() => capability.state).thenReturn(TrainerSessionState());
+    when(() => capability.connect()).thenAnswer((_) {});
     initDependencies(trainerSdkCapability: capability);
   });
 
   tearDown(() async {
     await sl.popScope();
-    await capability.dispose();
+    await sessionChanges.close();
   });
 
   Store<AppState> store() => sl<Store<AppState>>();
@@ -311,6 +275,83 @@ void main() {
     );
 
     testWidgets(
+      'Class TrainerFieldsPanel closes a draft when write eligibility changes',
+      (tester) async {
+        store().dispatch(
+          TrainerSessionChangedAction(
+            trainerStateFixtureSession(
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'credits',
+                value: 17,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpWidget(wrap());
+        await _openCreditsEditor(tester, store());
+
+        final input = find.byKey(const ValueKey('inline-editor-input-credits'));
+        await tester.enterText(input, '42');
+        await tester.pump();
+        store().dispatch(
+          TrainerSessionChangedAction(
+            trainerStateFixtureSession(
+              fieldWriteStatus: VerificationStatus.none,
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'credits',
+                value: 17,
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(store().state.trainer.editingFieldId, isNull);
+        expect(input, findsNothing);
+        verifyNever(() => capability.writeField('credits', 42));
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class TrainerFieldsPanel applies a value and closes the editor',
+      (tester) async {
+        final initialSession = trainerStateFixtureSession(
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'credits',
+            value: 17,
+          ),
+        );
+        final result = const GameWriteResult(
+          status: GameWriteStatus.success,
+          fieldId: 'credits',
+          requestedValue: 42,
+          readBackValue: 42,
+        );
+        store().dispatch(TrainerSessionChangedAction(initialSession));
+        await tester.pumpWidget(wrap());
+        await _openCreditsEditor(tester, store());
+
+        final input = find.byKey(const ValueKey('inline-editor-input-credits'));
+        await tester.enterText(input, '42');
+        await tester.pump();
+        when(() => capability.writeField('credits', 42)).thenReturn(result);
+
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+        await tester.pump();
+
+        verify(() => capability.writeField('credits', 42)).called(1);
+        expect(store().state.trainer.editingFieldId, isNull);
+        expect(input, findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
       'Class TrainerFieldsPanel preserves the draft through a reentrant retryable failure',
       (tester) async {
         final session = trainerStateFixtureSession(
@@ -320,7 +361,6 @@ void main() {
             value: 17,
           ),
         );
-        capability.stateForTest = session;
         store().dispatch(TrainerSessionChangedAction(session));
         await tester.pumpWidget(wrap());
         store().dispatch(const InitializeAppAction());
@@ -336,22 +376,24 @@ void main() {
           requestedValue: 42,
           errorCode: 5,
         );
-        capability
-          ..writeResult = failure
-          ..sessionDuringWrite = trainerStateFixtureSession(
-            readResult: const GameReadResult(
-              status: GameReadStatus.readFailed,
-              fieldId: 'credits',
-              errorCode: 5,
-            ),
-            lastWriteResult: failure,
-          );
+        final failedSession = trainerStateFixtureSession(
+          readResult: const GameReadResult(
+            status: GameReadStatus.readFailed,
+            fieldId: 'credits',
+            errorCode: 5,
+          ),
+          lastWriteResult: failure,
+        );
+        when(() => capability.writeField('credits', 42)).thenAnswer((_) {
+          sessionChanges.add(failedSession);
+          return failure;
+        });
 
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
         await tester.pump();
 
-        expect(capability.writeCalls, 1);
+        verify(() => capability.writeField('credits', 42)).called(1);
         expect(store().state.trainer.editingFieldId, 'credits');
         expect(tester.widget<TextField>(input).controller!.text, '42');
         expect(
@@ -373,7 +415,6 @@ void main() {
             value: 17,
           ),
         );
-        capability.stateForTest = session;
         store().dispatch(TrainerSessionChangedAction(session));
         await tester.pumpWidget(wrap());
         store().dispatch(const InitializeAppAction());
@@ -388,23 +429,25 @@ void main() {
           fieldId: 'credits',
           requestedValue: 42,
         );
-        capability
-          ..writeResult = failure
-          ..sessionDuringWrite = trainerStateFixtureSession(
-            memoryBase: 0x2000,
-            readResult: const GameReadResult(
-              status: GameReadStatus.success,
-              fieldId: 'credits',
-              value: 17,
-            ),
-            lastWriteResult: failure,
-          );
+        final staleSession = trainerStateFixtureSession(
+          memoryBase: 0x2000,
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'credits',
+            value: 17,
+          ),
+          lastWriteResult: failure,
+        );
+        when(() => capability.writeField('credits', 42)).thenAnswer((_) {
+          sessionChanges.add(staleSession);
+          return failure;
+        });
 
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
         await tester.pump();
 
-        expect(capability.writeCalls, 1);
+        verify(() => capability.writeField('credits', 42)).called(1);
         expect(store().state.trainer.session.memoryBase, 0x2000);
         expect(store().state.trainer.editingFieldId, isNull);
         expect(
