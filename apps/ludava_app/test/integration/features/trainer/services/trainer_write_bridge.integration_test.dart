@@ -52,49 +52,43 @@ void main() {
   });
 
   group('Integration TrainerWriteBridge reentrant SDK write behavior', () {
-    test(
-      'Integration TrainerWriteBridge preserves the active edit '
-      'on reentrant success',
-      () {
-        final initialSession = trainerStateFixtureSession();
-        final nextSession = trainerStateFixtureSession();
-        const result = GameWriteResult(
-          status: GameWriteStatus.success,
-          fieldId: 'credits',
-          requestedValue: 44,
-          readBackValue: 44,
-        );
-        when(() => capability.writeField('credits', 44)).thenAnswer((_) {
-          sessionChanges.add(nextSession);
-          return result;
-        });
-        final store = Store<AppState>(
-          appReducer,
-          initialState: AppState(
-            trainer: TrainerState(
-              session: initialSession,
-              editingFieldId: 'credits',
-            ),
+    test('Integration TrainerWriteBridge preserves the active edit '
+        'on reentrant success', () {
+      final initialSession = trainerStateFixtureSession();
+      final nextSession = trainerStateFixtureSession();
+      const result = GameWriteResult(
+        status: GameWriteStatus.success,
+        fieldId: 'credits',
+        requestedValue: 44,
+        readBackValue: 44,
+      );
+      when(() => capability.writeField('credits', 44)).thenAnswer((_) {
+        sessionChanges.add(nextSession);
+        return result;
+      });
+      final store = Store<AppState>(
+        appReducer,
+        initialState: AppState(
+          trainer: TrainerState(
+            session: initialSession,
+            editingFieldId: 'credits',
           ),
-          middleware: [TrainerMiddleware().call],
-          syncStream: true,
-        );
-        activeStore = store;
-        store.dispatch(const InitializeAppAction());
+        ),
+        middleware: [TrainerMiddleware().call],
+        syncStream: true,
+      );
+      activeStore = store;
+      store.dispatch(const InitializeAppAction());
 
-        final returnedResult = sl<TrainerWriteBridge>().writeField(
-          'credits',
-          44,
-        );
+      final returnedResult = sl<TrainerWriteBridge>().writeField('credits', 44);
 
-        expect(returnedResult, same(result));
-        expect(store.state.trainer.session, same(nextSession));
-        expect(store.state.trainer.editingFieldId, 'credits');
-        final writeCalls = verify(
-          () => capability.writeField(captureAny(), captureAny()),
-        );
-        expect(writeCalls.captured, ['credits', 44]);
-      },
-    );
+      expect(returnedResult, same(result));
+      expect(store.state.trainer.session, same(nextSession));
+      expect(store.state.trainer.editingFieldId, 'credits');
+      final writeCalls = verify(
+        () => capability.writeField(captureAny(), captureAny()),
+      );
+      expect(writeCalls.captured, ['credits', 44]);
+    });
   });
 }
