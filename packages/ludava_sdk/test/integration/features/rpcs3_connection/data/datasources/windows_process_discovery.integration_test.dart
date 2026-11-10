@@ -66,8 +66,6 @@ Future<List<int>> _discoverInFreshProcess(String executablePath) async {
   return encodedIds.split(',').map(int.parse).toList(growable: false);
 }
 
-
-
 String get _childHelperPath =>
     '${_sdkDirectory.path}${Platform.pathSeparator}test${Platform.pathSeparator}'
     'integration${Platform.pathSeparator}features${Platform.pathSeparator}'

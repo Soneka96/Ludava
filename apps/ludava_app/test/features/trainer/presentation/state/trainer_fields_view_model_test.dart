@@ -3,16 +3,15 @@ import 'package:get_it/get_it.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_fields_view_model.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
-import 'package:ludava_app/features/trainer/services/sdk_operation_gate.dart';
-import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/features/trainer/services/trainer_write_bridge.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
-import '../../../../support/mock_trainer_sdk_capability.dart';
 import '../../../../support/trainer_state_fixture.dart';
+
+class _MockTrainerWriteBridge extends Mock implements TrainerWriteBridge {}
 
 void main() {
   setUp(() {
@@ -51,22 +50,15 @@ void main() {
     test(
       'Class TrainerFieldsViewModel.fromStore routes writes through the bridge',
       () {
-        final result = const GameWriteResult(
+        const result = GameWriteResult(
           status: GameWriteStatus.success,
           fieldId: 'credits',
           requestedValue: 44,
           readBackValue: 44,
         );
-        final capability = MockTrainerSdkCapability();
-        when(() => capability.writeField('credits', 44)).thenReturn(result);
-        GetIt.instance.registerSingleton<TrainerSdkCapability>(capability);
-        GetIt.instance.registerSingleton<SdkOperationGate>(SdkOperationGate());
-        GetIt.instance.registerSingleton<TrainerWriteBridge>(
-          TrainerWriteBridge(
-            GetIt.instance<TrainerSdkCapability>(),
-            GetIt.instance<SdkOperationGate>(),
-          ),
-        );
+        final bridge = _MockTrainerWriteBridge();
+        when(() => bridge.writeField('credits', 44)).thenReturn(result);
+        GetIt.instance.registerSingleton<TrainerWriteBridge>(bridge);
         final store = Store<AppState>(
           (state, action) => state,
           initialState: AppState(
@@ -76,12 +68,8 @@ void main() {
         final viewModel = TrainerFieldsViewModel.fromStore(store);
 
         expect(viewModel.onApplyField('credits', 44), same(result));
-        expect(
-          verify(
-            () => capability.writeField(captureAny(), captureAny()),
-          ).captured,
-          ['credits', 44],
-        );
+        verify(() => bridge.writeField('credits', 44)).called(1);
+        verifyNoMoreInteractions(bridge);
       },
     );
   });

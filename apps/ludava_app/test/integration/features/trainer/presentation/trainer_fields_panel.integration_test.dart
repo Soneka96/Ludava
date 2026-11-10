@@ -143,12 +143,10 @@ void main() {
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
-        expect(
-          verify(
-            () => capability.writeField(captureAny(), captureAny()),
-          ).captured,
-          ['credits', 42, 'credits', 42],
-        );
+        final writtenArguments = verify(
+          () => capability.writeField(captureAny(), captureAny()),
+        ).captured;
+        expect(writtenArguments, ['credits', 42, 'credits', 42]);
         expect(store.state.trainer.editingFieldId, isNull);
         expect(input, findsNothing);
         expect(tester.takeException(), isNull);
@@ -194,12 +192,10 @@ void main() {
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
-        expect(
-          verify(
-            () => capability.writeField(captureAny(), captureAny()),
-          ).captured,
-          ['credits', 42],
-        );
+        final writtenArguments = verify(
+          () => capability.writeField(captureAny(), captureAny()),
+        ).captured;
+        expect(writtenArguments, ['credits', 42]);
         expect(store.state.trainer.session.memoryBase, 0x2000);
         expect(store.state.trainer.editingFieldId, isNull);
         expect(input, findsNothing);

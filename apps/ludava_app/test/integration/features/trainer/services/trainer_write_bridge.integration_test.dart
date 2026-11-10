@@ -90,12 +90,10 @@ void main() {
         expect(returnedResult, same(result));
         expect(store.state.trainer.session, same(nextSession));
         expect(store.state.trainer.editingFieldId, 'credits');
-        expect(
-          verify(
-            () => capability.writeField(captureAny(), captureAny()),
-          ).captured,
-          ['credits', 44],
-        );
+        final writtenArguments = verify(
+          () => capability.writeField(captureAny(), captureAny()),
+        ).captured;
+        expect(writtenArguments, ['credits', 44]);
       },
     );
   });

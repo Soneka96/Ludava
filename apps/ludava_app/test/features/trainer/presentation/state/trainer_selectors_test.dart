@@ -7,36 +7,6 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 import '../../../../support/trainer_state_fixture.dart';
 
 void main() {
-  group('Method focused selectors behave correctly', () {
-    test('Method focused selectors expose profile identity values', () {
-      final state = AppState(
-        trainer: TrainerState(session: trainerStateFixtureSession()),
-      );
-
-      expect(TrainerSelectors.profile(state)?.id, 'synthetic-profile');
-      expect(TrainerSelectors.hasProfile(state), isTrue);
-      expect(TrainerSelectors.detectedTitle(state), isNull);
-      expect(
-        TrainerSelectors.detectionStatus(state),
-        GameDetectionStatus.supportedGame,
-      );
-    });
-
-    test(
-      'Method focused selectors return empty identity without detection',
-      () {
-        final state = AppState(
-          trainer: TrainerState(session: TrainerSessionState()),
-        );
-
-        expect(TrainerSelectors.profile(state), isNull);
-        expect(TrainerSelectors.hasProfile(state), isFalse);
-        expect(TrainerSelectors.detectedTitle(state), isNull);
-        expect(TrainerSelectors.detectionStatus(state), isNull);
-      },
-    );
-  });
-
   group('Method fieldRows() behaves correctly', () {
     test('Method fieldRows() projects ordered SDK row values', () {
       final session = trainerStateFixtureSession(

@@ -1,5 +1,6 @@
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/deadlocked_ps3_profile.dart';
+import 'package:ludava_sdk/features/game_catalog/domain/profiles/quest_for_booty_bces00301_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc1_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc2_collection_profile.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/profiles/rc3_collection_profile.dart';
@@ -12,6 +13,7 @@ abstract final class GameProfileCatalog {
     Rc2CollectionProfile.id: Rc2CollectionProfile.profile,
     Rc3CollectionProfile.id: Rc3CollectionProfile.profile,
     DeadlockedPs3Profile.id: DeadlockedPs3Profile.profile,
+    QuestForBootyBces00301Profile.id: QuestForBootyBces00301Profile.profile,
     ToolsOfDestructionBcus98127Profile.id:
         ToolsOfDestructionBcus98127Profile.profile,
   });
