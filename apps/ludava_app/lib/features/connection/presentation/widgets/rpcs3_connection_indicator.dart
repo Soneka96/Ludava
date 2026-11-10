@@ -21,39 +21,33 @@ class Rpcs3ConnectionIndicator extends StatelessWidget {
         distinct: true,
         converter: (store) =>
             sl<Rpcs3ConnectionIndicatorViewModel>(param1: store),
-        builder: (context, viewModel) => _buildIndicator(context, viewModel),
+        builder: (context, viewModel) {
+          final theme = Theme.of(context);
+          final tokens = theme.extension<LudavaThemeTokens>()!;
+          final message = _tooltipMessage(viewModel);
+          final color = _statusColor(tokens, viewModel);
+
+          return Tooltip(
+            message: message,
+            child: Semantics(
+              label: message,
+              excludeSemantics: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle_rounded, size: _dotSize, color: color),
+                  const SizedBox(width: LudavaSpacing.sm),
+                  Text(
+                    'RPCS3',
+                    style: theme.textTheme.labelMedium?.copyWith(color: color),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       );
 
-  /// Renders connection status from selected process values.
-  Widget _buildIndicator(
-    BuildContext context,
-    Rpcs3ConnectionIndicatorViewModel viewModel,
-  ) {
-    final theme = Theme.of(context);
-    final tokens = theme.extension<LudavaThemeTokens>()!;
-    final message = _tooltipMessage(viewModel);
-    final color = _statusColor(tokens, viewModel);
-
-    return Tooltip(
-      message: message,
-      child: Semantics(
-        label: message,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.circle_rounded, size: _dotSize, color: color),
-            const SizedBox(width: LudavaSpacing.sm),
-            Text(
-              'RPCS3',
-              style: theme.textTheme.labelMedium?.copyWith(color: color),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Reports whether the selected process is still in the discovery snapshot.
   /// Reports whether the selected process remains in the discovery result.
   bool _hasSelectedProcess(Rpcs3ConnectionIndicatorViewModel viewModel) =>
       viewModel.selectedProcessId != null &&
