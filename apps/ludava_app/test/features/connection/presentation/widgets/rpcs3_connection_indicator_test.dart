@@ -39,9 +39,9 @@ void main() {
   tearDown(() async => sl.popScope());
 
   group('Class Rpcs3ConnectionIndicator presentation behavior', () {
-    testWidgets('Class Rpcs3ConnectionIndicator shows process status and semantics', (
-      tester,
-    ) async {
+    testWidgets(
+      'Class Rpcs3ConnectionIndicator shows process status and semantics',
+      (tester) async {
       final semanticsHandle = tester.ensureSemantics();
       addTearDown(semanticsHandle.dispose);
       final tokens = LudavaTheme.graphiteAndTeal

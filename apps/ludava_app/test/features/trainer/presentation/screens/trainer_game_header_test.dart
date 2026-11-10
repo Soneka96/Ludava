@@ -68,9 +68,9 @@ void main() {
   tearDown(() async => sl.popScope());
 
   group('Class TrainerGameHeader presentation behavior', () {
-    testWidgets('Class TrainerGameHeader exposes one accessible refresh callback', (
-      tester,
-    ) async {
+    testWidgets(
+      'Class TrainerGameHeader exposes one accessible refresh callback',
+      (tester) async {
       final semanticsHandle = tester.ensureSemantics();
       addTearDown(semanticsHandle.dispose);
       var refreshCalls = 0;
@@ -103,9 +103,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Class TrainerGameHeader keeps long game identity and refresh in minimum width', (
-      tester,
-    ) async {
+    testWidgets(
+      'Class TrainerGameHeader keeps long game identity and refresh in minimum width',
+      (tester) async {
       const longTitle =
           'A Very Long Synthetic Game Title That Must Stay Inside the Header';
       tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
