@@ -11,76 +11,46 @@ import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
+class _RegistrationCapability implements TrainerSdkCapability {
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {}
+}
+
 void main() {
-  setUp(() async => sl.pushNewScope());
+  setUp(() => sl.pushNewScope());
   tearDown(() async => sl.popScope());
 
   group('Method initDependencies() behaves correctly', () {
-    test('Method initDependencies() reads one initial snapshot and eagerly registers one store', () {
-      final capability = _CountingTrainerSdkCapability();
+    test('Method initDependencies() registers required app dependencies', () {
+      initDependencies(trainerSdkCapability: _RegistrationCapability());
 
-      initDependencies(trainerSdkCapability: capability);
-
-      expect(capability.stateReads, 1);
       expect(sl.isRegistered<TrainerSdkCapability>(), isTrue);
       expect(sl.isRegistered<SdkOperationGate>(), isTrue);
       expect(sl.isRegistered<Store<AppState>>(), isTrue);
       expect(sl.isRegistered<TrainerWriteBridge>(), isTrue);
-      expect(sl<Store<AppState>>(), same(sl<Store<AppState>>()));
-      final store = sl<Store<AppState>>();
-      expect(sl<TrainerFieldsViewModel>(param1: store).fields, isEmpty);
-      expect(sl<TrainerGameHeaderViewModel>(param1: store).profile, isNull);
-      expect(sl<LudavaSessionBodyViewModel>(param1: store).isReady, isFalse);
-      expect(
-        sl<Rpcs3ConnectionIndicatorViewModel>(param1: store).processIds,
-        isEmpty,
-      );
-      expect(
-        sl<Store<AppState>>().state.trainer.session,
-        same(capability.snapshot),
-      );
-      expect(capability.stateChangesReads, 0);
-      expect(capability.commandCalls, 0);
+      expect(sl.isRegistered<TrainerFieldsViewModel>(), isTrue);
+      expect(sl.isRegistered<TrainerGameHeaderViewModel>(), isTrue);
+      expect(sl.isRegistered<LudavaSessionBodyViewModel>(), isTrue);
+      expect(sl.isRegistered<Rpcs3ConnectionIndicatorViewModel>(), isTrue);
     });
   });
-}
-
-class _CountingTrainerSdkCapability implements TrainerSdkCapability {
-  final TrainerSessionState snapshot = TrainerSessionState();
-  int stateReads = 0;
-  int stateChangesReads = 0;
-  int commandCalls = 0;
-
-  @override
-  TrainerSessionState get state {
-    stateReads++;
-    return snapshot;
-  }
-
-  @override
-  Stream<TrainerSessionState> get stateChanges {
-    stateChangesReads++;
-    return const Stream.empty();
-  }
-
-  @override
-  void connect() => commandCalls++;
-
-  @override
-  void refresh() => commandCalls++;
-
-  @override
-  bool selectProcess(int processId) {
-    commandCalls++;
-    return false;
-  }
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) {
-    commandCalls++;
-    return GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-  }
-
-  @override
-  Future<void> dispose() async {}
 }

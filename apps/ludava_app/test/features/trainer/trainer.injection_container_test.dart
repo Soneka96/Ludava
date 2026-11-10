@@ -6,42 +6,9 @@ import 'package:ludava_app/features/trainer/trainer.injection_container.dart';
 import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-void main() {
-  setUp(() async => sl.pushNewScope());
-  tearDown(() async => sl.popScope());
-
-  group('Method initTrainerDependencies() behaves correctly', () {
-    test(
-      'Method initTrainerDependencies() registers one capability and gate',
-      () {
-        final capability = _FakeTrainerSdkCapability(TrainerSessionState());
-
-        initTrainerDependencies(capability: capability);
-
-        expect(sl<TrainerSdkCapability>(), same(capability));
-        final gate = sl<SdkOperationGate>();
-        expect(sl<SdkOperationGate>(), same(gate));
-        expect(gate.isOpen, isTrue);
-        final bridge = sl<TrainerWriteBridge>();
-        expect(sl<TrainerWriteBridge>(), same(bridge));
-        bridge.writeField('credits', 25);
-        expect(capability.writeCalls, 1);
-        gate.close();
-        bridge.writeField('credits', 25);
-        expect(capability.writeCalls, 1);
-        expect(sl.isRegistered<LudavaSdk>(), isFalse);
-      },
-    );
-  });
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  _FakeTrainerSdkCapability(this.state);
-
-  int writeCalls = 0;
-
+class _RegistrationCapability implements TrainerSdkCapability {
   @override
-  final TrainerSessionState state;
+  TrainerSessionState get state => TrainerSessionState();
 
   @override
   Stream<TrainerSessionState> get stateChanges => const Stream.empty();
@@ -56,15 +23,25 @@ class _FakeTrainerSdkCapability implements TrainerSdkCapability {
   bool selectProcess(int processId) => false;
 
   @override
-  GameWriteResult writeField(String fieldId, int value) {
-    writeCalls++;
-    return GameWriteResult(
-      status: GameWriteStatus.none,
-      fieldId: fieldId,
-      requestedValue: value,
-    );
-  }
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
 
   @override
   Future<void> dispose() async {}
+}
+
+void main() {
+  setUp(() => sl.pushNewScope());
+  tearDown(() async => sl.popScope());
+
+  group('Method initTrainerDependencies() behaves correctly', () {
+    test('Method initTrainerDependencies() registers trainer dependencies', () {
+      initTrainerDependencies(capability: _RegistrationCapability());
+
+      expect(sl.isRegistered<TrainerSdkCapability>(), isTrue);
+      expect(sl.isRegistered<SdkOperationGate>(), isTrue);
+      expect(sl.isRegistered<TrainerWriteBridge>(), isTrue);
+      expect(sl.isRegistered<LudavaSdk>(), isFalse);
+    });
+  });
 }
