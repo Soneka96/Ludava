@@ -1,11 +1,21 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
+import 'package:ludava_app/features/connection/presentation/state/rpcs3_connection_indicator_view_model.dart';
+import 'package:ludava_app/injection_container.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
+import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_style_presets.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_factory.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:redux/redux.dart';
+
+class _MockConnectionIndicatorViewModel extends Mock
+    implements Rpcs3ConnectionIndicatorViewModel {}
 
 Color _stateOverlayColor(Color color, double opacity) => Color.fromARGB(
   (opacity * 255).round(),
@@ -176,6 +186,24 @@ void main() {
     testWidgets(
       'Method LudavaThemeFactory.build() styles Ludava and Material widgets from alternate colors',
       (tester) async {
+        sl.pushNewScope();
+        final viewModel = _MockConnectionIndicatorViewModel();
+        when(() => viewModel.processIds).thenReturn(const []);
+        when(() => viewModel.selectedProcessId).thenReturn(null);
+        final store = Store<AppState>(
+          (state, action) => state,
+          initialState: AppState(
+            trainer: TrainerState(session: TrainerSessionState()),
+          ),
+        );
+        sl.registerFactoryParam<
+          Rpcs3ConnectionIndicatorViewModel,
+          Store<AppState>,
+          void
+        >((store, _) => viewModel);
+        addTearDown(() async {
+          await sl.popScope();
+        });
         final colors = GraphiteTealTheme.colors.copyWith(
           surface: Colors.deepPurple,
           accent: Colors.lime,
@@ -191,23 +219,25 @@ void main() {
         addTearDown(maximizeState.dispose);
 
         await tester.pumpWidget(
-          MaterialApp(
-            theme: theme,
-            home: Scaffold(
-              body: Column(
-                children: [
-                  LudavaWindowTitleBar(
-                    session: TrainerSessionState(),
-                    isMaximized: maximizeState,
-                    onMinimize: () {},
-                    onToggleMaximize: () {},
-                    onClose: () {},
-                  ),
-                  FilledButton(onPressed: () {}, child: const Text('Apply')),
-                  const TextField(
-                    decoration: InputDecoration(labelText: 'Value'),
-                  ),
-                ],
+          StoreProvider<AppState>(
+            store: store,
+            child: MaterialApp(
+              theme: theme,
+              home: Scaffold(
+                body: Column(
+                  children: [
+                    LudavaWindowTitleBar(
+                      isMaximized: maximizeState,
+                      onMinimize: () {},
+                      onToggleMaximize: () {},
+                      onClose: () {},
+                    ),
+                    FilledButton(onPressed: () {}, child: const Text('Apply')),
+                    const TextField(
+                      decoration: InputDecoration(labelText: 'Value'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -245,5 +275,3 @@ void main() {
     );
   });
 }
-
-/// Resolves a Material state opacity through its 8-bit color alpha channel.

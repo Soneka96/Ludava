@@ -1,0 +1,127 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
+import 'package:ludava_app/shared/state/app_state.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
+
+import '../../../../support/trainer_state_fixture.dart';
+
+void main() {
+  group('Method fieldRows() behaves correctly', () {
+    test('Method fieldRows() projects ordered SDK row values', () {
+      final session = trainerStateFixtureSession(
+        additionalFieldIds: ['scrap'],
+        readResult: const GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: 'credits',
+          value: 25,
+        ),
+        lastWriteResult: const GameWriteResult(
+          status: GameWriteStatus.writeFailed,
+          fieldId: 'credits',
+          requestedValue: 26,
+        ),
+      );
+      final state = AppState(
+        trainer: TrainerState(session: session, editingFieldId: 'credits'),
+      );
+
+      final rows = TrainerSelectors.fieldRows(state);
+
+      expect(rows.map((row) => row.field.id), ['credits', 'scrap']);
+      expect(rows.first.readResult?.value, 25);
+      expect(rows.first.writeResult?.requestedValue, 26);
+      expect(rows.first.canRead, isTrue);
+      expect(rows.first.canWrite, isTrue);
+      expect(rows.first.isEditing, isTrue);
+      expect(rows.last.readResult, isNull);
+      expect(rows.last.writeResult, isNull);
+      expect(rows.last.isEditing, isFalse);
+    });
+
+    test('Method fieldRows() keeps SDK write eligibility authoritative', () {
+      final session = trainerStateFixtureSession(
+        fieldWriteStatus: VerificationStatus.experimental,
+        readResult: const GameReadResult(
+          status: GameReadStatus.success,
+          fieldId: 'credits',
+          value: 25,
+        ),
+      );
+      final state = AppState(
+        trainer: TrainerState(session: session, editingFieldId: 'credits'),
+      );
+
+      final row = TrainerSelectors.fieldRows(state).single;
+
+      expect(row.canWrite, isFalse);
+      expect(row.isEditing, isFalse);
+    });
+
+    test('Method fieldRows() respects field read permission', () {
+      final field = trainerStateFixtureField(
+        readStatus: VerificationStatus.none,
+      );
+      final profile = GameProfile(
+        id: 'synthetic-profile',
+        gameName: 'Synthetic Game',
+        buildId: 'test-build',
+        executable: 'synthetic.exe',
+        readStatus: VerificationStatus.verified,
+        fields: {field.id: field},
+      );
+      final session = TrainerSessionState(
+        detection: GameDetectionResult(
+          status: GameDetectionStatus.supportedGame,
+          confidence: GameIdentityConfidence.confirmed,
+          profile: profile,
+          evidenceDescription: 'Synthetic test evidence',
+        ),
+      );
+      final state = AppState(trainer: TrainerState(session: session));
+
+      expect(TrainerSelectors.fieldRows(state).single.canRead, isFalse);
+    });
+
+    test('Method fieldRows() returns no rows without a selected profile', () {
+      final state = AppState(
+        trainer: TrainerState(session: TrainerSessionState()),
+      );
+
+      expect(TrainerSelectors.fieldRows(state), isEmpty);
+    });
+
+    test('Method fieldRows() returns an immutable projection', () {
+      final state = AppState(
+        trainer: TrainerState(session: trainerStateFixtureSession()),
+      );
+      final rows = TrainerSelectors.fieldRows(state);
+
+      expect(() => rows.add(rows.single), throwsUnsupportedError);
+    });
+  });
+
+  group('Method isReady() behaves correctly', () {
+    test('Method isReady() requires supported detection and a memory base', () {
+      final ready = AppState(
+        trainer: TrainerState(session: trainerStateFixtureSession()),
+      );
+      final missingBase = AppState(
+        trainer: TrainerState(
+          session: trainerStateFixtureSession(memoryBase: null),
+        ),
+      );
+      final unsupported = AppState(
+        trainer: TrainerState(
+          session: trainerStateFixtureSession(
+            detectionStatus: GameDetectionStatus.unsupportedGame,
+          ),
+        ),
+      );
+
+      expect(TrainerSelectors.isReady(ready), isTrue);
+      expect(TrainerSelectors.isReady(missingBase), isFalse);
+      expect(TrainerSelectors.isReady(unsupported), isFalse);
+    });
+  });
+}

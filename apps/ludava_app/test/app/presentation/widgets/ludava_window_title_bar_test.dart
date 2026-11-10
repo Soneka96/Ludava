@@ -1,13 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
+import 'package:ludava_app/features/connection/presentation/state/rpcs3_connection_indicator_view_model.dart';
+import 'package:ludava_app/injection_container.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
+import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:redux/redux.dart';
 import 'package:window_manager/window_manager.dart';
 
+class _MockConnectionIndicatorViewModel extends Mock
+    implements Rpcs3ConnectionIndicatorViewModel {}
+
 void main() {
+  late _MockConnectionIndicatorViewModel viewModel;
+  late Store<AppState> store;
+
+  setUp(() {
+    sl.pushNewScope();
+    viewModel = _MockConnectionIndicatorViewModel();
+    when(() => viewModel.processIds).thenReturn(const []);
+    when(() => viewModel.selectedProcessId).thenReturn(null);
+    store = Store<AppState>(
+      (state, action) => state,
+      initialState: AppState(
+        trainer: TrainerState(session: TrainerSessionState()),
+      ),
+    );
+    sl.registerFactoryParam<
+      Rpcs3ConnectionIndicatorViewModel,
+      Store<AppState>,
+      void
+    >((store, _) => viewModel);
+  });
+
+  tearDown(() async {
+    await sl.popScope();
+  });
+
   group('Class LudavaWindowTitleBar interaction behavior', () {
     testWidgets('Class LudavaWindowTitleBar uses the supplied theme', (
       tester,
@@ -21,15 +56,17 @@ void main() {
       final theme = ThemeData.dark().copyWith(extensions: [tokens]);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: theme,
-          home: Scaffold(
-            body: LudavaWindowTitleBar(
-              session: TrainerSessionState(),
-              isMaximized: maximizeState,
-              onMinimize: () {},
-              onToggleMaximize: () {},
-              onClose: () {},
+        StoreProvider<AppState>(
+          store: store,
+          child: MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: LudavaWindowTitleBar(
+                isMaximized: maximizeState,
+                onMinimize: () {},
+                onToggleMaximize: () {},
+                onClose: () {},
+              ),
             ),
           ),
         ),
@@ -97,7 +134,7 @@ void main() {
     testWidgets('Class LudavaWindowTitleBar fits narrow and wide widths', (
       tester,
     ) async {
-      tester.view.physicalSize = const Size(720, 120);
+      tester.view.physicalSize = const Size(520, 360);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -105,15 +142,17 @@ void main() {
       addTearDown(maximizeState.dispose);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: LudavaTheme.graphiteAndTeal,
-          home: Scaffold(
-            body: LudavaWindowTitleBar(
-              session: TrainerSessionState(),
-              isMaximized: maximizeState,
-              onMinimize: () {},
-              onToggleMaximize: () {},
-              onClose: () {},
+        StoreProvider<AppState>(
+          store: store,
+          child: MaterialApp(
+            theme: LudavaTheme.graphiteAndTeal,
+            home: Scaffold(
+              body: LudavaWindowTitleBar(
+                isMaximized: maximizeState,
+                onMinimize: () {},
+                onToggleMaximize: () {},
+                onClose: () {},
+              ),
             ),
           ),
         ),
@@ -122,7 +161,13 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Ludava'), findsOneWidget);
 
-      tester.view.physicalSize = const Size(1180, 120);
+      tester.view.physicalSize = const Size(480, 340);
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Ludava'), findsOneWidget);
+
+      tester.view.physicalSize = const Size(1180, 800);
       await tester.pump();
 
       expect(tester.takeException(), isNull);
@@ -139,15 +184,17 @@ void main() {
       addTearDown(maximizeState.dispose);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: LudavaTheme.graphiteAndTeal,
-          home: Scaffold(
-            body: LudavaWindowTitleBar(
-              session: TrainerSessionState(processIds: const [10]),
-              isMaximized: maximizeState,
-              onMinimize: () => minimizeCount++,
-              onToggleMaximize: () => maximizeCount++,
-              onClose: () => closeCount++,
+        StoreProvider<AppState>(
+          store: store,
+          child: MaterialApp(
+            theme: LudavaTheme.graphiteAndTeal,
+            home: Scaffold(
+              body: LudavaWindowTitleBar(
+                isMaximized: maximizeState,
+                onMinimize: () => minimizeCount++,
+                onToggleMaximize: () => maximizeCount++,
+                onClose: () => closeCount++,
+              ),
             ),
           ),
         ),

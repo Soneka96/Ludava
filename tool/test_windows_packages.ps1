@@ -157,9 +157,16 @@ try {
             throw "The relocated desktop app did not load required modules: $($missingModules -join ', '). Loaded: $($loadedModules -join ', ')"
         }
     } finally {
-        $application.Refresh()
-        if (-not $application.HasExited) {
-            Stop-Process -Id $application.Id -Force -ErrorAction SilentlyContinue
+        try {
+            $application.Refresh()
+            if (-not $application.HasExited) {
+                Stop-Process -Id $application.Id -Force -ErrorAction SilentlyContinue
+            }
+            if (-not $application.WaitForExit(10000)) {
+                throw 'The relocated desktop app did not exit after termination was requested.'
+            }
+        } finally {
+            $application.Dispose()
         }
     }
 

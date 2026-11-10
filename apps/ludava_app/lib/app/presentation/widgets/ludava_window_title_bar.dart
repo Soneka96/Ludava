@@ -4,16 +4,12 @@ import 'package:ludava_app/app/presentation/widgets/ludava_window_control_button
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
-import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Renders the integrated Ludava title bar and accessible window controls.
 class LudavaWindowTitleBar extends StatelessWidget {
   /// Keeps the small brand mark's radius local to this title bar.
   static const double _controlHoverRadius = 4;
-
-  /// Latest SDK snapshot used to show basic RPCS3 process availability.
-  final TrainerSessionState session;
 
   /// Current native maximize state.
   final ValueListenable<bool> isMaximized;
@@ -27,9 +23,8 @@ class LudavaWindowTitleBar extends StatelessWidget {
   /// Closes the application window.
   final VoidCallback onClose;
 
-  /// Creates the title bar with the native window actions supplied by its owner.
+  /// Creates the title bar with native window actions supplied by its owner.
   const LudavaWindowTitleBar({
-    required this.session,
     required this.isMaximized,
     required this.onMinimize,
     required this.onToggleMaximize,
@@ -76,7 +71,7 @@ class LudavaWindowTitleBar extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      Rpcs3ConnectionIndicator(session: session),
+                      const Rpcs3ConnectionIndicator(),
                       const SizedBox(width: LudavaSpacing.md),
                     ],
                   ),

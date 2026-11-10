@@ -1,181 +1,116 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:ludava_app/app/ludava_window_controller.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_shell.dart';
-import 'package:ludava_app/features/trainer/presentation/trainer_controller.dart';
+import 'package:ludava_app/features/trainer/services/sdk_operation_gate.dart';
+import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
+import 'package:ludava_app/injection_container.dart';
+import 'package:ludava_app/shared/state/app.actions.dart';
+import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
-import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:redux/redux.dart';
 
-/// Root Flutter composition for the trainer controller and desktop window.
+/// Root Flutter composition for the Redux store and native desktop window.
 class LudavaApp extends StatefulWidget {
-  /// Optional controller injected for deterministic composition tests.
-  final TrainerController? controller;
-
-  /// Optional SDK input used when the app creates its trainer controller.
-  final LudavaSdk? sdk;
-
-  /// Optional native window controller for tests and desktop composition.
+  /// Optional native window controller for deterministic lifecycle tests.
   final LudavaWindowController? windowController;
 
   /// Optional theme override for deterministic presentation tests.
   final ThemeData? theme;
 
-  /// Creates the app, accepting either an owned controller or an SDK seam.
-  const LudavaApp({
-    this.controller,
-    this.sdk,
-    this.windowController,
-    this.theme,
-    super.key,
-  }) : assert(controller == null || sdk == null);
+  /// Creates the app with optional window and theme test seams.
+  const LudavaApp({this.windowController, this.theme, super.key});
 
-  /// Creates state that owns the trainer controller and window controller.
+  /// Creates state that owns the Redux startup and native close coordination.
   @override
   State<LudavaApp> createState() => _LudavaAppState();
 }
 
 class _LudavaAppState extends State<LudavaApp> {
-  late final TrainerController _controller;
+  late final Store<AppState> _store;
+  late final SdkOperationGate _operationGate;
   late final LudavaWindowController _windowController;
+  Future<void>? _shutdownFuture;
+  Future<void>? _sdkDisposalFuture;
   Future<void>? _closeFuture;
-  Future<void>? _controllerDisposalFuture;
+  Object? _sdkDisposalFailure;
+  bool _disposalFailureRetryOffered = false;
   _ShutdownState _shutdownState = _ShutdownState.running;
   String? _closeFailure;
 
-  /// Creates the controller and registers the awaited native close sequence.
+  /// Configures native close interception before Redux initializes the SDK.
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller ?? TrainerController(sdk: widget.sdk);
     _windowController = widget.windowController ?? LudavaWindowController();
     _windowController.configure(onCloseRequested: _handleNativeCloseRequest);
+    if (!sl.isRegistered<Store<AppState>>()) initDependencies();
+    _store = sl<Store<AppState>>();
+    _operationGate = sl<SdkOperationGate>();
+    _store.dispatch(const InitializeAppAction());
   }
 
-  /// Releases window observation and starts fallback cleanup for tree removal.
+  /// Starts the shared shutdown path if the widget tree is removed directly.
   @override
   void dispose() {
     _windowController.dispose();
-    if (_controllerDisposalFuture == null) {
-      unawaited(_reportControllerDisposal());
-    }
+    if (_shutdownFuture == null) unawaited(_shutdownAndDispose());
     super.dispose();
   }
 
-  /// Renders the latest controller snapshot inside the desktop app shell.
+  /// Provides the single store to focused Redux connectors in the app shell.
   @override
-  Widget build(BuildContext context) {
-    final theme = widget.theme ?? LudavaTheme.graphiteAndTeal;
-    return MaterialApp(
-      title: 'Ludava',
-      debugShowCheckedModeBanner: false,
-      theme: theme,
-      home: ListenableBuilder(
-        listenable: _controller,
-        builder: (context, child) => LudavaShell(
-          session: _controller.session,
-          editingFieldId: _controller.editingFieldId,
-          onEditField: _editField,
-          onApplyField: _writeField,
-          onCancelEditing: _cancelEditing,
-          onMinimize: _minimizeWindow,
-          onToggleMaximize: _toggleMaximizeWindow,
-          isMaximized: _windowController.isMaximized,
-          onClose: _requestWindowClose,
-          isClosing: _shutdownState == _ShutdownState.closing,
-          closeFailure: _closeFailure,
-          onRefresh: _refresh,
-          onSelectProcess: _selectProcess,
-        ),
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Ludava',
+    debugShowCheckedModeBanner: false,
+    theme: widget.theme ?? LudavaTheme.graphiteAndTeal,
+    home: StoreProvider<AppState>(
+      store: _store,
+      child: LudavaShell(
+        onMinimize: _minimizeWindow,
+        onToggleMaximize: _toggleMaximizeWindow,
+        isMaximized: _windowController.isMaximized,
+        onClose: _requestWindowClose,
+        isClosing:
+            _shutdownState == _ShutdownState.closing ||
+            _shutdownState == _ShutdownState.none,
+        closeFailure: _closeFailure,
       ),
-    );
-  }
+    ),
+  );
 
-  /// Opens a field editor only while the controller is still active.
-  void _editField(GameField field) {
-    if (_shutdownState == _ShutdownState.running) {
-      _controller.editField(field);
-    }
-  }
+  /// Reports whether native or trainer interaction is terminally blocked.
+  bool get _isInteractionBlocked => switch (_shutdownState) {
+    _ShutdownState.none => true,
+    _ShutdownState.running => false,
+    _ShutdownState.closing || _ShutdownState.closeFailed => true,
+  };
 
-  /// Writes a value only while the controller is still active.
-  GameWriteResult _writeField(String fieldId, int value) {
-    if (_shutdownState == _ShutdownState.running) {
-      return _controller.writeField(fieldId, value);
-    }
-    return GameWriteResult(
-      status: GameWriteStatus.none,
-      fieldId: fieldId,
-      requestedValue: value,
-    );
-  }
-
-  /// Cancels editing only while the controller is still active.
-  void _cancelEditing() {
-    if (_shutdownState == _ShutdownState.running) {
-      _controller.cancelEditing();
-    }
-  }
-
-  /// Refreshes the session only while the controller is still active.
-  void _refresh() {
-    if (_shutdownState == _ShutdownState.running) _controller.refresh();
-  }
-
-  /// Selects a process only while the controller is still active.
-  void _selectProcess(int processId) {
-    if (_shutdownState == _ShutdownState.running) {
-      _controller.selectProcess(processId);
-    }
-  }
-
-  /// Minimizes the current native application window when it is available.
-  void _minimizeWindow() {
-    if (_shutdownState == _ShutdownState.running) _windowController.minimize();
-  }
-
-  /// Toggles the current native window between maximized and restored sizes.
-  void _toggleMaximizeWindow() {
-    if (_shutdownState == _ShutdownState.running) {
-      _windowController.toggleMaximize();
-    }
-  }
-
-  /// Starts the same awaited cleanup path for title-bar close requests.
+  /// Requests native close after SDK cleanup, unless shutdown already began.
   void _requestWindowClose() {
     if (_shutdownState == _ShutdownState.closing) return;
     unawaited(_closeAfterDisposal(requestCancelled: true));
   }
 
-  /// Shares one cleanup future across repeated title-bar and native requests.
+  /// Shares one native close future across overlapping close requests.
   Future<void> _closeAfterDisposal({required bool requestCancelled}) {
     final activeClose = _closeFuture;
     if (activeClose != null) return activeClose;
-    if (_shutdownState == _ShutdownState.closing) return Future<void>.value();
-
     setState(() {
       _shutdownState = _ShutdownState.closing;
       _closeFailure = null;
     });
-
-    final closeFuture =
-        _disposeControllerAndCloseWindow(requestCancelled: requestCancelled)
-            .whenComplete(() {
-              _closeFuture = null;
-            });
+    final closeFuture = _finishNativeClose(requestCancelled: requestCancelled)
+        .whenComplete(() => _closeFuture = null);
     _closeFuture = closeFuture;
     return closeFuture;
   }
 
-  /// Awaits controller cleanup and then closes the native window.
-  Future<void> _disposeControllerAndCloseWindow({
-    required bool requestCancelled,
-  }) async {
-    try {
-      await _disposeControllerOnce();
-    } catch (error, stackTrace) {
-      _reportError(error, stackTrace, 'while disposing the trainer controller');
-    }
+  /// Awaits shared resource shutdown before attempting native close.
+  Future<void> _finishNativeClose({required bool requestCancelled}) async {
+    await _shutdownAndDispose();
     if (!requestCancelled) {
       final error = StateError(
         'The native close event could not be cancelled.',
@@ -185,7 +120,19 @@ class _LudavaAppState extends State<LudavaApp> {
         StackTrace.current,
         'while intercepting the native window close request',
       );
-      _showCloseFailure(error.message);
+      final disposalFailure = _sdkDisposalFailure;
+      if (disposalFailure != null) _disposalFailureRetryOffered = true;
+      _showCloseFailure(
+        disposalFailure == null
+            ? error.message
+            : '${error.message}\n$disposalFailure',
+      );
+      return;
+    }
+    final disposalFailure = _sdkDisposalFailure;
+    if (disposalFailure != null && !_disposalFailureRetryOffered) {
+      _disposalFailureRetryOffered = true;
+      _showCloseFailure(disposalFailure.toString());
       return;
     }
 
@@ -198,12 +145,43 @@ class _LudavaAppState extends State<LudavaApp> {
     }
   }
 
-  /// Completes cleanup after a native close event's veto result is known.
-  Future<void> _handleNativeCloseRequest(bool requestCancelled) async {
-    await _closeAfterDisposal(requestCancelled: requestCancelled);
+  /// Closes the SDK gate, awaits middleware cleanup, and disposes the SDK once.
+  Future<void> _shutdownAndDispose() {
+    final existingShutdown = _shutdownFuture;
+    if (existingShutdown != null) return existingShutdown;
+
+    _operationGate.close();
+    final action = ShutdownRequestedAction();
+    try {
+      _store.dispatch(action);
+    } on Object catch (error, stackTrace) {
+      _reportError(error, stackTrace, 'while dispatching application shutdown');
+    }
+    return _shutdownFuture = _finishShutdown(action);
   }
 
-  /// Keeps the terminal disposed controller behind a retryable failure state.
+  /// Attempts SDK disposal even when one or more observation cleanups fail.
+  Future<void> _finishShutdown(ShutdownRequestedAction action) async {
+    try {
+      await action.waitForCleanup();
+    } on Object catch (error, stackTrace) {
+      _reportError(error, stackTrace, 'while cleaning up trainer observation');
+    }
+    try {
+      await (_sdkDisposalFuture ??= Future<void>.sync(
+        () => sl<TrainerSdkCapability>().dispose(),
+      ));
+    } on Object catch (error, stackTrace) {
+      _sdkDisposalFailure = error;
+      _reportError(error, stackTrace, 'while disposing the trainer SDK');
+    }
+  }
+
+  /// Handles a native close event after its veto result is known.
+  Future<void> _handleNativeCloseRequest(bool requestCancelled) =>
+      _closeAfterDisposal(requestCancelled: requestCancelled);
+
+  /// Shows a retryable close failure while keeping Redux and its store alive.
   void _showCloseFailure(String failure) {
     if (mounted) {
       setState(() {
@@ -213,17 +191,14 @@ class _LudavaAppState extends State<LudavaApp> {
     }
   }
 
-  /// Shares terminal SDK cleanup between close retries and tree disposal.
-  Future<void> _disposeControllerOnce() =>
-      _controllerDisposalFuture ??= _controller.dispose();
+  /// Minimizes the native app window while resources remain active.
+  void _minimizeWindow() {
+    if (!_isInteractionBlocked) _windowController.minimize();
+  }
 
-  /// Reports fallback controller cleanup errors after external tree removal.
-  Future<void> _reportControllerDisposal() async {
-    try {
-      await _disposeControllerOnce();
-    } catch (error, stackTrace) {
-      _reportError(error, stackTrace, 'while disposing the trainer controller');
-    }
+  /// Toggles maximize state while resources remain active.
+  void _toggleMaximizeWindow() {
+    if (!_isInteractionBlocked) _windowController.toggleMaximize();
   }
 
   /// Reports [error] with context about the failed asynchronous operation.
@@ -239,5 +214,17 @@ class _LudavaAppState extends State<LudavaApp> {
   }
 }
 
-/// Tracks the terminal application shutdown path without reviving the SDK.
-enum _ShutdownState { running, closing, closeFailed }
+/// Tracks shutdown state; [none] is an invalid fail-closed sentinel.
+enum _ShutdownState {
+  /// No valid lifecycle state has been selected.
+  none,
+
+  /// The SDK operation gate remains open.
+  running,
+
+  /// Cleanup and native close are in progress.
+  closing,
+
+  /// Native close failed after SDK resources became terminal.
+  closeFailed,
+}

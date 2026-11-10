@@ -1,214 +1,147 @@
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/entities/memory_read_result.entity.dart';
-import 'package:ludava_sdk/features/game_memory/domain/entities/memory_write_result.entity.dart';
 import 'package:ludava_sdk/features/game_memory/domain/repositories/Igame_memory.repository.dart';
 import 'package:ludava_sdk/features/game_memory/domain/usecases/params/read_game_field.params.dart';
 import 'package:ludava_sdk/features/game_memory/domain/usecases/read_game_field.usecase.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-class _ReadGameFieldTestData implements IGameMemoryRepository {
-  int readCalls = 0;
-  int? lastAddress;
-  int? lastByteCount;
+class _MockGameMemoryRepository extends Mock implements IGameMemoryRepository {}
 
-  _ReadGameFieldTestData([MemoryReadResult? readResult])
-    : _readResult =
-          readResult ??
-          MemoryReadResult(
-            status: MemoryReadStatus.complete,
-            bytes: [0, 0, 0, 42],
-            bytesRead: 4,
-            requestedBytes: 4,
-          );
+GameProfile _profile({
+  VerificationStatus readStatus = VerificationStatus.experimental,
+  VerificationStatus fieldReadStatus = VerificationStatus.experimental,
+  MemoryValueType valueType = MemoryValueType.unsigned32,
+  ByteOrder byteOrder = ByteOrder.big,
+}) => GameProfile(
+  id: 'synthetic-profile',
+  gameName: 'Test game',
+  buildId: 'TEST',
+  executable: 'test.exe',
+  readStatus: readStatus,
+  fields: {
+    'credits': GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1234,
+      valueType: valueType,
+      byteOrder: byteOrder,
+      readStatus: fieldReadStatus,
+    ),
+  },
+);
 
-  final MemoryReadResult _readResult;
+ReadGameFieldParams _params({
+  GameProfile? profile,
+  int memoryBase = 0x300000000,
+  String fieldId = 'credits',
+}) => ReadGameFieldParams(
+  profile: profile ?? _profile(),
+  fieldId: fieldId,
+  memoryBase: memoryBase,
+);
 
-  static GameProfile profile({
-    VerificationStatus readStatus = VerificationStatus.experimental,
-    VerificationStatus fieldReadStatus = VerificationStatus.experimental,
-    MemoryValueType valueType = MemoryValueType.unsigned32,
-    ByteOrder byteOrder = ByteOrder.big,
-  }) => GameProfile(
-    id: 'synthetic-profile',
-    gameName: 'Test game',
-    buildId: 'TEST',
-    executable: 'test.exe',
-    readStatus: readStatus,
-    fields: {
-      'credits': GameField(
-        id: 'credits',
-        name: 'Credits',
-        guestOffset: 0x1234,
-        valueType: valueType,
-        byteOrder: byteOrder,
-        readStatus: fieldReadStatus,
-      ),
-    },
-  );
-
-  static _ReadGameFieldTestData repository({MemoryReadResult? readResult}) =>
-      _ReadGameFieldTestData(readResult);
-
-  @override
-  MemoryReadResult read(int address, int byteCount) {
-    readCalls++;
-    lastAddress = address;
-    lastByteCount = byteCount;
-    return _readResult;
-  }
-
-  @override
-  MemoryWriteResult write(int address, List<int> bytes) => MemoryWriteResult(
-    status: MemoryWriteStatus.invalidRequest,
-    bytesWritten: 0,
-    requestedBytes: bytes.length,
-  );
-}
+MemoryReadResult _completeRead(List<int> bytes) => MemoryReadResult(
+  status: MemoryReadStatus.complete,
+  bytes: bytes,
+  bytesRead: bytes.length,
+  requestedBytes: bytes.length,
+);
 
 void main() {
   group('Method execute() behaves correctly', () {
     test(
       'Method execute() reads four big-endian bytes at a synthetic session-relative address',
       () {
-        final repository = _ReadGameFieldTestData(
-          MemoryReadResult(
-            status: MemoryReadStatus.complete,
-            bytes: [0, 1, 0x23, 0x45],
-            bytesRead: 4,
-            requestedBytes: 4,
-          ),
-        );
-        final result = ReadGameFieldUseCase(repository).execute(
-          ReadGameFieldParams(
-            profile: _ReadGameFieldTestData.profile(),
-            fieldId: 'credits',
-            memoryBase: 0x310000000,
-          ),
-        );
+        final repository = _MockGameMemoryRepository();
+        when(
+          () => repository.read(0x310001234, 4),
+        ).thenReturn(_completeRead([0, 1, 0x23, 0x45]));
+
+        final result = ReadGameFieldUseCase(
+          repository,
+        ).execute(_params(memoryBase: 0x310000000));
 
         expect(result.status, GameReadStatus.success);
+        expect(result.succeeded, isTrue);
+        expect(result.fieldId, 'credits');
         expect(result.value, 0x00012345);
-        expect(repository.readCalls, 1);
-        expect(repository.lastAddress, 0x310001234);
-        expect(repository.lastByteCount, 4);
+        verify(() => repository.read(0x310001234, 4)).called(1);
       },
     );
 
-    test('Method execute() reads and decodes an eligible field', () {
-      final repository = _ReadGameFieldTestData.repository(
-        readResult: MemoryReadResult(
-          status: MemoryReadStatus.complete,
-          bytes: [0, 0, 0, 42],
-          bytesRead: 4,
-          requestedBytes: 4,
-        ),
-      );
-      final result = ReadGameFieldUseCase(repository).execute(
-        ReadGameFieldParams(
-          profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'credits',
-          memoryBase: 0x300000000,
-        ),
-      );
-
-      expect(result.status, GameReadStatus.success);
-      expect(result.succeeded, isTrue);
-      expect(result.fieldId, 'credits');
-      expect(result.value, 42);
-      expect(repository.lastAddress, 0x300001234);
-      expect(repository.lastByteCount, 4);
-    });
-
     test('Method execute() preserves a successfully read zero value', () {
-      final repository = _ReadGameFieldTestData.repository(
-        readResult: MemoryReadResult(
-          status: MemoryReadStatus.complete,
-          bytes: [0, 0, 0, 0],
-          bytesRead: 4,
-          requestedBytes: 4,
-        ),
-      );
-      final result = ReadGameFieldUseCase(repository).execute(
-        ReadGameFieldParams(
-          profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'credits',
-          memoryBase: 0x300000000,
-        ),
-      );
+      final repository = _MockGameMemoryRepository();
+      when(
+        () => repository.read(0x300001234, 4),
+      ).thenReturn(_completeRead([0, 0, 0, 0]));
+
+      final result = ReadGameFieldUseCase(repository).execute(_params());
 
       expect(result.succeeded, isTrue);
       expect(result.value, 0);
+      verify(() => repository.read(0x300001234, 4)).called(1);
     });
 
     test('Method execute() rejects unsupported profiles before reading', () {
-      final repository = _ReadGameFieldTestData.repository();
-      final profile = _ReadGameFieldTestData.profile(
-        readStatus: VerificationStatus.unsupported,
-      );
-
+      final repository = _MockGameMemoryRepository();
       final result = ReadGameFieldUseCase(repository).execute(
-        ReadGameFieldParams(
-          profile: profile,
-          fieldId: 'credits',
-          memoryBase: 0x300000000,
-        ),
+        _params(profile: _profile(readStatus: VerificationStatus.unsupported)),
       );
 
       expect(result.status, GameReadStatus.unsupportedProfile);
-      expect(repository.readCalls, 0);
+      verifyNever(() => repository.read(any(), any()));
     });
 
     test(
       'Method execute() rejects missing or unapproved fields before reading',
       () {
-        final repository = _ReadGameFieldTestData.repository();
-        final profile = _ReadGameFieldTestData.profile(
+        final repository = _MockGameMemoryRepository();
+        final profile = _profile(
           fieldReadStatus: VerificationStatus.unsupported,
         );
 
-        final unsupported = ReadGameFieldUseCase(repository).execute(
-          ReadGameFieldParams(
-            profile: profile,
-            fieldId: 'credits',
-            memoryBase: 0x300000000,
-          ),
-        );
-        final missing = ReadGameFieldUseCase(repository).execute(
-          ReadGameFieldParams(
-            profile: profile,
-            fieldId: 'missing',
-            memoryBase: 0x300000000,
-          ),
-        );
+        final unsupported = ReadGameFieldUseCase(
+          repository,
+        ).execute(_params(profile: profile));
+        final missing = ReadGameFieldUseCase(
+          repository,
+        ).execute(_params(profile: profile, fieldId: 'missing'));
 
         expect(unsupported.status, GameReadStatus.unsupportedField);
         expect(missing.status, GameReadStatus.unsupportedField);
-        expect(repository.readCalls, 0);
+        verifyNever(() => repository.read(any(), any()));
       },
     );
 
-    test('Method execute() rejects invalid mappings before reading', () {
-      final repository = _ReadGameFieldTestData.repository();
+    test(
+      'Method execute() rejects negative and overflowing mappings before reading',
+      () {
+        final repository = _MockGameMemoryRepository();
+        final useCase = ReadGameFieldUseCase(repository);
+        final negativeBase = useCase.execute(_params(memoryBase: -1));
+        final overflowingOffset = useCase.execute(
+          _params(memoryBase: 0x7FFFFFFFFFFFFFFF - 0x1233),
+        );
+        final overflowingRange = useCase.execute(
+          _params(memoryBase: 0x7FFFFFFFFFFFFFFF - 0x1234 - 2),
+        );
 
-      final result = ReadGameFieldUseCase(repository).execute(
-        ReadGameFieldParams(
-          profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'credits',
-          memoryBase: -1,
-        ),
-      );
-
-      expect(result.status, GameReadStatus.invalidMapping);
-      expect(repository.readCalls, 0);
-    });
+        expect(negativeBase.status, GameReadStatus.invalidMapping);
+        expect(overflowingOffset.status, GameReadStatus.invalidMapping);
+        expect(overflowingRange.status, GameReadStatus.invalidMapping);
+        verifyNever(() => repository.read(any(), any()));
+      },
+    );
 
     test(
       'Method execute() maps failed and partial reads to explicit outcomes',
       () {
-        final failedRepository = _ReadGameFieldTestData.repository(
-          readResult: MemoryReadResult(
+        final failedRepository = _MockGameMemoryRepository();
+        when(() => failedRepository.read(0x300001234, 4)).thenReturn(
+          MemoryReadResult(
             status: MemoryReadStatus.nativeFailure,
             bytes: [],
             bytesRead: 0,
@@ -216,80 +149,70 @@ void main() {
             errorCode: 299,
           ),
         );
-        final partialRepository = _ReadGameFieldTestData.repository(
-          readResult: MemoryReadResult(
+        final partialRepository = _MockGameMemoryRepository();
+        when(() => partialRepository.read(0x300001234, 4)).thenReturn(
+          MemoryReadResult(
             status: MemoryReadStatus.partial,
             bytes: [0, 0],
             bytesRead: 2,
             requestedBytes: 4,
           ),
         );
-        final params = ReadGameFieldParams(
-          profile: _ReadGameFieldTestData.profile(),
-          fieldId: 'credits',
-          memoryBase: 0x300000000,
-        );
 
-        final failed = ReadGameFieldUseCase(failedRepository).execute(params);
-        final partial = ReadGameFieldUseCase(partialRepository).execute(params);
+        final failed = ReadGameFieldUseCase(
+          failedRepository,
+        ).execute(_params());
+        final partial = ReadGameFieldUseCase(
+          partialRepository,
+        ).execute(_params());
 
         expect(failed.status, GameReadStatus.readFailed);
         expect(failed.errorCode, 299);
         expect(failed.value, isNull);
         expect(partial.status, GameReadStatus.incompleteRead);
         expect(partial.value, isNull);
+        verify(() => failedRepository.read(0x300001234, 4)).called(1);
+        verify(() => partialRepository.read(0x300001234, 4)).called(1);
       },
     );
 
     test(
       'Method execute() rejects inconsistent and unsupported value data',
       () {
-        final inconsistentRepository = _ReadGameFieldTestData.repository(
-          readResult: MemoryReadResult(
+        final inconsistentRepository = _MockGameMemoryRepository();
+        when(() => inconsistentRepository.read(0x300001234, 4)).thenReturn(
+          MemoryReadResult(
             status: MemoryReadStatus.complete,
             bytes: [0, 0],
             bytesRead: 2,
             requestedBytes: 4,
           ),
         );
-        final unsupportedTypeRepository = _ReadGameFieldTestData.repository();
-        final unsupportedTypeProfile = _ReadGameFieldTestData.profile(
-          valueType: MemoryValueType.none,
-        );
-        final unsupportedByteOrderRepository =
-            _ReadGameFieldTestData.repository(
-              readResult: MemoryReadResult(
-                status: MemoryReadStatus.complete,
-                bytes: [0, 0, 0, 42],
-                bytesRead: 4,
-                requestedBytes: 4,
-              ),
-            );
-        final unsupportedByteOrderProfile = _ReadGameFieldTestData.profile(
-          byteOrder: ByteOrder.none,
-        );
-        final params =
-            (GameProfile profile) => ReadGameFieldParams(
-              profile: profile,
-              fieldId: 'credits',
-              memoryBase: 0x300000000,
-            );
+        final unsupportedTypeRepository = _MockGameMemoryRepository();
+        final unsupportedByteOrderRepository = _MockGameMemoryRepository();
+        when(
+          () => unsupportedByteOrderRepository.read(0x300001234, 4),
+        ).thenReturn(_completeRead([0, 0, 0, 42]));
 
         final inconsistent = ReadGameFieldUseCase(
           inconsistentRepository,
-        ).execute(params(_ReadGameFieldTestData.profile()));
+        ).execute(_params());
         final unsupportedType = ReadGameFieldUseCase(
           unsupportedTypeRepository,
-        ).execute(params(unsupportedTypeProfile));
+        ).execute(_params(profile: _profile(valueType: MemoryValueType.none)));
         final unsupportedByteOrder = ReadGameFieldUseCase(
           unsupportedByteOrderRepository,
-        ).execute(params(unsupportedByteOrderProfile));
+        ).execute(_params(profile: _profile(byteOrder: ByteOrder.none)));
 
         expect(inconsistent.status, GameReadStatus.invalidReadResult);
         expect(unsupportedType.status, GameReadStatus.invalidReadResult);
-        expect(unsupportedTypeRepository.readCalls, 0);
         expect(unsupportedByteOrder.status, GameReadStatus.invalidReadResult);
         expect(unsupportedByteOrder.value, isNull);
+        verifyNever(() => unsupportedTypeRepository.read(any(), any()));
+        verify(() => inconsistentRepository.read(0x300001234, 4)).called(1);
+        verify(
+          () => unsupportedByteOrderRepository.read(0x300001234, 4),
+        ).called(1);
       },
     );
   });

@@ -229,6 +229,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
       result = widget.onApply(value);
     } catch (error) {
       _submissionInProgress = false;
+      if (!mounted) return;
       setState(() => _feedback = 'Write failed: $error');
       return;
     }
@@ -237,6 +238,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
       widget.onApplied();
       return;
     }
+    if (!mounted) return;
     setState(() => _feedback = _writeFailureMessage(result));
   }
 

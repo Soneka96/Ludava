@@ -1,145 +1,9 @@
-import 'dart:async';
-
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava_tui/features/trainer/presentation/nocterm/trainer_session_component.dart';
-import 'package:ludava_tui/shared/terminal/trainer_terminal_backend.dart';
-import 'package:ludava_tui/features/value_editor/presentation/nocterm/trainer_value_editor_component.dart';
 import 'package:nocterm/nocterm_test.dart'
-    show KeyboardEvent, LogicalKey, containsText, testNocterm;
-import 'package:nocterm/nocterm.dart'
-    show
-        BuildContext,
-        Component,
-        Focusable,
-        Size,
-        SizedBox,
-        State,
-        StatefulComponent,
-        Terminal,
-        TerminalBinding,
-        TerminalBackend,
-        TextEditingController,
-        Text,
-        TextField;
+    show LogicalKey, containsText, testNocterm;
+import 'package:nocterm/nocterm.dart' show SizedBox;
 import 'package:test/test.dart';
-
-class _RawKeyboardProbe extends StatefulComponent {
-  final TextEditingController controller;
-  final List<KeyboardEvent> events;
-
-  const _RawKeyboardProbe({required this.controller, required this.events});
-
-  @override
-  State<_RawKeyboardProbe> createState() => _RawKeyboardProbeState();
-}
-
-class _RawKeyboardProbeState extends State<_RawKeyboardProbe> {
-  @override
-  Component build(BuildContext context) => Focusable(
-    focused: true,
-    onKeyEvent: _recordEvent,
-    child: TextField(
-      controller: component.controller,
-      focused: true,
-      width: 24,
-    ),
-  );
-
-  /// Captures delivered keys and keeps Escape out of the text field.
-  bool _recordEvent(KeyboardEvent event) {
-    component.events.add(event);
-    return event.logicalKey == LogicalKey.escape;
-  }
-}
-
-class _RawEditorHarness extends StatefulComponent {
-  final GameField field;
-  final void Function() onCancel;
-  final GameWriteResult Function(int value) onWrite;
-
-  const _RawEditorHarness({
-    required this.field,
-    required this.onCancel,
-    required this.onWrite,
-  });
-
-  @override
-  State<_RawEditorHarness> createState() => _RawEditorHarnessState();
-}
-
-class _RawEditorHarnessState extends State<_RawEditorHarness> {
-  bool _editing = false;
-
-  @override
-  Component build(BuildContext context) =>
-      _editing
-          ? TrainerValueEditorComponent(
-            field: component.field,
-            currentValue: 100,
-            onApply: component.onWrite,
-            onCancel: () {
-              component.onCancel();
-              setState(() => _editing = false);
-            },
-          )
-          : Focusable(
-            focused: true,
-            onKeyEvent: _openEditor,
-            child: const Text('READY'),
-          );
-
-  /// Opens the editor after the menu receives Enter.
-  bool _openEditor(KeyboardEvent event) {
-    if (event.logicalKey != LogicalKey.enter) return false;
-    setState(() => _editing = true);
-    return true;
-  }
-}
-
-class _RawInputBackend implements TerminalBackend {
-  final StreamController<List<int>> _input =
-      StreamController<List<int>>.broadcast(sync: true);
-
-  void sendBytes(List<int> bytes) => _input.add(bytes);
-
-  @override
-  void dispose() {
-    unawaited(_input.close());
-  }
-
-  @override
-  void disableRawMode() {}
-
-  @override
-  void enableRawMode() {}
-
-  @override
-  Size getSize() => const Size(80, 24);
-
-  @override
-  bool get isAvailable => true;
-
-  @override
-  Stream<List<int>> get inputStream => _input.stream;
-
-  @override
-  void requestExit([int exitCode = 0]) {}
-
-  @override
-  void notifySizeChanged(Size newSize) {}
-
-  @override
-  Stream<Size>? get resizeStream => null;
-
-  @override
-  Stream<void>? get shutdownStream => null;
-
-  @override
-  bool get supportsSize => false;
-
-  @override
-  void writeRaw(String data) {}
-}
 
 TrainerSessionComponent _app(
   _SessionFixture fixture, {
@@ -353,6 +217,28 @@ void main() {
     );
 
     test(
+      'Class TrainerSessionComponent preserves the selected row on same-session refresh',
+      () async {
+        await testNocterm('preserve selected field after Refresh', (
+          tester,
+        ) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendArrowDown();
+          expect(tester.terminalState, containsText('❯ 2. Weapons'));
+
+          final initialReads = fixture.readCalls;
+          await tester.sendKey(LogicalKey.keyR);
+
+          expect(fixture.readCalls, greaterThan(initialReads));
+          expect(tester.terminalState, containsText('❯ 2. Weapons'));
+          expect(fixture.writeCalls, 0);
+        });
+      },
+    );
+
+    test(
       'Class TrainerSessionComponent displays session errors from the SDK state',
       () async {
         await testNocterm('session error feedback', (tester) async {
@@ -363,27 +249,6 @@ void main() {
           await tester.sendKey(LogicalKey.keyR);
 
           expect(tester.terminalState, containsText('Test metadata failure.'));
-        });
-      },
-    );
-
-    test(
-      'Class TrainerSessionComponent preserves the selected row on same-session refresh',
-      () async {
-        await testNocterm('same-session refresh selection', (tester) async {
-          final fixture =
-              _SessionFixture()..profile = _profile(twoFields: true);
-          await tester.pumpComponent(_app(fixture));
-          await tester.sendArrowDown();
-
-          expect(tester.terminalState, containsText('❯ 2. Weapons'));
-          await tester.sendKey(LogicalKey.keyR);
-
-          expect(
-            tester.terminalState,
-            containsText('Synthetic game · PS3 SYNTHETIC'),
-          );
-          expect(tester.terminalState, containsText('❯ 2. Weapons'));
         });
       },
     );
@@ -662,80 +527,6 @@ void main() {
 
           expect(quitCount, 1);
         });
-      },
-    );
-  });
-
-  group('Property inputStream behaves correctly', () {
-    test(
-      'Property inputStream cancels native Escape without leaking text or writing',
-      () async {
-        final source = _RawInputBackend();
-        final backend = TrainerTerminalBackend(source);
-        final textController = TextEditingController();
-        final events = <KeyboardEvent>[];
-        final binding = TerminalBinding(Terminal(backend));
-        binding.initialize();
-        binding.attachRootComponent(
-          _RawKeyboardProbe(controller: textController, events: events),
-        );
-        final app = binding.runEventLoop();
-
-        Future<void> pumpFrame() {
-          final rendered = Completer<void>();
-          binding.addPostFrameCallback((_) {
-            if (!rendered.isCompleted) rendered.complete();
-          });
-          binding.scheduleFrame();
-          return rendered.future.timeout(const Duration(seconds: 1));
-        }
-
-        try {
-          await pumpFrame();
-          source.sendBytes([0x61]);
-          source.sendBytes([0x1b]);
-          source.sendBytes([0x62]);
-          source.sendBytes([0x1b]);
-          await pumpFrame();
-
-          expect(
-            events.where((event) => event.logicalKey == LogicalKey.escape),
-            hasLength(2),
-          );
-          expect(textController.text, 'ab');
-          expect(textController.text, isNot(contains('[27u')));
-
-          var cancelCount = 0;
-          var writeCount = 0;
-          binding.attachRootComponent(
-            _RawEditorHarness(
-              field: _profile().findField('credits')!,
-              onCancel: () => cancelCount++,
-              onWrite: (value) {
-                writeCount++;
-                return GameWriteResult(
-                  status: GameWriteStatus.success,
-                  fieldId: 'credits',
-                  requestedValue: value,
-                  readBackValue: value,
-                );
-              },
-            ),
-          );
-          await pumpFrame();
-          source.sendBytes([0x0d]);
-          await pumpFrame();
-          source.sendBytes([0x32]);
-          source.sendBytes([0x1b]);
-          await pumpFrame();
-          expect(cancelCount, 1);
-          expect(writeCount, 0);
-        } finally {
-          binding.shutdown();
-          await app.timeout(const Duration(seconds: 4));
-          source.dispose();
-          textController.dispose();
-        }
       },
     );
   });

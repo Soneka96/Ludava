@@ -1,101 +1,104 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:ludava_app/features/connection/presentation/state/rpcs3_connection_indicator_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_connection_indicator.dart';
-import 'package:ludava_app/shared/theme/ludava_theme.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
+import 'package:ludava_app/injection_container.dart' show sl;
+import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
+import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:redux/redux.dart';
 
-Widget _wrap(TrainerSessionState session) => MaterialApp(
-  theme: LudavaTheme.graphiteAndTeal,
-  home: Scaffold(body: Rpcs3ConnectionIndicator(session: session)),
+class _MockConnectionIndicatorViewModel extends Mock
+    implements Rpcs3ConnectionIndicatorViewModel {}
+
+Widget _wrap(Store<AppState> store, {Key? key}) => StoreProvider<AppState>(
+  key: key,
+  store: store,
+  child: MaterialApp(
+    theme: LudavaTheme.graphiteAndTeal,
+    home: const Scaffold(body: Rpcs3ConnectionIndicator()),
+  ),
 );
 
-/// Reads the color of the small process-status dot.
-Color _dotColor(WidgetTester tester) =>
-    tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color!;
-
 void main() {
-  group('Class Rpcs3ConnectionIndicator session behavior', () {
-    testWidgets('Class Rpcs3ConnectionIndicator reports an absent process', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_wrap(TrainerSessionState()));
+  late _MockConnectionIndicatorViewModel viewModel;
 
-      expect(find.text('RPCS3'), findsOneWidget);
-      expect(find.byTooltip('RPCS3 not detected'), findsOneWidget);
-      expect(
-        _dotColor(tester),
-        LudavaTheme.graphiteAndTeal.extension<LudavaThemeTokens>()!.textMuted,
-      );
-    });
+  setUp(() {
+    sl.pushNewScope();
+    sl.registerFactoryParam<
+      Rpcs3ConnectionIndicatorViewModel,
+      Store<AppState>,
+      void
+    >((store, _) => viewModel);
+  });
 
+  tearDown(() async => sl.popScope());
+
+  group('Class Rpcs3ConnectionIndicator presentation behavior', () {
     testWidgets(
-      'Class Rpcs3ConnectionIndicator distinguishes detected processes awaiting selection',
+      'Class Rpcs3ConnectionIndicator shows process status and semantics',
       (tester) async {
-        const message = 'RPCS3 detected · select one of 2 processes';
-        await tester.pumpWidget(
-          _wrap(TrainerSessionState(processIds: const [42, 43])),
-        );
+        final semanticsHandle = tester.ensureSemantics();
+        try {
+          final tokens = LudavaTheme.graphiteAndTeal
+              .extension<LudavaThemeTokens>()!;
+          final store = Store<AppState>(
+            (state, action) => state,
+            initialState: AppState(
+              trainer: TrainerState(session: TrainerSessionState()),
+            ),
+          );
+          final cases = <(List<int>, int?, String, Color)>[
+            (const [], null, 'RPCS3 not detected', tokens.textMuted),
+            (const [], 42, 'RPCS3 not detected', tokens.textMuted),
+            (
+              const [42],
+              null,
+              'RPCS3 detected · awaiting process selection',
+              tokens.warning,
+            ),
+            (
+              const [42, 84],
+              null,
+              'RPCS3 detected · select one of 2 processes',
+              tokens.warning,
+            ),
+            (const [42], 42, 'RPCS3 connected · process 42', tokens.success),
+            (
+              const [84],
+              42,
+              'RPCS3 detected · awaiting process selection',
+              tokens.warning,
+            ),
+          ];
 
-        expect(find.text('RPCS3'), findsOneWidget);
-        expect(find.byTooltip(message), findsOneWidget);
-        expect(
-          _dotColor(tester),
-          LudavaTheme.graphiteAndTeal.extension<LudavaThemeTokens>()!.warning,
-        );
-        final semantics = tester.ensureSemantics();
-        expect(find.bySemanticsLabel(RegExp('RPCS3 detected')), findsWidgets);
-        semantics.dispose();
-      },
-    );
+          for (var index = 0; index < cases.length; index++) {
+            final (ids, selectedId, message, color) = cases[index];
+            viewModel = _MockConnectionIndicatorViewModel();
+            when(() => viewModel.processIds).thenReturn(ids);
+            when(() => viewModel.selectedProcessId).thenReturn(selectedId);
+            await tester.pumpWidget(_wrap(store, key: ValueKey(index)));
 
-    testWidgets(
-      'Class Rpcs3ConnectionIndicator reports connected only for a discovered selected process',
-      (tester) async {
-        const message = 'RPCS3 connected · process 42';
-        final session = TrainerSessionState(
-          processIds: const [42],
-          selectedProcessId: 42,
-          detection: GameDetectionResult(
-            status: GameDetectionStatus.noActiveGame,
-            processId: 42,
-            confidence: GameIdentityConfidence.none,
-            evidenceDescription: 'RPCS3 is running without an active game.',
-          ),
-        );
-        await tester.pumpWidget(_wrap(session));
-
-        expect(find.text('RPCS3'), findsOneWidget);
-        expect(find.byTooltip(message), findsOneWidget);
-        expect(find.text('No active game'), findsNothing);
-        expect(
-          _dotColor(tester),
-          LudavaTheme.graphiteAndTeal.extension<LudavaThemeTokens>()!.success,
-        );
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'Class Rpcs3ConnectionIndicator does not connect a stale selected process',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            TrainerSessionState(processIds: const [42], selectedProcessId: 99),
-          ),
-        );
-
-        expect(
-          find.byTooltip('RPCS3 detected · awaiting process selection'),
-          findsOneWidget,
-        );
-        expect(
-          _dotColor(tester),
-          LudavaTheme.graphiteAndTeal.extension<LudavaThemeTokens>()!.warning,
-        );
+            expect(
+              tester.widgetList<Tooltip>(find.byType(Tooltip)).single.message,
+              message,
+            );
+            expect(find.bySemanticsLabel(message), findsOneWidget);
+            expect(
+              tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color,
+              color,
+            );
+            expect(tester.widget<Text>(find.text('RPCS3')).style?.color, color);
+            expect(tester.takeException(), isNull);
+          }
+        } finally {
+          semanticsHandle.dispose();
+        }
       },
     );
   });
 }
-
-/// Builds the indicator under the shipped semantic theme.

@@ -5,15 +5,31 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Shows process choice or concise guidance for the latest session state.
 class SessionConnectionBody extends StatelessWidget {
-  /// Latest immutable state published by the trainer SDK.
-  final TrainerSessionState session;
+  /// Process IDs available for explicit selection.
+  final List<int> processIds;
+
+  /// Currently selected RPCS3 process ID.
+  final int? selectedProcessId;
+
+  /// Current SDK detection result.
+  final GameDetectionResult? detection;
+
+  /// Whether the current session has a usable guest memory base.
+  final bool hasMemoryBase;
+
+  /// Current session error, when one is available.
+  final String? errorMessage;
 
   /// Selects an RPCS3 process through the SDK session capability.
   final ValueChanged<int> onSelectProcess;
 
-  /// Creates the connection guidance for [session].
+  /// Creates connection guidance from selected SDK presentation values.
   const SessionConnectionBody({
-    required this.session,
+    required this.processIds,
+    required this.selectedProcessId,
+    required this.detection,
+    required this.hasMemoryBase,
+    required this.errorMessage,
     required this.onSelectProcess,
     super.key,
   });
@@ -21,24 +37,23 @@ class SessionConnectionBody extends StatelessWidget {
   /// Selects the process picker or an SDK-derived session message.
   @override
   Widget build(BuildContext context) {
-    if (session.selectedProcessId == null && session.processIds.length > 1) {
+    if (selectedProcessId == null && processIds.length > 1) {
       return Rpcs3ProcessPicker(
-        processIds: session.processIds,
+        processIds: processIds,
         onSelectProcess: onSelectProcess,
       );
     }
     return Rpcs3ConnectionGuidance(
-      message: session.errorMessage ?? _messageForState,
+      message: errorMessage ?? _messageForState,
       isError:
-          session.errorMessage != null ||
-          session.detection?.status == GameDetectionStatus.failed,
+          errorMessage != null ||
+          detection?.status == GameDetectionStatus.failed,
     );
   }
 
   /// Maps SDK detection outcomes to direct user guidance.
   String get _messageForState {
-    final detection = session.detection;
-    if (session.selectedProcessId == null && session.processIds.isEmpty) {
+    if (selectedProcessId == null && processIds.isEmpty) {
       return 'RPCS3 was not found. Start RPCS3, then select Refresh.';
     }
     return switch (detection?.status) {
@@ -56,7 +71,7 @@ class SessionConnectionBody extends StatelessWidget {
         detection?.evidenceDescription,
         'Game detection failed. Select Refresh to try again.',
       ),
-      GameDetectionStatus.supportedGame when session.memoryBase == null =>
+      GameDetectionStatus.supportedGame when !hasMemoryBase =>
         'The game was detected, but its session memory base is unavailable.',
       GameDetectionStatus.supportedGame => 'The game session is ready.',
       GameDetectionStatus.none ||
