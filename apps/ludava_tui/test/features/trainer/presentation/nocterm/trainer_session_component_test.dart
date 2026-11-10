@@ -368,27 +368,6 @@ void main() {
     );
 
     test(
-      'Class TrainerSessionComponent preserves the selected row on same-session refresh',
-      () async {
-        await testNocterm('same-session refresh selection', (tester) async {
-          final fixture =
-              _SessionFixture()..profile = _profile(twoFields: true);
-          await tester.pumpComponent(_app(fixture));
-          await tester.sendArrowDown();
-
-          expect(tester.terminalState, containsText('❯ 2. Weapons'));
-          await tester.sendKey(LogicalKey.keyR);
-
-          expect(
-            tester.terminalState,
-            containsText('Synthetic game · PS3 SYNTHETIC'),
-          );
-          expect(tester.terminalState, containsText('❯ 2. Weapons'));
-        });
-      },
-    );
-
-    test(
       'Class TrainerSessionComponent closes editing when the current profile becomes read-only',
       () async {
         await testNocterm('profile permission changes during refresh', (

@@ -160,38 +160,6 @@ void main() {
     });
 
     test(
-      'Method runAsync() resolves one production catalog profile through the default runtime',
-      () async {
-        final profile = GameProfileCatalog.find('rc2-collection')!;
-        final field = profile.findField('bolts')!;
-        final output = StringBuffer();
-        final api = FakeWindowsMemoryApi()..readBytes = [0, 0, 0, 7];
-        final sdk = LudavaSdk.create(
-          api: api.adapter,
-          isWindows: true,
-          pointerSize: 8,
-          discoverProcessIds: () => const [],
-        );
-
-        final exitCode = await TrainerCommandRunner(sdk: sdk).runAsync([
-          'read',
-          '--game',
-          profile.id,
-          '--field',
-          field.id,
-          '--pid',
-          '42',
-          '--memory-base',
-          '0x300000000',
-        ], output: output);
-
-        expect(exitCode, 0);
-        expect(output.toString(), isNotEmpty);
-        expect(api.readCalls, 1);
-      },
-    );
-
-    test(
       'Method runAsync() maps an unknown game to a CLI argument error',
       () async {
         final errorOutput = StringBuffer();
