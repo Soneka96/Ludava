@@ -217,6 +217,28 @@ void main() {
     );
 
     test(
+      'Class TrainerSessionComponent preserves the selected row on same-session refresh',
+      () async {
+        await testNocterm('preserve selected field after Refresh', (
+          tester,
+        ) async {
+          final fixture =
+              _SessionFixture()..profile = _profile(twoFields: true);
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendArrowDown();
+          expect(tester.terminalState, containsText('❯ 2. Weapons'));
+
+          final initialReads = fixture.readCalls;
+          await tester.sendKey(LogicalKey.keyR);
+
+          expect(fixture.readCalls, greaterThan(initialReads));
+          expect(tester.terminalState, containsText('❯ 2. Weapons'));
+          expect(fixture.writeCalls, 0);
+        });
+      },
+    );
+
+    test(
       'Class TrainerSessionComponent displays session errors from the SDK state',
       () async {
         await testNocterm('session error feedback', (tester) async {

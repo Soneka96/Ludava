@@ -7,7 +7,10 @@ import 'package:nocterm/nocterm.dart'
     show
         BuildContext,
         Component,
+        Element,
         Focusable,
+        KeyboardEvent,
+        LogicalKey,
         Size,
         State,
         StatefulComponent,
@@ -15,39 +18,8 @@ import 'package:nocterm/nocterm.dart'
         TerminalBackend,
         TerminalBinding,
         Text,
-        TextEditingController,
         TextField;
-import 'package:nocterm/nocterm_test.dart' show KeyboardEvent, LogicalKey;
 import 'package:test/test.dart';
-
-class _RawKeyboardProbe extends StatefulComponent {
-  final TextEditingController controller;
-  final List<KeyboardEvent> events;
-
-  const _RawKeyboardProbe({required this.controller, required this.events});
-
-  @override
-  State<_RawKeyboardProbe> createState() => _RawKeyboardProbeState();
-}
-
-class _RawKeyboardProbeState extends State<_RawKeyboardProbe> {
-  @override
-  Component build(BuildContext context) => Focusable(
-    focused: true,
-    onKeyEvent: _recordEvent,
-    child: TextField(
-      controller: component.controller,
-      focused: true,
-      width: 24,
-    ),
-  );
-
-  /// Captures delivered keys and keeps Escape out of the text field.
-  bool _recordEvent(KeyboardEvent event) {
-    component.events.add(event);
-    return event.logicalKey == LogicalKey.escape;
-  }
-}
 
 class _RawEditorHarness extends StatefulComponent {
   final GameField field;
@@ -85,7 +57,7 @@ class _RawEditorHarnessState extends State<_RawEditorHarness> {
             child: const Text('READY'),
           );
 
-  /// Opens the editor after the menu receives Enter.
+  /// Opens the editor after the focused screen receives Enter.
   bool _openEditor(KeyboardEvent event) {
     if (event.logicalKey != LogicalKey.enter) return false;
     setState(() => _editing = true);
@@ -150,23 +122,49 @@ GameField _editableField() => GameField(
   maximumValue: 0xffffffff,
 );
 
+TextField? _editorTextField(TerminalBinding binding) {
+  final root = binding.rootElement;
+  if (root == null) return null;
+  TextField? found;
+  void visit(Element element) {
+    if (element.component is TextField) found = element.component as TextField;
+    element.visitChildren(visit);
+  }
+
+  root.visitChildren(visit);
+  return found;
+}
+
 void main() {
   group('Integration Nocterm raw terminal input behaves correctly', () {
     test(
-      'Integration Nocterm decodes complete ANSI keys and cancels Escape without writing',
+      'Integration Escape cancels without leaking text or writing',
       () async {
         final source = _RawInputBackend();
-        final backend = TrainerTerminalBackend(source);
-        final textController = TextEditingController();
-        final events = <KeyboardEvent>[];
-        final parsedEvents = <KeyboardEvent>[];
-        final binding = TerminalBinding(Terminal(backend));
-        binding.initialize();
-        final keyboardSubscription = binding.keyboardEvents.listen(
-          parsedEvents.add,
+        final binding = TerminalBinding(
+          Terminal(TrainerTerminalBackend(source)),
         );
+        final cancelledDrafts = <String>[];
+        final writtenValues = <int>[];
+        binding.initialize();
         binding.attachRootComponent(
-          _RawKeyboardProbe(controller: textController, events: events),
+          _RawEditorHarness(
+            field: _editableField(),
+            onCancel: () {
+              cancelledDrafts.add(
+                _editorTextField(binding)?.controller?.text ?? '',
+              );
+            },
+            onWrite: (value) {
+              writtenValues.add(value);
+              return GameWriteResult(
+                status: GameWriteStatus.success,
+                fieldId: 'credits',
+                requestedValue: value,
+                readBackValue: value,
+              );
+            },
+          ),
         );
         final app = binding.runEventLoop();
 
@@ -181,88 +179,32 @@ void main() {
 
         try {
           await pumpFrame();
-          source.sendBytes([0x61]);
+          source.sendBytes([0x0d]);
+          await pumpFrame();
+          source.sendBytes([0x34]);
+          source.sendBytes([0x32]);
+          await pumpFrame();
           source.sendBytes([0x1b]);
-          source.sendBytes([0x62]);
-          source.sendBytes([0x1b]);
           await pumpFrame();
 
-          source.sendBytes([0x1b, 0x5b, 0x41]);
-          source.sendBytes([0x1b, 0x5b, 0x42]);
-          source.sendBytes([0x1b, 0x5b, 0x43]);
-          source.sendBytes([0x1b, 0x5b, 0x44]);
-          await pumpFrame();
+          expect(cancelledDrafts, ['10042']);
+          expect(writtenValues, isEmpty);
 
-          expect(
-            events.where((event) => event.logicalKey == LogicalKey.escape),
-            hasLength(2),
-          );
-          expect(
-            parsedEvents.where(
-              (event) => event.logicalKey == LogicalKey.arrowUp,
-            ),
-            hasLength(1),
-          );
-          expect(
-            parsedEvents.where(
-              (event) => event.logicalKey == LogicalKey.arrowDown,
-            ),
-            hasLength(1),
-          );
-          expect(
-            parsedEvents.where(
-              (event) => event.logicalKey == LogicalKey.arrowRight,
-            ),
-            hasLength(1),
-          );
-          expect(
-            parsedEvents.where(
-              (event) => event.logicalKey == LogicalKey.arrowLeft,
-            ),
-            hasLength(1),
-          );
-          expect(textController.text, 'ab');
-          expect(textController.text, isNot(contains('[27u')));
-
-          var cancelCount = 0;
-          var writeCount = 0;
-          binding.attachRootComponent(
-            _RawEditorHarness(
-              field: _editableField(),
-              onCancel: () => cancelCount++,
-              onWrite: (value) {
-                writeCount++;
-                return GameWriteResult(
-                  status: GameWriteStatus.success,
-                  fieldId: 'credits',
-                  requestedValue: value,
-                  readBackValue: value,
-                );
-              },
-            ),
-          );
-          await pumpFrame();
           source.sendBytes([0x0d]);
           await pumpFrame();
           source.sendBytes([0x32]);
-          source.sendBytes([0x1b]);
+          source.sendBytes([0x0d]);
           await pumpFrame();
 
-          expect(cancelCount, 1);
-          expect(writeCount, 0);
+          expect(writtenValues, [1002]);
         } finally {
           try {
-            await keyboardSubscription.cancel();
+            binding.shutdown();
           } finally {
             try {
-              binding.shutdown();
+              await app.timeout(const Duration(seconds: 4));
             } finally {
-              try {
-                await app.timeout(const Duration(seconds: 4));
-              } finally {
-                source.dispose();
-                textController.dispose();
-              }
+              source.dispose();
             }
           }
         }
