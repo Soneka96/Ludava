@@ -16,6 +16,152 @@ import 'package:redux/redux.dart';
 
 import '../support/trainer_state_fixture.dart';
 
+
+class _RecordingWindowController extends LudavaWindowController {
+  _RecordingWindowController(this.events) : super(currentWindow: () => null);
+
+  final List<String> events;
+  Future<void> Function(bool requestCancelled)? onCloseRequested;
+  int closeCalls = 0;
+  bool failNextClose = false;
+
+  @override
+  void configure({
+    Future<void> Function(bool requestCancelled)? onCloseRequested,
+  }) {
+    events.add('configure');
+    this.onCloseRequested = onCloseRequested;
+  }
+
+  @override
+  Future<void> close() async {
+    events.add('close');
+    closeCalls++;
+    if (failNextClose) {
+      failNextClose = false;
+      throw StateError('native close failed');
+    }
+  }
+}
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  _FakeTrainerSdkCapability(this.events) {
+    _changes = StreamController<TrainerSessionState>.broadcast(sync: true);
+  }
+
+  final List<String> events;
+  late final StreamController<TrainerSessionState> _changes;
+  Completer<void>? cancelGate;
+  Object? cancelError;
+  Object? disposeError;
+  int cancelCalls = 0;
+  int connectCalls = 0;
+  int refreshCalls = 0;
+  int disposeCalls = 0;
+
+  @override
+  TrainerSessionState get state => stateForTest;
+
+  TrainerSessionState stateForTest = TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges =>
+      _ControlledStateStream(_changes.stream, this);
+
+  @override
+  void connect() {
+    events.add('connect');
+    connectCalls++;
+  }
+
+  @override
+  void refresh() => refreshCalls++;
+
+  @override
+  bool selectProcess(int processId) => true;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {
+    events.add('dispose');
+    disposeCalls++;
+    if (disposeError case final error?) throw error;
+  }
+
+  /// Closes the broadcast stream after a test's app lifecycle has completed.
+  Future<void> close() async {
+    if (!_changes.isClosed) await _changes.close();
+  }
+}
+
+class _ControlledStateStream extends Stream<TrainerSessionState> {
+  _ControlledStateStream(this._source, this._capability);
+
+  final Stream<TrainerSessionState> _source;
+  final _FakeTrainerSdkCapability _capability;
+
+  @override
+  StreamSubscription<TrainerSessionState> listen(
+    void Function(TrainerSessionState event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    _capability.events.add('subscribe');
+    final subscription = _source.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+    return _ControlledStateSubscription(subscription, _capability);
+  }
+}
+
+class _ControlledStateSubscription
+    implements StreamSubscription<TrainerSessionState> {
+  _ControlledStateSubscription(this._subscription, this._capability);
+
+  final StreamSubscription<TrainerSessionState> _subscription;
+  final _FakeTrainerSdkCapability _capability;
+
+  @override
+  Future<void> cancel() async {
+    unawaited(_subscription.cancel().catchError((Object error) {}));
+    _capability.events.add('cancel');
+    _capability.cancelCalls++;
+    final gate = _capability.cancelGate;
+    if (gate != null) await gate.future;
+    if (_capability.cancelError case final error?) throw error;
+  }
+
+  @override
+  bool get isPaused => _subscription.isPaused;
+
+  @override
+  void onData(void Function(TrainerSessionState event)? handleData) =>
+      _subscription.onData(handleData);
+
+  @override
+  void onDone(void Function()? handleDone) => _subscription.onDone(handleDone);
+
+  @override
+  void onError(Function? handleError) => _subscription.onError(handleError);
+
+  @override
+  void pause([Future<void>? resumeSignal]) => _subscription.pause(resumeSignal);
+
+  @override
+  void resume() => _subscription.resume();
+
+  @override
+  Future<E> asFuture<E>([E? futureValue]) =>
+      _subscription.asFuture<E>(futureValue);
+}
+
 void main() {
   late _FakeTrainerSdkCapability capability;
   late List<String> events;
@@ -268,149 +414,4 @@ void main() {
       },
     );
   });
-}
-
-class _RecordingWindowController extends LudavaWindowController {
-  _RecordingWindowController(this.events) : super(currentWindow: () => null);
-
-  final List<String> events;
-  Future<void> Function(bool requestCancelled)? onCloseRequested;
-  int closeCalls = 0;
-  bool failNextClose = false;
-
-  @override
-  void configure({
-    Future<void> Function(bool requestCancelled)? onCloseRequested,
-  }) {
-    events.add('configure');
-    this.onCloseRequested = onCloseRequested;
-  }
-
-  @override
-  Future<void> close() async {
-    events.add('close');
-    closeCalls++;
-    if (failNextClose) {
-      failNextClose = false;
-      throw StateError('native close failed');
-    }
-  }
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  _FakeTrainerSdkCapability(this.events) {
-    _changes = StreamController<TrainerSessionState>.broadcast(sync: true);
-  }
-
-  final List<String> events;
-  late final StreamController<TrainerSessionState> _changes;
-  Completer<void>? cancelGate;
-  Object? cancelError;
-  Object? disposeError;
-  int cancelCalls = 0;
-  int connectCalls = 0;
-  int refreshCalls = 0;
-  int disposeCalls = 0;
-
-  @override
-  TrainerSessionState get state => stateForTest;
-
-  TrainerSessionState stateForTest = TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges =>
-      _ControlledStateStream(_changes.stream, this);
-
-  @override
-  void connect() {
-    events.add('connect');
-    connectCalls++;
-  }
-
-  @override
-  void refresh() => refreshCalls++;
-
-  @override
-  bool selectProcess(int processId) => true;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {
-    events.add('dispose');
-    disposeCalls++;
-    if (disposeError case final error?) throw error;
-  }
-
-  /// Closes the broadcast stream after a test's app lifecycle has completed.
-  Future<void> close() async {
-    if (!_changes.isClosed) await _changes.close();
-  }
-}
-
-class _ControlledStateStream extends Stream<TrainerSessionState> {
-  _ControlledStateStream(this._source, this._capability);
-
-  final Stream<TrainerSessionState> _source;
-  final _FakeTrainerSdkCapability _capability;
-
-  @override
-  StreamSubscription<TrainerSessionState> listen(
-    void Function(TrainerSessionState event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) {
-    _capability.events.add('subscribe');
-    final subscription = _source.listen(
-      onData,
-      onError: onError,
-      onDone: onDone,
-      cancelOnError: cancelOnError,
-    );
-    return _ControlledStateSubscription(subscription, _capability);
-  }
-}
-
-class _ControlledStateSubscription
-    implements StreamSubscription<TrainerSessionState> {
-  _ControlledStateSubscription(this._subscription, this._capability);
-
-  final StreamSubscription<TrainerSessionState> _subscription;
-  final _FakeTrainerSdkCapability _capability;
-
-  @override
-  Future<void> cancel() async {
-    unawaited(_subscription.cancel().catchError((Object error) {}));
-    _capability.events.add('cancel');
-    _capability.cancelCalls++;
-    final gate = _capability.cancelGate;
-    if (gate != null) await gate.future;
-    if (_capability.cancelError case final error?) throw error;
-  }
-
-  @override
-  bool get isPaused => _subscription.isPaused;
-
-  @override
-  void onData(void Function(TrainerSessionState event)? handleData) =>
-      _subscription.onData(handleData);
-
-  @override
-  void onDone(void Function()? handleDone) => _subscription.onDone(handleDone);
-
-  @override
-  void onError(Function? handleError) => _subscription.onError(handleError);
-
-  @override
-  void pause([Future<void>? resumeSignal]) => _subscription.pause(resumeSignal);
-
-  @override
-  void resume() => _subscription.resume();
-
-  @override
-  Future<E> asFuture<E>([E? futureValue]) =>
-      _subscription.asFuture<E>(futureValue);
 }

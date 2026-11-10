@@ -18,6 +18,125 @@ import '../../../../support/trainer_state_fixture.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
+
+/// Opens the credits editor after its SDK target has been made eligible.
+Future<void> _openCreditsEditor(
+  WidgetTester tester,
+  Store<AppState> store,
+) async {
+  await tester.tap(find.byTooltip('Edit Credits'));
+  await tester.pump();
+  expect(store.state.trainer.editingFieldId, 'credits');
+}
+
+/// Awaits observation cleanup after a panel integration test.
+Future<void> _shutdownStore(Store<AppState> store) async {
+  final action = ShutdownRequestedAction();
+  store.dispatch(action);
+  await action.waitForCleanup();
+}
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  final StreamController<TrainerSessionState> _changes =
+      StreamController<TrainerSessionState>.broadcast(sync: true);
+  TrainerSessionState stateForTest = TrainerSessionState();
+  TrainerSessionState? sessionDuringWrite;
+  GameWriteResult? writeResult;
+  int writeCalls = 0;
+
+  @override
+  TrainerSessionState get state => stateForTest;
+
+  @override
+  Stream<TrainerSessionState> get stateChanges =>
+      _ControlledStateStream(_changes.stream);
+
+  @override
+  void connect() {}
+
+  @override
+  void refresh() {}
+
+  @override
+  bool selectProcess(int processId) => false;
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) {
+    writeCalls++;
+    final session = sessionDuringWrite;
+    if (session != null) {
+      stateForTest = session;
+      _changes.add(session);
+    }
+    return writeResult ??
+        GameWriteResult(
+          status: GameWriteStatus.none,
+          fieldId: fieldId,
+          requestedValue: value,
+        );
+  }
+
+  @override
+  Future<void> dispose() => _changes.close();
+}
+
+class _ControlledStateStream extends Stream<TrainerSessionState> {
+  _ControlledStateStream(this._source);
+
+  final Stream<TrainerSessionState> _source;
+
+  @override
+  StreamSubscription<TrainerSessionState> listen(
+    void Function(TrainerSessionState event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) => _ControlledStateSubscription(
+    _source.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    ),
+  );
+}
+
+class _ControlledStateSubscription
+    implements StreamSubscription<TrainerSessionState> {
+  _ControlledStateSubscription(this._subscription);
+
+  final StreamSubscription<TrainerSessionState> _subscription;
+
+  @override
+  Future<void> cancel() {
+    unawaited(_subscription.cancel().catchError((Object _) {}));
+    return Future<void>.value();
+  }
+
+  @override
+  bool get isPaused => _subscription.isPaused;
+
+  @override
+  void onData(void Function(TrainerSessionState event)? handleData) =>
+      _subscription.onData(handleData);
+
+  @override
+  void onDone(void Function()? handleDone) => _subscription.onDone(handleDone);
+
+  @override
+  void onError(Function? handleError) => _subscription.onError(handleError);
+
+  @override
+  void pause([Future<void>? resumeSignal]) => _subscription.pause(resumeSignal);
+
+  @override
+  void resume() => _subscription.resume();
+
+  @override
+  Future<E> asFuture<E>([E? futureValue]) =>
+      _subscription.asFuture<E>(futureValue);
+}
+
 void main() {
   late _FakeTrainerSdkCapability capability;
 
@@ -298,122 +417,4 @@ void main() {
       },
     );
   });
-}
-
-/// Opens the credits editor after its SDK target has been made eligible.
-Future<void> _openCreditsEditor(
-  WidgetTester tester,
-  Store<AppState> store,
-) async {
-  await tester.tap(find.byTooltip('Edit Credits'));
-  await tester.pump();
-  expect(store.state.trainer.editingFieldId, 'credits');
-}
-
-/// Awaits observation cleanup after a panel integration test.
-Future<void> _shutdownStore(Store<AppState> store) async {
-  final action = ShutdownRequestedAction();
-  store.dispatch(action);
-  await action.waitForCleanup();
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  final StreamController<TrainerSessionState> _changes =
-      StreamController<TrainerSessionState>.broadcast(sync: true);
-  TrainerSessionState stateForTest = TrainerSessionState();
-  TrainerSessionState? sessionDuringWrite;
-  GameWriteResult? writeResult;
-  int writeCalls = 0;
-
-  @override
-  TrainerSessionState get state => stateForTest;
-
-  @override
-  Stream<TrainerSessionState> get stateChanges =>
-      _ControlledStateStream(_changes.stream);
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) {
-    writeCalls++;
-    final session = sessionDuringWrite;
-    if (session != null) {
-      stateForTest = session;
-      _changes.add(session);
-    }
-    return writeResult ??
-        GameWriteResult(
-          status: GameWriteStatus.none,
-          fieldId: fieldId,
-          requestedValue: value,
-        );
-  }
-
-  @override
-  Future<void> dispose() => _changes.close();
-}
-
-class _ControlledStateStream extends Stream<TrainerSessionState> {
-  _ControlledStateStream(this._source);
-
-  final Stream<TrainerSessionState> _source;
-
-  @override
-  StreamSubscription<TrainerSessionState> listen(
-    void Function(TrainerSessionState event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => _ControlledStateSubscription(
-    _source.listen(
-      onData,
-      onError: onError,
-      onDone: onDone,
-      cancelOnError: cancelOnError,
-    ),
-  );
-}
-
-class _ControlledStateSubscription
-    implements StreamSubscription<TrainerSessionState> {
-  _ControlledStateSubscription(this._subscription);
-
-  final StreamSubscription<TrainerSessionState> _subscription;
-
-  @override
-  Future<void> cancel() {
-    unawaited(_subscription.cancel().catchError((Object _) {}));
-    return Future<void>.value();
-  }
-
-  @override
-  bool get isPaused => _subscription.isPaused;
-
-  @override
-  void onData(void Function(TrainerSessionState event)? handleData) =>
-      _subscription.onData(handleData);
-
-  @override
-  void onDone(void Function()? handleDone) => _subscription.onDone(handleDone);
-
-  @override
-  void onError(Function? handleError) => _subscription.onError(handleError);
-
-  @override
-  void pause([Future<void>? resumeSignal]) => _subscription.pause(resumeSignal);
-
-  @override
-  void resume() => _subscription.resume();
-
-  @override
-  Future<E> asFuture<E>([E? futureValue]) =>
-      _subscription.asFuture<E>(futureValue);
 }

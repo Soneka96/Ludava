@@ -12,89 +12,6 @@ import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
-void main() {
-  late _FakeTrainerSdkCapability capability;
-
-  setUp(() {
-    sl.pushNewScope();
-    capability = _FakeTrainerSdkCapability();
-    initDependencies(trainerSdkCapability: capability);
-  });
-
-  tearDown(() async {
-    await sl.popScope();
-    await capability.dispose();
-  });
-
-  Store<AppState> store() => sl<Store<AppState>>();
-
-  Widget wrap() => StoreProvider<AppState>(
-    store: store(),
-    child: MaterialApp(
-      theme: LudavaTheme.graphiteAndTeal,
-      home: const Scaffold(body: LudavaSessionBody()),
-    ),
-  );
-
-  group('Class LudavaSessionBody session composition behavior', () {
-    testWidgets(
-      'Class LudavaSessionBody shows process choices from Redux state',
-      (tester) async {
-        store().dispatch(
-          TrainerSessionChangedAction(
-            TrainerSessionState(processIds: const [42, 43]),
-          ),
-        );
-
-        await tester.pumpWidget(wrap());
-
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanel), findsNothing);
-        expect(find.text('Available RPCS3 processes'), findsOneWidget);
-        expect(find.text('Process ID 42'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'Class LudavaSessionBody requires supported detection and a base',
-      (tester) async {
-        store().dispatch(
-          TrainerSessionChangedAction(_readySession(memoryBase: null)),
-        );
-
-        await tester.pumpWidget(wrap());
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanel), findsNothing);
-
-        store().dispatch(
-          TrainerSessionChangedAction(
-            _readySession(status: GameDetectionStatus.unsupportedGame),
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        expect(find.byType(TrainerFieldsPanel), findsNothing);
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets('Class LudavaSessionBody shows SDK fields when ready', (
-      tester,
-    ) async {
-      store().dispatch(TrainerSessionChangedAction(_readySession()));
-
-      await tester.pumpWidget(wrap());
-
-      expect(find.byType(SessionConnectionBody), findsNothing);
-      expect(find.byType(TrainerFieldsPanel), findsOneWidget);
-      expect(find.text('Credits'), findsOneWidget);
-      expect(find.text('17'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-  });
-}
 
 TrainerSessionState _readySession({
   int processId = 42,
@@ -179,4 +96,88 @@ class _FakeTrainerSdkCapability implements TrainerSdkCapability {
 
   @override
   Future<void> dispose() async {}
+}
+
+void main() {
+  late _FakeTrainerSdkCapability capability;
+
+  setUp(() {
+    sl.pushNewScope();
+    capability = _FakeTrainerSdkCapability();
+    initDependencies(trainerSdkCapability: capability);
+  });
+
+  tearDown(() async {
+    await sl.popScope();
+    await capability.dispose();
+  });
+
+  Store<AppState> store() => sl<Store<AppState>>();
+
+  Widget wrap() => StoreProvider<AppState>(
+    store: store(),
+    child: MaterialApp(
+      theme: LudavaTheme.graphiteAndTeal,
+      home: const Scaffold(body: LudavaSessionBody()),
+    ),
+  );
+
+  group('Class LudavaSessionBody session composition behavior', () {
+    testWidgets(
+      'Class LudavaSessionBody shows process choices from Redux state',
+      (tester) async {
+        store().dispatch(
+          TrainerSessionChangedAction(
+            TrainerSessionState(processIds: const [42, 43]),
+          ),
+        );
+
+        await tester.pumpWidget(wrap());
+
+        expect(find.byType(SessionConnectionBody), findsOneWidget);
+        expect(find.byType(TrainerFieldsPanel), findsNothing);
+        expect(find.text('Available RPCS3 processes'), findsOneWidget);
+        expect(find.text('Process ID 42'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class LudavaSessionBody requires supported detection and a base',
+      (tester) async {
+        store().dispatch(
+          TrainerSessionChangedAction(_readySession(memoryBase: null)),
+        );
+
+        await tester.pumpWidget(wrap());
+        expect(find.byType(SessionConnectionBody), findsOneWidget);
+        expect(find.byType(TrainerFieldsPanel), findsNothing);
+
+        store().dispatch(
+          TrainerSessionChangedAction(
+            _readySession(status: GameDetectionStatus.unsupportedGame),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.byType(SessionConnectionBody), findsOneWidget);
+        expect(find.byType(TrainerFieldsPanel), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('Class LudavaSessionBody shows SDK fields when ready', (
+      tester,
+    ) async {
+      store().dispatch(TrainerSessionChangedAction(_readySession()));
+
+      await tester.pumpWidget(wrap());
+
+      expect(find.byType(SessionConnectionBody), findsNothing);
+      expect(find.byType(TrainerFieldsPanel), findsOneWidget);
+      expect(find.text('Credits'), findsOneWidget);
+      expect(find.text('17'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

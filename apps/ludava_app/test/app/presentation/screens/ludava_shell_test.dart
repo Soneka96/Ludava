@@ -14,6 +14,38 @@ import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
+
+class _FakeTrainerSdkCapability implements TrainerSdkCapability {
+  int connectCalls = 0;
+  int refreshCalls = 0;
+  final List<int> selectedProcessIds = [];
+
+  @override
+  TrainerSessionState get state => TrainerSessionState();
+
+  @override
+  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
+
+  @override
+  void connect() => connectCalls++;
+
+  @override
+  void refresh() => refreshCalls++;
+
+  @override
+  bool selectProcess(int processId) {
+    selectedProcessIds.add(processId);
+    return true;
+  }
+
+  @override
+  GameWriteResult writeField(String fieldId, int value) =>
+      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
+
+  @override
+  Future<void> dispose() async {}
+}
+
 void main() {
   late _FakeTrainerSdkCapability capability;
 
@@ -143,35 +175,4 @@ void main() {
       },
     );
   });
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  int connectCalls = 0;
-  int refreshCalls = 0;
-  final List<int> selectedProcessIds = [];
-
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() => connectCalls++;
-
-  @override
-  void refresh() => refreshCalls++;
-
-  @override
-  bool selectProcess(int processId) {
-    selectedProcessIds.add(processId);
-    return true;
-  }
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
 }
