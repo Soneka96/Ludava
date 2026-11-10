@@ -98,6 +98,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'Class LudavaSessionBody skips rebuilds for unrelated edit state',
+      (tester) async {
+        store().dispatch(TrainerSessionChangedAction(_readySession()));
+        var bodyBuilds = 0;
+        final previousObserver = debugOnRebuildDirtyWidget;
+        debugOnRebuildDirtyWidget = (element, built) {
+          if (element.widget is LudavaSessionBody) bodyBuilds++;
+          previousObserver?.call(element, built);
+        };
+        addTearDown(() => debugOnRebuildDirtyWidget = previousObserver);
+
+        await tester.pumpWidget(wrap());
+        final initialBuilds = bodyBuilds;
+        store().dispatch(const BeginEditingAction('credits'));
+        await tester.pump();
+
+        expect(bodyBuilds, initialBuilds);
+        expect(find.byType(InlineValueEditor), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('Class LudavaSessionBody preserves feedback and row geometry', (
       tester,
     ) async {

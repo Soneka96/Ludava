@@ -26,18 +26,17 @@ void main() {
     test(
       'Property props includes presentation state but excludes callbacks',
       () {
-        final state = AppState(
-          trainer: TrainerState(session: trainerStateFixtureSession()),
-        );
         final first = TrainerFieldsViewModel(
-          state: state,
+          fields: const [],
+          hasProfile: true,
           onEditField: (_) {},
           onApplyField: (_, _) =>
               const GameWriteResult(status: GameWriteStatus.none),
           onCancelEditing: () {},
         );
         final second = TrainerFieldsViewModel(
-          state: state,
+          fields: const [],
+          hasProfile: true,
           onEditField: (_) => throw StateError('callback identity is ignored'),
           onApplyField: (_, _) =>
               const GameWriteResult(status: GameWriteStatus.writeFailed),
@@ -45,7 +44,7 @@ void main() {
               throw StateError('callback identity is ignored'),
         );
 
-        expect(first.props, [state]);
+        expect(first.props, [const [], true]);
         expect(first, second);
       },
     );

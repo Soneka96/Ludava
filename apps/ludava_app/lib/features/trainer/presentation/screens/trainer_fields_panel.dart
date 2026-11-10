@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_fields_view_model.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
@@ -19,11 +18,8 @@ class TrainerFieldsPanel extends StatelessWidget {
         distinct: true,
         converter: (store) => sl<TrainerFieldsViewModel>(param1: store),
         builder: (context, viewModel) {
-          final state = viewModel.state;
-          final session = TrainerSelectors.session(state);
-          final profile = session.profile;
-          if (profile == null) return const SizedBox.shrink();
-          if (profile.fields.isEmpty) {
+          if (!viewModel.hasProfile) return const SizedBox.shrink();
+          if (viewModel.fields.isEmpty) {
             return Center(
               child: Text(
                 'No trainer fields are available for this profile.',
@@ -31,7 +27,7 @@ class TrainerFieldsPanel extends StatelessWidget {
               ),
             );
           }
-          final fields = TrainerSelectors.fields(state);
+          final fields = viewModel.fields;
           return ListView.separated(
             padding: const EdgeInsets.symmetric(
               horizontal: LudavaSpacing.lg,
@@ -41,8 +37,9 @@ class TrainerFieldsPanel extends StatelessWidget {
             separatorBuilder: (context, index) =>
                 const SizedBox(height: LudavaSpacing.sm),
             itemBuilder: (context, index) {
-              final field = fields[index];
-              final readResult = TrainerSelectors.readResult(state, field);
+              final row = fields[index];
+              final field = row.field;
+              final readResult = row.readResult;
               return TrainerFieldRow(
                 key: ValueKey(field.id),
                 field: field,
@@ -50,10 +47,10 @@ class TrainerFieldsPanel extends StatelessWidget {
                 currentValue: readResult?.succeeded == true
                     ? readResult?.value
                     : null,
-                writeResult: TrainerSelectors.writeResult(state, field),
-                canRead: TrainerSelectors.canRead(state, field),
-                canWrite: TrainerSelectors.canEdit(state, field),
-                isEditing: TrainerSelectors.isEditing(state, field),
+                writeResult: row.writeResult,
+                canRead: row.canRead,
+                canWrite: row.canWrite,
+                isEditing: row.isEditing,
                 onEdit: () => viewModel.onEditField(field.id),
                 onApply: (value) => viewModel.onApplyField(field.id, value),
                 onCancel: viewModel.onCancelEditing,

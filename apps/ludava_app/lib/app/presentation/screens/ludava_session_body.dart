@@ -4,7 +4,6 @@ import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/app/presentation/state/ludava_session_body_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 
@@ -20,16 +19,18 @@ class LudavaSessionBody extends StatelessWidget {
         distinct: true,
         converter: (store) => sl<LudavaSessionBodyViewModel>(param1: store),
         builder: (context, viewModel) {
-          final state = viewModel.state;
-          final session = TrainerSelectors.session(state);
-          if (!TrainerSelectors.isReady(state)) {
+          if (!viewModel.isReady) {
             return SessionConnectionBody(
-              session: session,
+              processIds: viewModel.processIds,
+              selectedProcessId: viewModel.selectedProcessId,
+              detection: viewModel.detection,
+              hasMemoryBase: viewModel.hasMemoryBase,
+              errorMessage: viewModel.errorMessage,
               onSelectProcess: viewModel.onSelectProcess,
             );
           }
 
-          final errorMessage = session.errorMessage;
+          final errorMessage = viewModel.errorMessage;
           final theme = Theme.of(context);
           return Column(
             children: [

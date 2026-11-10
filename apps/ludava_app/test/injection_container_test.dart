@@ -28,18 +28,12 @@ void main() {
       expect(sl.isRegistered<TrainerWriteBridge>(), isTrue);
       expect(sl<Store<AppState>>(), same(sl<Store<AppState>>()));
       final store = sl<Store<AppState>>();
-      expect(
-        sl<TrainerFieldsViewModel>(param1: store).state,
-        same(store.state),
-      );
+      expect(sl<TrainerFieldsViewModel>(param1: store).fields, isEmpty);
       expect(
         sl<TrainerGameHeaderViewModel>(param1: store).state,
         same(store.state),
       );
-      expect(
-        sl<LudavaSessionBodyViewModel>(param1: store).state,
-        same(store.state),
-      );
+      expect(sl<LudavaSessionBodyViewModel>(param1: store).isReady, isFalse);
       expect(
         sl<Rpcs3ConnectionIndicatorViewModel>(param1: store).session,
         same(store.state.trainer.session),

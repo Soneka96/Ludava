@@ -15,6 +15,20 @@ GameProfile _profile() => GameProfile(
   readStatus: VerificationStatus.experimental,
 );
 
+Widget _connectionBody({
+  required TrainerSessionState session,
+  ValueChanged<int> onSelectProcess = _ignoreProcess,
+}) => SessionConnectionBody(
+  processIds: session.processIds,
+  selectedProcessId: session.selectedProcessId,
+  detection: session.detection,
+  hasMemoryBase: session.memoryBase != null,
+  errorMessage: session.errorMessage,
+  onSelectProcess: onSelectProcess,
+);
+
+void _ignoreProcess(int processId) {}
+
 Widget _wrap(Widget child) => MaterialApp(
   theme: LudavaTheme.graphiteAndTeal,
   home: Scaffold(body: child),
@@ -52,7 +66,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: TrainerSessionState(),
             onSelectProcess: (_) {},
           ),
@@ -70,7 +84,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(GameDetectionStatus.noActiveGame),
             onSelectProcess: (_) {},
           ),
@@ -85,7 +99,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(
               GameDetectionStatus.unsupportedGame,
               gameTitle: 'Unknown Game',
@@ -101,7 +115,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(GameDetectionStatus.unsupportedGame),
             onSelectProcess: (_) {},
           ),
@@ -114,7 +128,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(
               GameDetectionStatus.ambiguous,
               evidence: 'The current executable evidence conflicts.',
@@ -130,7 +144,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(
               GameDetectionStatus.failed,
               evidence: 'The current RPCS3 log could not be read.',
@@ -146,7 +160,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(GameDetectionStatus.ambiguous, evidence: '  \t '),
             onSelectProcess: (_) {},
           ),
@@ -161,7 +175,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(GameDetectionStatus.failed, evidence: ''),
             onSelectProcess: (_) {},
           ),
@@ -174,7 +188,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: _session(
               GameDetectionStatus.failed,
               evidence: 'The current RPCS3 log could not be read.',
@@ -194,7 +208,7 @@ void main() {
       (tester) async {
         await tester.pumpWidget(
           _wrap(
-            SessionConnectionBody(
+            _connectionBody(
               session: TrainerSessionState(
                 errorMessage: 'Process metadata failed.',
                 detection: _session(GameDetectionStatus.noActiveGame).detection,
@@ -207,7 +221,7 @@ void main() {
 
         await tester.pumpWidget(
           _wrap(
-            SessionConnectionBody(
+            _connectionBody(
               session: _session(
                 GameDetectionStatus.supportedGame,
                 withProfile: true,
@@ -225,7 +239,7 @@ void main() {
 
         await tester.pumpWidget(
           _wrap(
-            SessionConnectionBody(
+            _connectionBody(
               session: _session(
                 GameDetectionStatus.supportedGame,
                 withProfile: true,
@@ -250,9 +264,7 @@ void main() {
         ),
       );
       await tester.pumpWidget(
-        _wrap(
-          SessionConnectionBody(session: notRunning, onSelectProcess: (_) {}),
-        ),
+        _wrap(_connectionBody(session: notRunning, onSelectProcess: (_) {})),
       );
       expect(
         find.text('RPCS3 was not found. Start RPCS3, then select Refresh.'),
@@ -261,7 +273,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: TrainerSessionState(selectedProcessId: 42),
             onSelectProcess: (_) {},
           ),
@@ -274,7 +286,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: TrainerSessionState(
               selectedProcessId: 42,
               detection: GameDetectionResult(
@@ -298,7 +310,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: TrainerSessionState(processIds: const [10, 20]),
             onSelectProcess: (_) {},
           ),
@@ -310,7 +322,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrap(
-          SessionConnectionBody(
+          _connectionBody(
             session: TrainerSessionState(
               processIds: const [10, 20],
               selectedProcessId: 10,
@@ -334,7 +346,7 @@ void main() {
       (tester) async {
         await tester.pumpWidget(
           _wrap(
-            SessionConnectionBody(
+            _connectionBody(
               session: _session(GameDetectionStatus.noActiveGame),
               onSelectProcess: (_) {},
             ),
@@ -351,7 +363,7 @@ void main() {
 
         await tester.pumpWidget(
           _wrap(
-            SessionConnectionBody(
+            _connectionBody(
               session: _session(GameDetectionStatus.failed),
               onSelectProcess: (_) {},
             ),
@@ -368,7 +380,7 @@ void main() {
 
         await tester.pumpWidget(
           _wrap(
-            SessionConnectionBody(
+            _connectionBody(
               session: TrainerSessionState(
                 errorMessage: 'Process metadata failed.',
               ),

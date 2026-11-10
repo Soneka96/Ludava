@@ -6,6 +6,30 @@ abstract final class TrainerSelectors {
   /// Returns the latest authoritative trainer session from [state].
   static TrainerSessionState session(AppState state) => state.trainer.session;
 
+  /// Returns whether the current supported session has a usable memory base.
+  static bool isReady(AppState state) =>
+      session(state).detection?.status == GameDetectionStatus.supportedGame &&
+      session(state).memoryBase != null;
+
+  /// Returns the selected process IDs for connection presentation.
+  static List<int> processIds(AppState state) =>
+      session(state).processIds.toList(growable: false);
+
+  /// Returns the selected process ID for connection presentation.
+  static int? selectedProcessId(AppState state) =>
+      session(state).selectedProcessId;
+
+  /// Returns the current detection outcome for connection presentation.
+  static GameDetectionResult? detection(AppState state) =>
+      session(state).detection;
+
+  /// Returns the current session error for presentation.
+  static String? errorMessage(AppState state) => session(state).errorMessage;
+
+  /// Returns whether the current session has a usable guest memory base.
+  static bool hasMemoryBase(AppState state) =>
+      session(state).memoryBase != null;
+
   /// Returns fields from the current SDK profile in profile order.
   static List<GameField> fields(AppState state) =>
       session(state).profile?.fields.values.toList(growable: false) ??
@@ -33,11 +57,6 @@ abstract final class TrainerSelectors {
   static bool isEditing(AppState state, GameField field) =>
       state.trainer.editingFieldId == field.id &&
       TrainerWriteEligibility.hasValidTarget(session(state), field);
-
-  /// Returns whether a supported profile has a usable session memory base.
-  static bool isReady(AppState state) =>
-      session(state).detection?.status == GameDetectionStatus.supportedGame &&
-      session(state).memoryBase != null;
 
   /// Returns the field currently being edited, if it still exists.
   static GameField? editingField(AppState state) {

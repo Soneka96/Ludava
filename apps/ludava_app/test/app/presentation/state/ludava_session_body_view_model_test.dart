@@ -14,20 +14,27 @@ void main() {
     test(
       'Property props includes Redux state but excludes callback identity',
       () {
-        final state = AppState(
-          trainer: TrainerState(session: trainerStateFixtureSession()),
-        );
         final first = LudavaSessionBodyViewModel(
-          state: state,
+          isReady: false,
+          processIds: const [],
+          selectedProcessId: null,
+          detection: null,
+          hasMemoryBase: false,
+          errorMessage: null,
           onSelectProcess: (_) {},
         );
         final second = LudavaSessionBodyViewModel(
-          state: state,
+          isReady: false,
+          processIds: const [],
+          selectedProcessId: null,
+          detection: null,
+          hasMemoryBase: false,
+          errorMessage: null,
           onSelectProcess: (_) =>
               throw StateError('callback identity is ignored'),
         );
 
-        expect(first.props, [state]);
+        expect(first.props, [false, const [], null, null, false, null]);
         expect(first, second);
       },
     );

@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
 import 'package:ludava_app/features/trainer/services/trainer_write_bridge.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -9,8 +10,21 @@ import 'package:redux/redux.dart';
 
 /// Presentation state and callbacks for the connected trainer fields list.
 class TrainerFieldsViewModel extends Equatable {
-  /// Current Redux snapshot used to derive the field rows.
-  final AppState state;
+  /// Selected SDK data and eligibility used to render each field row.
+  final List<
+    ({
+      GameField field,
+      GameReadResult? readResult,
+      GameWriteResult? writeResult,
+      bool canRead,
+      bool canWrite,
+      bool isEditing,
+    })
+  >
+  fields;
+
+  /// Whether the current SDK snapshot contains a selected profile.
+  final bool hasProfile;
 
   /// Requests an edit for the field identified by its stable ID.
   final ValueChanged<String> onEditField;
@@ -21,24 +35,39 @@ class TrainerFieldsViewModel extends Equatable {
   /// Cancels the active trainer edit.
   final VoidCallback onCancelEditing;
 
-  /// Creates a fields view model from [state] and its presentation callbacks.
+  /// Creates a fields view model from selected [fields] and callbacks.
   const TrainerFieldsViewModel({
-    required this.state,
+    required this.fields,
+    required this.hasProfile,
     required this.onEditField,
     required this.onApplyField,
     required this.onCancelEditing,
   });
 
   /// Creates presentation state and dispatch callbacks from [store].
-  factory TrainerFieldsViewModel.fromStore(Store<AppState> store) =>
-      TrainerFieldsViewModel(
-        state: store.state,
-        onEditField: (fieldId) => store.dispatch(BeginEditingAction(fieldId)),
-        onApplyField: (fieldId, value) =>
-            GetIt.instance<TrainerWriteBridge>().writeField(fieldId, value),
-        onCancelEditing: () => store.dispatch(const CancelEditingAction()),
-      );
+  factory TrainerFieldsViewModel.fromStore(Store<AppState> store) {
+    final state = store.state;
+    return TrainerFieldsViewModel(
+      hasProfile: TrainerSelectors.session(state).profile != null,
+      fields: TrainerSelectors.fields(state)
+          .map(
+            (field) => (
+              field: field,
+              readResult: TrainerSelectors.readResult(state, field),
+              writeResult: TrainerSelectors.writeResult(state, field),
+              canRead: TrainerSelectors.canRead(state, field),
+              canWrite: TrainerSelectors.canEdit(state, field),
+              isEditing: TrainerSelectors.isEditing(state, field),
+            ),
+          )
+          .toList(growable: false),
+      onEditField: (fieldId) => store.dispatch(BeginEditingAction(fieldId)),
+      onApplyField: (fieldId, value) =>
+          GetIt.instance<TrainerWriteBridge>().writeField(fieldId, value),
+      onCancelEditing: () => store.dispatch(const CancelEditingAction()),
+    );
+  }
 
   @override
-  List<Object?> get props => [state];
+  List<Object?> get props => [fields, hasProfile];
 }
