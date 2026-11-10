@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import '../../bin/ludava_cli.dart';
 import 'package:test/test.dart';
+
+import '../../bin/ludava_cli.dart';
 
 void main() {
   group('Flow Ludava CLI entry behaves correctly', () {
