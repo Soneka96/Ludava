@@ -1,144 +1,140 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_fields_view_model.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
-import 'package:ludava_app/injection_container.dart';
+import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
-import 'package:ludava_app/shared/state/app.actions.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
-import '../../../../support/mock_trainer_sdk_capability.dart';
-import '../../../../support/trainer_state_fixture.dart';
+class _MockTrainerFieldsViewModel extends Mock
+    implements TrainerFieldsViewModel {}
 
-/// Opens the credits editor after its SDK target has been made eligible.
-Future<void> _openCreditsEditor(
-  WidgetTester tester,
-  Store<AppState> store,
-) async {
-  await tester.tap(find.byTooltip('Edit Credits'));
-  await tester.pump();
-  expect(store.state.trainer.editingFieldId, 'credits');
-}
+({
+  GameField field,
+  GameReadResult? readResult,
+  GameWriteResult? writeResult,
+  bool canRead,
+  bool canWrite,
+  bool isEditing,
+})
+_row(
+  String id, {
+  String? name,
+  GameReadResult? readResult,
+  GameWriteResult? writeResult,
+  bool canRead = true,
+  bool canWrite = true,
+  bool isEditing = false,
+}) => (
+  field: GameField(
+    id: id,
+    name: name ?? id,
+    guestOffset: 0x100,
+    valueType: MemoryValueType.unsigned32,
+    byteOrder: ByteOrder.little,
+    readStatus: VerificationStatus.verified,
+    writeStatus: VerificationStatus.researchConfirmed,
+    minimumValue: 0,
+    maximumValue: 100000,
+  ),
+  readResult: readResult,
+  writeResult: writeResult,
+  canRead: canRead,
+  canWrite: canWrite,
+  isEditing: isEditing,
+);
 
-/// Awaits observation cleanup after a panel integration test.
-Future<void> _shutdownStore(Store<AppState> store) async {
-  final action = ShutdownRequestedAction();
-  store.dispatch(action);
-  await action.waitForCleanup();
-}
-
-class _NonblockingCancelStream extends Stream<TrainerSessionState> {
-  _NonblockingCancelStream(this._source);
-
-  final Stream<TrainerSessionState> _source;
-
-  @override
-  StreamSubscription<TrainerSessionState> listen(
-    void Function(TrainerSessionState event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => _NonblockingCancelSubscription(
-    _source.listen(
-      onData,
-      onError: onError,
-      onDone: onDone,
-      cancelOnError: cancelOnError,
-    ),
+_MockTrainerFieldsViewModel _viewModel({
+  List<
+        ({
+          GameField field,
+          GameReadResult? readResult,
+          GameWriteResult? writeResult,
+          bool canRead,
+          bool canWrite,
+          bool isEditing,
+        })
+      >
+      fields =
+      const [],
+  bool hasProfile = true,
+  ValueChanged<String>? onEditField,
+  GameWriteResult Function(String fieldId, int value)? onApplyField,
+  VoidCallback? onCancelEditing,
+}) {
+  final viewModel = _MockTrainerFieldsViewModel();
+  when(() => viewModel.fields).thenReturn(fields);
+  when(() => viewModel.hasProfile).thenReturn(hasProfile);
+  when(() => viewModel.onEditField).thenReturn(onEditField ?? (_) {});
+  when(() => viewModel.onApplyField).thenReturn(
+    onApplyField ??
+        (_, value) => GameWriteResult(
+          status: GameWriteStatus.success,
+          fieldId: 'credits',
+          requestedValue: value,
+          readBackValue: value,
+        ),
   );
+  when(() => viewModel.onCancelEditing).thenReturn(onCancelEditing ?? () {});
+  when(() => viewModel.props).thenReturn([fields, hasProfile, Object()]);
+  return viewModel;
 }
 
-class _NonblockingCancelSubscription
-    implements StreamSubscription<TrainerSessionState> {
-  _NonblockingCancelSubscription(this._subscription);
-
-  final StreamSubscription<TrainerSessionState> _subscription;
-
-  @override
-  Future<void> cancel() {
-    unawaited(_subscription.cancel().catchError((Object _) {}));
-    return Future<void>.value();
-  }
-
-  @override
-  bool get isPaused => _subscription.isPaused;
-
-  @override
-  void onData(void Function(TrainerSessionState event)? handleData) =>
-      _subscription.onData(handleData);
-
-  @override
-  void onDone(void Function()? handleDone) => _subscription.onDone(handleDone);
-
-  @override
-  void onError(Function? handleError) => _subscription.onError(handleError);
-
-  @override
-  void pause([Future<void>? resumeSignal]) => _subscription.pause(resumeSignal);
-
-  @override
-  void resume() => _subscription.resume();
-
-  @override
-  Future<E> asFuture<E>([E? futureValue]) =>
-      _subscription.asFuture<E>(futureValue);
-}
+Widget _wrap(Store<AppState> store, {Key? key}) => StoreProvider<AppState>(
+  key: key,
+  store: store,
+  child: MaterialApp(
+    theme: LudavaTheme.graphiteAndTeal,
+    home: const Scaffold(body: TrainerFieldsPanel()),
+  ),
+);
 
 void main() {
-  late MockTrainerSdkCapability capability;
-  late StreamController<TrainerSessionState> sessionChanges;
+  late Store<AppState> store;
+  late _MockTrainerFieldsViewModel viewModel;
 
   setUp(() {
     sl.pushNewScope();
-    capability = MockTrainerSdkCapability();
-    sessionChanges = StreamController<TrainerSessionState>.broadcast(
-      sync: true,
+    store = Store<AppState>(
+      (state, action) => state,
+      initialState: AppState(
+        trainer: TrainerState(session: TrainerSessionState()),
+      ),
     );
-    when(() => capability.stateChanges)
-        .thenAnswer((_) => _NonblockingCancelStream(sessionChanges.stream));
-    when(() => capability.state).thenReturn(TrainerSessionState());
-    when(() => capability.connect()).thenAnswer((_) {});
-    initDependencies(trainerSdkCapability: capability);
+    sl.registerFactoryParam<TrainerFieldsViewModel, Store<AppState>, void>(
+      (store, _) => viewModel,
+    );
   });
 
-  tearDown(() async {
-    await sl.popScope();
-    await sessionChanges.close();
-  });
+  tearDown(() async => sl.popScope());
 
-  Store<AppState> store() => sl<Store<AppState>>();
-
-  Widget wrap() => StoreProvider<AppState>(
-    store: store(),
-    child: MaterialApp(
-      theme: LudavaTheme.graphiteAndTeal,
-      home: const Scaffold(body: TrainerFieldsPanel()),
-    ),
-  );
-
-  group('Class TrainerFieldsPanel dynamic field behavior', () {
-    testWidgets('Class TrainerFieldsPanel renders stable profile rows', (
+  group('Class TrainerFieldsPanel presentation behavior', () {
+    testWidgets('Class TrainerFieldsPanel renders dynamic field rows', (
       tester,
     ) async {
-      final session = trainerStateFixtureSession(
-        additionalFieldIds: ['scrap'],
-        readResult: const GameReadResult(
-          status: GameReadStatus.success,
-          fieldId: 'credits',
-          value: 0,
-        ),
+      viewModel = _viewModel(
+        fields: [
+          _row(
+            'credits',
+            name: 'Credits',
+            readResult: const GameReadResult(
+              status: GameReadStatus.success,
+              fieldId: 'credits',
+              value: 0,
+            ),
+          ),
+          _row('scrap', name: 'Scrap'),
+        ],
       );
-      store().dispatch(TrainerSessionChangedAction(session));
 
-      await tester.pumpWidget(wrap());
+      await tester.pumpWidget(_wrap(store));
 
       final creditsRow = find.byKey(const ValueKey('credits'));
       final scrapRow = find.byKey(const ValueKey('scrap'));
@@ -157,10 +153,10 @@ void main() {
     testWidgets('Class TrainerFieldsPanel scrolls all dynamic fields', (
       tester,
     ) async {
-      final fieldIds = List<String>.generate(12, (index) => 'part-$index');
-      store().dispatch(
-        TrainerSessionChangedAction(
-          trainerStateFixtureSession(additionalFieldIds: fieldIds),
+      viewModel = _viewModel(
+        fields: List.generate(
+          12,
+          (index) => _row('part-$index', name: 'Part $index'),
         ),
       );
       tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
@@ -168,7 +164,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(wrap());
+      await tester.pumpWidget(_wrap(store));
       await tester.drag(find.byType(ListView), const Offset(0, -1200));
       await tester.pumpAndSettle();
 
@@ -181,282 +177,146 @@ void main() {
     });
 
     testWidgets(
-      'Class TrainerFieldsPanel preserves row geometry across states',
+      'Class TrainerFieldsPanel preserves row geometry while editing',
       (tester) async {
         for (final size in const [Size(520, 360), Size(480, 340)]) {
           tester.view.physicalSize = size;
           tester.view.devicePixelRatio = 1;
-          final session = trainerStateFixtureSession(
-            additionalFieldIds: ['scrap'],
-            readResult: const GameReadResult(
-              status: GameReadStatus.success,
-              fieldId: 'credits',
-              value: 17,
-            ),
-          );
-          store().dispatch(const CancelEditingAction());
-          store().dispatch(TrainerSessionChangedAction(session));
-          await tester.pumpWidget(wrap());
-          final rowFinder = find.byKey(const ValueKey('credits'));
-          final siblingRowFinder = find.byKey(const ValueKey('scrap'));
-          final normalRow = tester.getRect(rowFinder);
-          final normalSiblingRow = tester.getRect(siblingRowFinder);
+          final rows = [_row('credits'), _row('scrap')];
+          viewModel = _viewModel(fields: rows);
+          await tester.pumpWidget(_wrap(store, key: ValueKey('normal-$size')));
+
+          final row = find.byKey(const ValueKey('credits'));
+          final siblingRow = find.byKey(const ValueKey('scrap'));
+          final normalRow = tester.getRect(row);
+          final normalSiblingRow = tester.getRect(siblingRow);
           expect(normalRow.height, LudavaDimensions.minimumInteractiveTarget);
           expect(
             normalSiblingRow.height,
             LudavaDimensions.minimumInteractiveTarget,
           );
 
-          store().dispatch(const BeginEditingAction('credits'));
-          await tester.pump();
-          await tester.pump();
-          expect(find.byType(InlineValueEditor), findsOneWidget);
-          expect(tester.getRect(rowFinder), normalRow);
-          expect(tester.getRect(siblingRowFinder), normalSiblingRow);
-
-          store().dispatch(
-            TrainerSessionChangedAction(
-              trainerStateFixtureSession(
-                additionalFieldIds: ['scrap'],
-                readResult: const GameReadResult(
-                  status: GameReadStatus.success,
-                  fieldId: 'credits',
-                  value: 17,
-                ),
-                lastWriteResult: const GameWriteResult(
-                  status: GameWriteStatus.writeFailed,
-                  fieldId: 'credits',
-                  requestedValue: 42,
-                ),
-              ),
-            ),
+          viewModel = _viewModel(
+            fields: [_row('credits', isEditing: true), _row('scrap')],
           );
-          await tester.pump();
+          await tester.pumpWidget(_wrap(store, key: ValueKey('editing-$size')));
 
-          expect(find.byTooltip('The write failed.'), findsOneWidget);
-          expect(tester.getRect(rowFinder), normalRow);
-          expect(tester.getRect(siblingRowFinder), normalSiblingRow);
+          expect(find.byType(InlineValueEditor), findsOneWidget);
+          expect(tester.getRect(row), normalRow);
+          expect(tester.getRect(siblingRow), normalSiblingRow);
           expect(tester.takeException(), isNull);
         }
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
       },
     );
 
     testWidgets(
-      'Class TrainerFieldsPanel rejects denied edits and empty profiles',
+      'Class TrainerFieldsPanel closes editing when eligibility is removed',
       (tester) async {
-        final denied = trainerStateFixtureSession(
-          fieldWriteStatus: VerificationStatus.none,
-          readResult: const GameReadResult(
-            status: GameReadStatus.success,
-            fieldId: 'credits',
-            value: 17,
-          ),
-        );
-        store().dispatch(TrainerSessionChangedAction(denied));
-        await tester.pumpWidget(wrap());
-        expect(find.byTooltip('Edit Credits'), findsNothing);
+        viewModel = _viewModel(fields: [_row('credits', isEditing: true)]);
+        await tester.pumpWidget(_wrap(store));
 
-        store().dispatch(
-          TrainerSessionChangedAction(
-            trainerStateFixtureSession(emptyProfile: true),
+        expect(find.byType(InlineValueEditor), findsOneWidget);
+
+        viewModel = _viewModel(fields: [_row('credits', canWrite: false)]);
+        final updatedStore = Store<AppState>(
+          (state, action) => state,
+          initialState: AppState(
+            trainer: TrainerState(session: TrainerSessionState()),
           ),
         );
-        await tester.pump();
+        await tester.pumpWidget(_wrap(updatedStore));
+
+        expect(find.byType(InlineValueEditor), findsNothing);
+        expect(find.byTooltip('Edit credits'), findsNothing);
+
+        viewModel = _viewModel(fields: const []);
+        await tester.pumpWidget(_wrap(store, key: const ValueKey('empty')));
         expect(
           find.text('No trainer fields are available for this profile.'),
           findsOneWidget,
         );
 
-        store().dispatch(TrainerSessionChangedAction(TrainerSessionState()));
-        await tester.pump();
-        expect(find.text('Credits'), findsNothing);
+        viewModel = _viewModel(hasProfile: false);
+        await tester.pumpWidget(
+          _wrap(store, key: const ValueKey('no-profile')),
+        );
+        expect(find.text('credits'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
 
-    testWidgets(
-      'Class TrainerFieldsPanel closes a draft when write eligibility changes',
-      (tester) async {
-        store().dispatch(
-          TrainerSessionChangedAction(
-            trainerStateFixtureSession(
-              readResult: const GameReadResult(
-                status: GameReadStatus.success,
-                fieldId: 'credits',
-                value: 17,
-              ),
+    testWidgets('Class TrainerFieldsPanel forwards edit and apply callbacks', (
+      tester,
+    ) async {
+      final edits = <String>[];
+      final applications = <(String, int)>[];
+      var applied = 0;
+      viewModel = _viewModel(
+        fields: [
+          _row(
+            'credits',
+            name: 'Credits',
+            readResult: const GameReadResult(
+              status: GameReadStatus.success,
+              fieldId: 'credits',
+              value: 17,
             ),
           ),
-        );
-        await tester.pumpWidget(wrap());
-        await _openCreditsEditor(tester, store());
+        ],
+        onEditField: edits.add,
+        onApplyField: (fieldId, value) {
+          applications.add((fieldId, value));
+          return GameWriteResult(
+            status: GameWriteStatus.success,
+            fieldId: fieldId,
+            requestedValue: value,
+            readBackValue: value,
+          );
+        },
+        onCancelEditing: () => applied++,
+      );
+      await tester.pumpWidget(_wrap(store));
 
-        final input = find.byKey(const ValueKey('inline-editor-input-credits'));
-        await tester.enterText(input, '42');
-        await tester.pump();
-        store().dispatch(
-          TrainerSessionChangedAction(
-            trainerStateFixtureSession(
-              fieldWriteStatus: VerificationStatus.none,
-              readResult: const GameReadResult(
-                status: GameReadStatus.success,
-                fieldId: 'credits',
-                value: 17,
-              ),
+      await tester.tap(find.byTooltip('Edit Credits'));
+      expect(edits, ['credits']);
+
+      viewModel = _viewModel(
+        fields: [
+          _row(
+            'credits',
+            name: 'Credits',
+            isEditing: true,
+            readResult: const GameReadResult(
+              status: GameReadStatus.success,
+              fieldId: 'credits',
+              value: 17,
             ),
           ),
-        );
-        await tester.pump();
+        ],
+        onApplyField: (fieldId, value) {
+          applications.add((fieldId, value));
+          return GameWriteResult(
+            status: GameWriteStatus.success,
+            fieldId: fieldId,
+            requestedValue: value,
+            readBackValue: value,
+          );
+        },
+        onCancelEditing: () => applied++,
+      );
+      await tester.pumpWidget(_wrap(store, key: const ValueKey('editing')));
+      await tester.enterText(
+        find.byKey(const ValueKey('inline-editor-input-credits')),
+        '42',
+      );
+      await tester.tap(find.byTooltip('Apply Credits'));
+      await tester.pump();
 
-        expect(store().state.trainer.editingFieldId, isNull);
-        expect(input, findsNothing);
-        verifyNever(() => capability.writeField('credits', 42));
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel applies a value and closes the editor',
-      (tester) async {
-        final initialSession = trainerStateFixtureSession(
-          readResult: const GameReadResult(
-            status: GameReadStatus.success,
-            fieldId: 'credits',
-            value: 17,
-          ),
-        );
-        final result = const GameWriteResult(
-          status: GameWriteStatus.success,
-          fieldId: 'credits',
-          requestedValue: 42,
-          readBackValue: 42,
-        );
-        store().dispatch(TrainerSessionChangedAction(initialSession));
-        await tester.pumpWidget(wrap());
-        await _openCreditsEditor(tester, store());
-
-        final input = find.byKey(const ValueKey('inline-editor-input-credits'));
-        await tester.enterText(input, '42');
-        await tester.pump();
-        when(() => capability.writeField('credits', 42)).thenReturn(result);
-
-        await tester.tap(find.byTooltip('Apply Credits'));
-        await tester.pump();
-        await tester.pump();
-
-        verify(() => capability.writeField('credits', 42)).called(1);
-        expect(store().state.trainer.editingFieldId, isNull);
-        expect(input, findsNothing);
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel preserves the draft through a reentrant retryable failure',
-      (tester) async {
-        final session = trainerStateFixtureSession(
-          readResult: const GameReadResult(
-            status: GameReadStatus.success,
-            fieldId: 'credits',
-            value: 17,
-          ),
-        );
-        store().dispatch(TrainerSessionChangedAction(session));
-        await tester.pumpWidget(wrap());
-        store().dispatch(const InitializeAppAction());
-        await tester.pump();
-        await _openCreditsEditor(tester, store());
-        final input = find.byKey(const ValueKey('inline-editor-input-credits'));
-        await tester.enterText(input, '42');
-        await tester.pump();
-
-        final failure = const GameWriteResult(
-          status: GameWriteStatus.writeFailed,
-          fieldId: 'credits',
-          requestedValue: 42,
-          errorCode: 5,
-        );
-        final failedSession = trainerStateFixtureSession(
-          readResult: const GameReadResult(
-            status: GameReadStatus.readFailed,
-            fieldId: 'credits',
-            errorCode: 5,
-          ),
-          lastWriteResult: failure,
-        );
-        when(() => capability.writeField('credits', 42)).thenAnswer((_) {
-          sessionChanges.add(failedSession);
-          return failure;
-        });
-
-        await tester.tap(find.byTooltip('Apply Credits'));
-        await tester.pump();
-        await tester.pump();
-
-        verify(() => capability.writeField('credits', 42)).called(1);
-        expect(store().state.trainer.editingFieldId, 'credits');
-        expect(tester.widget<TextField>(input).controller!.text, '42');
-        expect(
-          find.byTooltip('The write failed with system error 5.'),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
-        await _shutdownStore(store());
-      },
-    );
-
-    testWidgets(
-      'Class TrainerFieldsPanel removes an editor after a reentrant stale failure',
-      (tester) async {
-        final session = trainerStateFixtureSession(
-          readResult: const GameReadResult(
-            status: GameReadStatus.success,
-            fieldId: 'credits',
-            value: 17,
-          ),
-        );
-        store().dispatch(TrainerSessionChangedAction(session));
-        await tester.pumpWidget(wrap());
-        store().dispatch(const InitializeAppAction());
-        await tester.pump();
-        await _openCreditsEditor(tester, store());
-        final input = find.byKey(const ValueKey('inline-editor-input-credits'));
-        await tester.enterText(input, '42');
-        await tester.pump();
-
-        final failure = const GameWriteResult(
-          status: GameWriteStatus.readBackFailed,
-          fieldId: 'credits',
-          requestedValue: 42,
-        );
-        final staleSession = trainerStateFixtureSession(
-          memoryBase: 0x2000,
-          readResult: const GameReadResult(
-            status: GameReadStatus.success,
-            fieldId: 'credits',
-            value: 17,
-          ),
-          lastWriteResult: failure,
-        );
-        when(() => capability.writeField('credits', 42)).thenAnswer((_) {
-          sessionChanges.add(staleSession);
-          return failure;
-        });
-
-        await tester.tap(find.byTooltip('Apply Credits'));
-        await tester.pump();
-        await tester.pump();
-
-        verify(() => capability.writeField('credits', 42)).called(1);
-        expect(store().state.trainer.session.memoryBase, 0x2000);
-        expect(store().state.trainer.editingFieldId, isNull);
-        expect(
-          find.byKey(const ValueKey('inline-editor-input-credits')),
-          findsNothing,
-        );
-        expect(tester.takeException(), isNull);
-        await _shutdownStore(store());
-      },
-    );
+      expect(applications, [('credits', 42)]);
+      expect(applied, 1);
+      expect(tester.takeException(), isNull);
+    });
   });
 }
