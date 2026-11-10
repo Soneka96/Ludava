@@ -67,6 +67,39 @@ void main() {
     });
 
     testWidgets(
+      'Class LudavaShell fits normal content at both compact window sizes',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final maximizeState = ValueNotifier(false);
+        addTearDown(maximizeState.dispose);
+
+        for (final size in const [Size(520, 360), Size(480, 340)]) {
+          tester.view.physicalSize = size;
+          await tester.pumpWidget(
+            wrap(
+              LudavaShell(
+                onMinimize: () {},
+                onToggleMaximize: () {},
+                isMaximized: maximizeState,
+                onClose: () {},
+              ),
+            ),
+          );
+
+          expect(find.byType(TrainerGameHeader), findsOneWidget);
+          expect(
+            find.byTooltip('Refresh values or rediscover RPCS3'),
+            findsOneWidget,
+          );
+          expect(find.text('Connect to RPCS3'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
+      },
+    );
+
+    testWidgets(
       'Class LudavaShell wires connection selection and window actions',
       (tester) async {
         sl<Store<AppState>>().dispatch(

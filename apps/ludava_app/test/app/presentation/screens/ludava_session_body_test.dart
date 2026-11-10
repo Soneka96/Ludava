@@ -18,6 +18,9 @@ import 'package:redux/redux.dart';
 class _MockLudavaSessionBodyViewModel extends Mock
     implements LudavaSessionBodyViewModel {}
 
+class _MockTrainerFieldsViewModel extends Mock
+    implements TrainerFieldsViewModel {}
+
 _MockLudavaSessionBodyViewModel _viewModel({
   bool isReady = false,
   List<int> processIds = const [],
@@ -38,7 +41,8 @@ _MockLudavaSessionBodyViewModel _viewModel({
   return viewModel;
 }
 
-Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
+Widget _wrap(Store<AppState> store, {Key? key}) => StoreProvider<AppState>(
+  key: key,
   store: store,
   child: MaterialApp(
     theme: LudavaTheme.graphiteAndTeal,
@@ -49,6 +53,7 @@ Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
 void main() {
   late Store<AppState> store;
   late _MockLudavaSessionBodyViewModel viewModel;
+  late _MockTrainerFieldsViewModel fieldsViewModel;
 
   setUp(() {
     sl.pushNewScope();
@@ -58,11 +63,13 @@ void main() {
         trainer: TrainerState(session: TrainerSessionState()),
       ),
     );
+    fieldsViewModel = _MockTrainerFieldsViewModel();
+    when(() => fieldsViewModel.hasProfile).thenReturn(false);
     sl.registerFactoryParam<LudavaSessionBodyViewModel, Store<AppState>, void>(
       (store, _) => viewModel,
     );
     sl.registerFactoryParam<TrainerFieldsViewModel, Store<AppState>, void>(
-      (store, _) => TrainerFieldsViewModel.fromStore(store),
+      (store, _) => fieldsViewModel,
     );
   });
 
@@ -72,9 +79,21 @@ void main() {
     testWidgets(
       'Class LudavaSessionBody forwards connection state and selection callback',
       (tester) async {
+        final detection = GameDetectionResult(
+          status: GameDetectionStatus.ambiguous,
+          processId: 43,
+          gameTitle: 'Synthetic title',
+          confidence: GameIdentityConfidence.none,
+          evidenceDescription: 'Synthetic process evidence.',
+        );
+        const errorMessage = 'Synthetic process metadata error.';
         final selected = <int>[];
         viewModel = _viewModel(
           processIds: const [42, 43],
+          selectedProcessId: 43,
+          detection: detection,
+          hasMemoryBase: true,
+          errorMessage: errorMessage,
           onSelectProcess: selected.add,
         );
         await tester.pumpWidget(_wrap(store));
@@ -85,6 +104,10 @@ void main() {
           find.byType(SessionConnectionBody),
         );
         expect(connection.processIds, const [42, 43]);
+        expect(connection.selectedProcessId, 43);
+        expect(connection.detection, same(detection));
+        expect(connection.hasMemoryBase, isTrue);
+        expect(connection.errorMessage, errorMessage);
         connection.onSelectProcess(43);
         expect(selected, [43]);
         expect(tester.takeException(), isNull);
@@ -92,22 +115,48 @@ void main() {
     );
 
     testWidgets(
-      'Class LudavaSessionBody composes trainer fields and fixed feedback when ready',
+      'Class LudavaSessionBody composes ready fields and keeps feedback height stable',
       (tester) async {
-        const errorMessage = 'Synthetic session failure';
-        viewModel = _viewModel(isReady: true, errorMessage: errorMessage);
-        await tester.pumpWidget(_wrap(store));
+        const errorMessage =
+            'A long synthetic session failure that should remain discoverable '
+            'without changing the fixed feedback region height.';
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-        expect(find.byType(SessionConnectionBody), findsNothing);
-        expect(find.byType(TrainerFieldsPanel), findsOneWidget);
-        expect(
-          tester
-              .getSize(find.byKey(const ValueKey('session-feedback-region')))
-              .height,
-          LudavaDimensions.sessionFeedbackHeight,
-        );
-        expect(find.byTooltip(errorMessage), findsOneWidget);
-        expect(tester.takeException(), isNull);
+        for (final size in const [Size(520, 360), Size(480, 340)]) {
+          tester.view.physicalSize = size;
+          double? heightWithoutError;
+          for (final message in <String?>[null, errorMessage]) {
+            viewModel = _viewModel(isReady: true, errorMessage: message);
+            await tester.pumpWidget(
+              _wrap(store, key: ValueKey('$size-$message')),
+            );
+
+            expect(find.byType(SessionConnectionBody), findsNothing);
+            expect(find.byType(TrainerFieldsPanel), findsOneWidget);
+            final feedbackRegion = find.byKey(
+              const ValueKey('session-feedback-region'),
+            );
+            final feedbackHeight = tester.getSize(feedbackRegion).height;
+            expect(feedbackHeight, LudavaDimensions.sessionFeedbackHeight);
+            if (message == null) {
+              heightWithoutError = feedbackHeight;
+              expect(find.byTooltip(errorMessage), findsNothing);
+            } else {
+              expect(feedbackHeight, heightWithoutError);
+              expect(find.byTooltip(errorMessage), findsOneWidget);
+              final feedbackText = tester.widget<Text>(find.text(errorMessage));
+              expect(feedbackText.maxLines, 1);
+              expect(feedbackText.overflow, TextOverflow.ellipsis);
+              expect(
+                feedbackText.style?.color,
+                LudavaTheme.graphiteAndTeal.colorScheme.error,
+              );
+            }
+            expect(tester.takeException(), isNull);
+          }
+        }
       },
     );
   });

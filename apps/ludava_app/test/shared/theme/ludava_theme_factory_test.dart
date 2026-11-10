@@ -2,7 +2,9 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
+import 'package:ludava_app/features/connection/presentation/state/rpcs3_connection_indicator_view_model.dart';
 import 'package:ludava_app/injection_container.dart';
+import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_style_presets.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_factory.dart';
@@ -12,7 +14,8 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
-import '../../support/mock_trainer_sdk_capability.dart';
+class _MockConnectionIndicatorViewModel extends Mock
+    implements Rpcs3ConnectionIndicatorViewModel {}
 
 Color _stateOverlayColor(Color color, double opacity) => Color.fromARGB(
   (opacity * 255).round(),
@@ -184,9 +187,20 @@ void main() {
       'Method LudavaThemeFactory.build() styles Ludava and Material widgets from alternate colors',
       (tester) async {
         sl.pushNewScope();
-        final capability = MockTrainerSdkCapability();
-        when(() => capability.state).thenReturn(TrainerSessionState());
-        initDependencies(trainerSdkCapability: capability);
+        final viewModel = _MockConnectionIndicatorViewModel();
+        when(() => viewModel.processIds).thenReturn(const []);
+        when(() => viewModel.selectedProcessId).thenReturn(null);
+        final store = Store<AppState>(
+          (state, action) => state,
+          initialState: AppState(
+            trainer: TrainerState(session: TrainerSessionState()),
+          ),
+        );
+        sl.registerFactoryParam<
+          Rpcs3ConnectionIndicatorViewModel,
+          Store<AppState>,
+          void
+        >((store, _) => viewModel);
         addTearDown(() async {
           await sl.popScope();
         });
@@ -206,7 +220,7 @@ void main() {
 
         await tester.pumpWidget(
           StoreProvider<AppState>(
-            store: sl<Store<AppState>>(),
+            store: store,
             child: MaterialApp(
               theme: theme,
               home: Scaffold(
