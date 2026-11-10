@@ -92,7 +92,7 @@ void main() {
       );
 
       expect(result.status, GameReadStatus.unsupportedProfile);
-      verifyNever(() => repository.read(0x300001234, 4));
+      verifyNever(() => repository.read(any(), any()));
     });
 
     test(
@@ -112,7 +112,7 @@ void main() {
 
         expect(unsupported.status, GameReadStatus.unsupportedField);
         expect(missing.status, GameReadStatus.unsupportedField);
-        verifyNever(() => repository.read(0x300001234, 4));
+        verifyNever(() => repository.read(any(), any()));
       },
     );
 
@@ -208,7 +208,7 @@ void main() {
         expect(unsupportedType.status, GameReadStatus.invalidReadResult);
         expect(unsupportedByteOrder.status, GameReadStatus.invalidReadResult);
         expect(unsupportedByteOrder.value, isNull);
-        verifyNever(() => unsupportedTypeRepository.read(0x300001234, 4));
+        verifyNever(() => unsupportedTypeRepository.read(any(), any()));
         verify(() => inconsistentRepository.read(0x300001234, 4)).called(1);
         verify(
           () => unsupportedByteOrderRepository.read(0x300001234, 4),
