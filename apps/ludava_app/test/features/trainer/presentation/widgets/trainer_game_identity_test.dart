@@ -39,7 +39,6 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: child),
 );
 
-
 Widget _identity(TrainerSessionState session) => TrainerGameIdentity(
   profile: session.profile,
   detectedTitle: session.detection?.gameTitle,

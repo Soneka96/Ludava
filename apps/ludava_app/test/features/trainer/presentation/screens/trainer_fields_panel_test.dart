@@ -18,7 +18,6 @@ import '../../../../support/trainer_state_fixture.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
-
 /// Opens the credits editor after its SDK target has been made eligible.
 Future<void> _openCreditsEditor(
   WidgetTester tester,

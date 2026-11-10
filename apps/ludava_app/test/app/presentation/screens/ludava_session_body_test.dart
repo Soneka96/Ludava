@@ -34,9 +34,7 @@ _MockLudavaSessionBodyViewModel _viewModel({
   when(() => viewModel.detection).thenReturn(detection);
   when(() => viewModel.hasMemoryBase).thenReturn(hasMemoryBase);
   when(() => viewModel.errorMessage).thenReturn(errorMessage);
-  when(
-    () => viewModel.onSelectProcess,
-  ).thenReturn(onSelectProcess ?? (_) {});
+  when(() => viewModel.onSelectProcess).thenReturn(onSelectProcess ?? (_) {});
   return viewModel;
 }
 
@@ -103,9 +101,9 @@ void main() {
         expect(find.byType(SessionConnectionBody), findsNothing);
         expect(find.byType(TrainerFieldsPanel), findsOneWidget);
         expect(
-          tester.getSize(
-            find.byKey(const ValueKey('session-feedback-region')),
-          ).height,
+          tester
+              .getSize(find.byKey(const ValueKey('session-feedback-region')))
+              .height,
           LudavaDimensions.sessionFeedbackHeight,
         );
         expect(find.byTooltip(errorMessage), findsOneWidget);

@@ -14,7 +14,6 @@ import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
-
 class _FakeTrainerSdkCapability implements TrainerSdkCapability {
   final StreamController<TrainerSessionState> _changes =
       StreamController<TrainerSessionState>.broadcast(sync: true);

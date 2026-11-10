@@ -71,82 +71,84 @@ void main() {
     testWidgets(
       'Class TrainerGameHeader exposes one accessible refresh callback',
       (tester) async {
-      final semanticsHandle = tester.ensureSemantics();
-      addTearDown(semanticsHandle.dispose);
-      var refreshCalls = 0;
-      viewModel = _viewModel(onRefresh: () => refreshCalls++);
-      await tester.pumpWidget(_wrap(store));
+        final semanticsHandle = tester.ensureSemantics();
+        addTearDown(semanticsHandle.dispose);
+        var refreshCalls = 0;
+        viewModel = _viewModel(onRefresh: () => refreshCalls++);
+        await tester.pumpWidget(_wrap(store));
 
-      final refresh = find.byTooltip(refreshLabel);
-      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
-      expect(refresh, findsOneWidget);
-      expect(find.text('Connect to RPCS3'), findsOneWidget);
-      expect(
-        tester.getSize(find.byType(IconButton)).width,
-        greaterThanOrEqualTo(LudavaDimensions.minimumInteractiveTarget),
-      );
-      expect(
-        tester.getSize(find.byType(IconButton)).height,
-        greaterThanOrEqualTo(LudavaDimensions.minimumInteractiveTarget),
-      );
-      final semantics = find.byWidgetPredicate(
-        (widget) =>
-            widget is Semantics && widget.properties.label == refreshLabel,
-      );
-      expect(semantics, findsOneWidget);
-      expect(tester.getSemantics(semantics).flagsCollection.isButton, isTrue);
-      expect(find.text('Re-detect'), findsNothing);
+        final refresh = find.byTooltip(refreshLabel);
+        expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+        expect(refresh, findsOneWidget);
+        expect(find.text('Connect to RPCS3'), findsOneWidget);
+        expect(
+          tester.getSize(find.byType(IconButton)).width,
+          greaterThanOrEqualTo(LudavaDimensions.minimumInteractiveTarget),
+        );
+        expect(
+          tester.getSize(find.byType(IconButton)).height,
+          greaterThanOrEqualTo(LudavaDimensions.minimumInteractiveTarget),
+        );
+        final semantics = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.label == refreshLabel,
+        );
+        expect(semantics, findsOneWidget);
+        expect(tester.getSemantics(semantics).flagsCollection.isButton, isTrue);
+        expect(find.text('Re-detect'), findsNothing);
 
-      await tester.tap(refresh);
+        await tester.tap(refresh);
 
-      expect(refreshCalls, 1);
-      expect(tester.takeException(), isNull);
-    });
+        expect(refreshCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets(
       'Class TrainerGameHeader keeps long game identity and refresh in minimum width',
       (tester) async {
-      const longTitle =
-          'A Very Long Synthetic Game Title That Must Stay Inside the Header';
-      tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+        const longTitle =
+            'A Very Long Synthetic Game Title That Must Stay Inside the Header';
+        tester.view.physicalSize = LudavaDimensions.minimumWindowSize;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      viewModel = _viewModel(
-        profile: trainerStateFixtureSession(gameName: longTitle).profile,
-        processIds: const [42],
-        selectedProcessId: 42,
-        detectionStatus: GameDetectionStatus.supportedGame,
-        hasMemoryBase: true,
-      );
-      await tester.pumpWidget(_wrap(store));
+        viewModel = _viewModel(
+          profile: trainerStateFixtureSession(gameName: longTitle).profile,
+          processIds: const [42],
+          selectedProcessId: 42,
+          detectionStatus: GameDetectionStatus.supportedGame,
+          hasMemoryBase: true,
+        );
+        await tester.pumpWidget(_wrap(store));
 
-      final title = tester.widget<Text>(find.text(longTitle));
-      final titleRect = tester.getRect(find.text(longTitle));
-      final refreshRect = tester.getRect(find.byTooltip(refreshLabel));
-      expect(title.maxLines, 1);
-      expect(title.overflow, TextOverflow.ellipsis);
-      expect(titleRect.left, greaterThanOrEqualTo(0));
-      expect(
-        titleRect.right,
-        lessThanOrEqualTo(LudavaDimensions.minimumWindowWidth),
-      );
-      expect(refreshRect.left, greaterThanOrEqualTo(0));
-      expect(
-        refreshRect.right,
-        lessThanOrEqualTo(LudavaDimensions.minimumWindowWidth),
-      );
-      expect(
-        find.byTooltip(
-          '$longTitle\nBuild ID: test-build\nRPCS3 process ID: 42',
-        ),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Build ID'), findsNothing);
-      expect(find.textContaining('RPCS3 process ID'), findsNothing);
-      expect(find.byTooltip(refreshLabel), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
+        final title = tester.widget<Text>(find.text(longTitle));
+        final titleRect = tester.getRect(find.text(longTitle));
+        final refreshRect = tester.getRect(find.byTooltip(refreshLabel));
+        expect(title.maxLines, 1);
+        expect(title.overflow, TextOverflow.ellipsis);
+        expect(titleRect.left, greaterThanOrEqualTo(0));
+        expect(
+          titleRect.right,
+          lessThanOrEqualTo(LudavaDimensions.minimumWindowWidth),
+        );
+        expect(refreshRect.left, greaterThanOrEqualTo(0));
+        expect(
+          refreshRect.right,
+          lessThanOrEqualTo(LudavaDimensions.minimumWindowWidth),
+        );
+        expect(
+          find.byTooltip(
+            '$longTitle\nBuild ID: test-build\nRPCS3 process ID: 42',
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Build ID'), findsNothing);
+        expect(find.textContaining('RPCS3 process ID'), findsNothing);
+        expect(find.byTooltip(refreshLabel), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

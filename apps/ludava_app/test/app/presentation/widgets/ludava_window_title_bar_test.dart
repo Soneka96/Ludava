@@ -14,8 +14,6 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../../support/mock_trainer_sdk_capability.dart';
 
-
-
 void main() {
   late MockTrainerSdkCapability capability;
 

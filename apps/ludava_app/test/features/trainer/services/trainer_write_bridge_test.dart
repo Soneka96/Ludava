@@ -16,7 +16,6 @@ import '../../../support/trainer_state_fixture.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:redux/redux.dart';
 
-
 Store<AppState> _createStore(
   TrainerSessionState session,
   String? editingFieldId,

@@ -16,7 +16,6 @@ import 'package:redux/redux.dart';
 
 import '../support/trainer_state_fixture.dart';
 
-
 class _RecordingWindowController extends LudavaWindowController {
   _RecordingWindowController(this.events) : super(currentWindow: () => null);
 

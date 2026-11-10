@@ -37,7 +37,6 @@ TrainerSessionState _session({
   memoryBase: memoryBase,
 );
 
-
 Widget _status(TrainerSessionState session) => TrainerGameStatus(
   hasSelectedProcess: session.selectedProcessId != null,
   hasProcesses: session.processIds.isNotEmpty,
