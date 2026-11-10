@@ -3,15 +3,17 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
-import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
 import '../../../../support/trainer_state_fixture.dart';
+
+import '../../../../support/mock_trainer_sdk_capability.dart';
 
 
 Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
@@ -22,46 +24,20 @@ Widget _wrap(Store<AppState> store) => StoreProvider<AppState>(
   ),
 );
 
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  int connectCalls = 0;
-  int refreshCalls = 0;
-
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() => connectCalls++;
-
-  @override
-  void refresh() => refreshCalls++;
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
-}
 
 void main() {
   const refreshLabel = 'Refresh values or rediscover RPCS3';
-  late _FakeTrainerSdkCapability capability;
+  late MockTrainerSdkCapability capability;
 
   setUp(() {
     sl.pushNewScope();
-    capability = _FakeTrainerSdkCapability();
+    capability = MockTrainerSdkCapability();
+    when(() => capability.state).thenReturn(TrainerSessionState());
     initDependencies(trainerSdkCapability: capability);
   });
 
   tearDown(() async {
     await sl.popScope();
-    await capability.dispose();
   });
 
   group('Class TrainerGameHeader connected behavior', () {
@@ -97,8 +73,8 @@ void main() {
 
         await tester.tap(refresh);
 
-        expect(capability.connectCalls, 1);
-        expect(capability.refreshCalls, 0);
+        verify(() => capability.connect()).called(1);
+        verifyNever(() => capability.refresh());
         expect(tester.takeException(), isNull);
         semanticsHandle.dispose();
       },
@@ -186,8 +162,8 @@ void main() {
 
       await tester.tap(find.byTooltip(refreshLabel));
 
-      expect(capability.connectCalls, 0);
-      expect(capability.refreshCalls, 1);
+      verifyNever(() => capability.connect());
+      verify(() => capability.refresh()).called(1);
       expect(tester.takeException(), isNull);
     });
   });

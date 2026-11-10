@@ -2,53 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/widgets/ludava_window_title_bar.dart';
-import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../../support/mock_trainer_sdk_capability.dart';
 
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  @override
-  TrainerSessionState get state => TrainerSessionState();
 
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
-}
 
 void main() {
-  late _FakeTrainerSdkCapability capability;
+  late MockTrainerSdkCapability capability;
 
   setUp(() {
     sl.pushNewScope();
-    capability = _FakeTrainerSdkCapability();
+    capability = MockTrainerSdkCapability();
+    when(() => capability.state).thenReturn(TrainerSessionState());
     initDependencies(trainerSdkCapability: capability);
   });
 
   tearDown(() async {
     await sl.popScope();
-    await capability.dispose();
   });
 
   group('Class LudavaWindowTitleBar interaction behavior', () {

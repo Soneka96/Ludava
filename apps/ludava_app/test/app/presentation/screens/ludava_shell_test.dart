@@ -6,58 +6,31 @@ import 'package:ludava_app/app/presentation/widgets/ludava_shutdown_overlay.dart
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_game_header.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/connection/presentation/widgets/rpcs3_process_choice.dart';
-import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/constants/ludava_constants.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:redux/redux.dart';
 
+import '../../../support/mock_trainer_sdk_capability.dart';
 
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  int connectCalls = 0;
-  int refreshCalls = 0;
-  final List<int> selectedProcessIds = [];
 
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() => connectCalls++;
-
-  @override
-  void refresh() => refreshCalls++;
-
-  @override
-  bool selectProcess(int processId) {
-    selectedProcessIds.add(processId);
-    return true;
-  }
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
-}
 
 void main() {
-  late _FakeTrainerSdkCapability capability;
+  late MockTrainerSdkCapability capability;
 
   setUp(() {
     sl.pushNewScope();
-    capability = _FakeTrainerSdkCapability();
+    capability = MockTrainerSdkCapability();
+    when(() => capability.state).thenReturn(TrainerSessionState());
+    when(() => capability.selectProcess(any())).thenReturn(true);
     initDependencies(trainerSdkCapability: capability);
   });
 
   tearDown(() async {
     await sl.popScope();
-    await capability.dispose();
   });
 
   Widget wrap(Widget child, {ThemeData? theme}) => StoreProvider<AppState>(
@@ -127,8 +100,8 @@ void main() {
         await tester.tap(find.byTooltip('Maximize window'));
         await tester.tap(find.byTooltip('Close window'));
 
-        expect(capability.selectedProcessIds, [12]);
-        expect(capability.connectCalls, 1);
+        verify(() => capability.selectProcess(12)).called(1);
+        verify(() => capability.connect()).called(1);
         expect(minimizeCalls, 1);
         expect(maximizeCalls, 1);
         expect(closeCalls, 1);
@@ -169,7 +142,8 @@ void main() {
           find.byTooltip('Refresh values or rediscover RPCS3'),
           warnIfMissed: false,
         );
-        expect(capability.connectCalls + capability.refreshCalls, 0);
+        verifyNever(() => capability.connect());
+        verifyNever(() => capability.refresh());
         expect(find.text('Finishing cleanup'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
