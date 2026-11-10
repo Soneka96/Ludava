@@ -50,6 +50,12 @@ jobs:
         shell: pwsh
         run: .\tool\check_changed_dart_format.ps1
 
+      - name: Inspect failing bridge test formatting (temporary)
+        if: always()
+        shell: pwsh
+        run: dart format --output=show apps/ludava_app/test/integration/features/trainer/services/trainer_write_bridge.integration_test.dart
+
+
       - name: Analyze root compatibility package
         run: dart analyze
 
