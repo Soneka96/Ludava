@@ -11,6 +11,9 @@ import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
+
+import '../../../../support/mock_trainer_sdk_capability.dart';
 import 'package:redux/redux.dart';
 
 
@@ -23,42 +26,18 @@ Widget _wrap(Store<AppState> store, {Key? key}) => StoreProvider<AppState>(
   ),
 );
 
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
-}
-
 void main() {
-  late _FakeTrainerSdkCapability capability;
+  late MockTrainerSdkCapability capability;
 
   setUp(() {
     sl.pushNewScope();
-    capability = _FakeTrainerSdkCapability();
+    capability = MockTrainerSdkCapability();
+    when(() => capability.state).thenReturn(TrainerSessionState());
     initDependencies(trainerSdkCapability: capability);
   });
 
   tearDown(() async {
     await sl.popScope();
-    await capability.dispose();
   });
 
   group('Class Rpcs3ConnectionIndicator connected behavior', () {

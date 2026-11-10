@@ -9,31 +9,10 @@ import 'package:ludava_app/features/trainer/services/trainer_write_bridge.dart';
 import 'package:ludava_app/injection_container.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
+
+import 'support/mock_trainer_sdk_capability.dart';
 import 'package:redux/redux.dart';
-
-class _RegistrationCapability implements TrainerSdkCapability {
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
-}
 
 void main() {
   setUp(() => sl.pushNewScope());
@@ -41,7 +20,9 @@ void main() {
 
   group('Method initDependencies() behaves correctly', () {
     test('Method initDependencies() registers required app dependencies', () {
-      initDependencies(trainerSdkCapability: _RegistrationCapability());
+      final capability = MockTrainerSdkCapability();
+      when(() => capability.state).thenReturn(TrainerSessionState());
+      initDependencies(trainerSdkCapability: capability);
 
       expect(sl.isRegistered<TrainerSdkCapability>(), isTrue);
       expect(sl.isRegistered<SdkOperationGate>(), isTrue);

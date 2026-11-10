@@ -10,6 +10,9 @@ import 'package:ludava_app/shared/theme/ludava_theme_factory.dart';
 import 'package:ludava_app/shared/theme/ludava_theme_tokens.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
+import 'package:mocktail/mocktail.dart';
+
+import '../../support/mock_trainer_sdk_capability.dart';
 import 'package:redux/redux.dart';
 
 Color _stateOverlayColor(Color color, double opacity) => Color.fromARGB(
@@ -182,11 +185,11 @@ void main() {
       'Method LudavaThemeFactory.build() styles Ludava and Material widgets from alternate colors',
       (tester) async {
         sl.pushNewScope();
-        final capability = _FakeTrainerSdkCapability();
+        final capability = MockTrainerSdkCapability();
+        when(() => capability.state).thenReturn(TrainerSessionState());
         initDependencies(trainerSdkCapability: capability);
         addTearDown(() async {
           await sl.popScope();
-          await capability.dispose();
         });
         final colors = GraphiteTealTheme.colors.copyWith(
           surface: Colors.deepPurple,
@@ -258,30 +261,6 @@ void main() {
       },
     );
   });
-}
-
-class _FakeTrainerSdkCapability implements TrainerSdkCapability {
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
 }
 
 /// Resolves a Material state opacity through its 8-bit color alpha channel.

@@ -6,29 +6,7 @@ import 'package:ludava_app/features/trainer/trainer.injection_container.dart';
 import 'package:ludava_app/injection_container.dart' show sl;
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-class _RegistrationCapability implements TrainerSdkCapability {
-  @override
-  TrainerSessionState get state => TrainerSessionState();
-
-  @override
-  Stream<TrainerSessionState> get stateChanges => const Stream.empty();
-
-  @override
-  void connect() {}
-
-  @override
-  void refresh() {}
-
-  @override
-  bool selectProcess(int processId) => false;
-
-  @override
-  GameWriteResult writeField(String fieldId, int value) =>
-      GameWriteResult(status: GameWriteStatus.none, fieldId: fieldId);
-
-  @override
-  Future<void> dispose() async {}
-}
+import '../../support/mock_trainer_sdk_capability.dart';
 
 void main() {
   setUp(() => sl.pushNewScope());
@@ -36,7 +14,7 @@ void main() {
 
   group('Method initTrainerDependencies() behaves correctly', () {
     test('Method initTrainerDependencies() registers trainer dependencies', () {
-      initTrainerDependencies(capability: _RegistrationCapability());
+      initTrainerDependencies(capability: MockTrainerSdkCapability());
 
       expect(sl.isRegistered<TrainerSdkCapability>(), isTrue);
       expect(sl.isRegistered<SdkOperationGate>(), isTrue);
