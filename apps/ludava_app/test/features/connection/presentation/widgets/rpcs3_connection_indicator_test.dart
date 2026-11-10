@@ -43,56 +43,60 @@ void main() {
       'Class Rpcs3ConnectionIndicator shows process status and semantics',
       (tester) async {
         final semanticsHandle = tester.ensureSemantics();
-        addTearDown(semanticsHandle.dispose);
-        final tokens = LudavaTheme.graphiteAndTeal
-            .extension<LudavaThemeTokens>()!;
-        final store = Store<AppState>(
-          (state, action) => state,
-          initialState: AppState(
-            trainer: TrainerState(session: TrainerSessionState()),
-          ),
-        );
-        final cases = <(List<int>, int?, String, Color)>[
-          (const [], null, 'RPCS3 not detected', tokens.textMuted),
-          (
-            const [42],
-            null,
-            'RPCS3 detected · awaiting process selection',
-            tokens.warning,
-          ),
-          (
-            const [42, 84],
-            null,
-            'RPCS3 detected · select one of 2 processes',
-            tokens.warning,
-          ),
-          (const [42], 42, 'RPCS3 connected · process 42', tokens.success),
-          (
-            const [84],
-            42,
-            'RPCS3 detected · awaiting process selection',
-            tokens.warning,
-          ),
-        ];
-
-        for (var index = 0; index < cases.length; index++) {
-          final (ids, selectedId, message, color) = cases[index];
-          viewModel = _MockConnectionIndicatorViewModel();
-          when(() => viewModel.processIds).thenReturn(ids);
-          when(() => viewModel.selectedProcessId).thenReturn(selectedId);
-          await tester.pumpWidget(_wrap(store, key: ValueKey(index)));
-
-          expect(
-            tester.widgetList<Tooltip>(find.byType(Tooltip)).single.message,
-            message,
+        try {
+          final tokens = LudavaTheme.graphiteAndTeal
+              .extension<LudavaThemeTokens>()!;
+          final store = Store<AppState>(
+            (state, action) => state,
+            initialState: AppState(
+              trainer: TrainerState(session: TrainerSessionState()),
+            ),
           );
-          expect(find.bySemanticsLabel(message), findsOneWidget);
-          expect(
-            tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color,
-            color,
-          );
-          expect(tester.widget<Text>(find.text('RPCS3')).style?.color, color);
-          expect(tester.takeException(), isNull);
+          final cases = <(List<int>, int?, String, Color)>[
+            (const [], null, 'RPCS3 not detected', tokens.textMuted),
+            (const [], 42, 'RPCS3 not detected', tokens.textMuted),
+            (
+              const [42],
+              null,
+              'RPCS3 detected · awaiting process selection',
+              tokens.warning,
+            ),
+            (
+              const [42, 84],
+              null,
+              'RPCS3 detected · select one of 2 processes',
+              tokens.warning,
+            ),
+            (const [42], 42, 'RPCS3 connected · process 42', tokens.success),
+            (
+              const [84],
+              42,
+              'RPCS3 detected · awaiting process selection',
+              tokens.warning,
+            ),
+          ];
+
+          for (var index = 0; index < cases.length; index++) {
+            final (ids, selectedId, message, color) = cases[index];
+            viewModel = _MockConnectionIndicatorViewModel();
+            when(() => viewModel.processIds).thenReturn(ids);
+            when(() => viewModel.selectedProcessId).thenReturn(selectedId);
+            await tester.pumpWidget(_wrap(store, key: ValueKey(index)));
+
+            expect(
+              tester.widgetList<Tooltip>(find.byType(Tooltip)).single.message,
+              message,
+            );
+            expect(find.bySemanticsLabel(message), findsOneWidget);
+            expect(
+              tester.widget<Icon>(find.byIcon(Icons.circle_rounded)).color,
+              color,
+            );
+            expect(tester.widget<Text>(find.text('RPCS3')).style?.color, color);
+            expect(tester.takeException(), isNull);
+          }
+        } finally {
+          semanticsHandle.dispose();
         }
       },
     );
