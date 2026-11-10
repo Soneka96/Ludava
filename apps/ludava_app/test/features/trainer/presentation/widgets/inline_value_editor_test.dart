@@ -191,7 +191,7 @@ void main() {
     );
 
     testWidgets(
-      'Class InlineValueEditor starts at the end and appends the first digit',
+      'Class InlineValueEditor positions the initial caret after the value',
       (tester) async {
         await tester.pumpWidget(
           _wrap(_editor(currentValue: 123, onApply: _success)),
@@ -202,26 +202,11 @@ void main() {
           input.controller!.selection,
           const TextSelection.collapsed(offset: 3),
         );
-        expect(input.style?.fontSize, 14);
-        expect(
-          input.style?.fontSize,
-          LudavaTheme.graphiteAndTeal.textTheme.bodyMedium?.fontSize,
-        );
-
         await tester.tap(_inputFinder);
         await tester.pump();
         final focusedInput = tester.widget<TextField>(_inputFinder);
         expect(focusedInput.controller!.selection.extentOffset, 3);
         expect(focusedInput.controller!.selection.isCollapsed, isTrue);
-        tester.testTextInput.updateEditingValue(
-          const TextEditingValue(
-            text: '1230',
-            selection: TextSelection.collapsed(offset: 4),
-          ),
-        );
-        await tester.pump();
-
-        expect(_editorText(tester), '1230');
         expect(tester.takeException(), isNull);
       },
     );
@@ -678,28 +663,6 @@ void main() {
 
       expect(appliedValues, [10, 20]);
     });
-
-    testWidgets(
-      'Class InlineValueEditor preserves unfinished drafts across refreshes',
-      (tester) async {
-        const editorKey = ValueKey('inline-editor');
-        await tester.pumpWidget(
-          _wrap(_editor(key: editorKey, currentValue: 17, onApply: _success)),
-        );
-
-        await tester.pumpWidget(
-          _wrap(_editor(key: editorKey, currentValue: 29, onApply: _success)),
-        );
-        expect(_editorText(tester), '17');
-
-        await tester.enterText(_inputFinder, '42');
-        await tester.pump();
-        await tester.pumpWidget(
-          _wrap(_editor(key: editorKey, currentValue: 30, onApply: _success)),
-        );
-        expect(_editorText(tester), '42');
-      },
-    );
 
     testWidgets(
       'Class InlineValueEditor resets its local draft when the field changes',

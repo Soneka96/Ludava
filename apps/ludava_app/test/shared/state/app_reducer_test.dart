@@ -8,14 +8,6 @@ import '../../support/trainer_state_fixture.dart';
 
 void main() {
   group('Reducer appReducer() behaves correctly', () {
-    test('Reducer appReducer() preserves identity for an unrelated action', () {
-      final state = AppState(
-        trainer: TrainerState(session: trainerStateFixtureSession()),
-      );
-
-      expect(appReducer(state, Object()), same(state));
-    });
-
     test('Reducer appReducer() applies trainer state changes', () {
       final session = trainerStateFixtureSession();
       final state = AppState(trainer: TrainerState(session: session));

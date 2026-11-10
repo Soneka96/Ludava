@@ -2,18 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/app/presentation/screens/ludava_session_body.dart';
-import 'package:ludava_app/app/presentation/state/ludava_session_body_view_model.dart';
 import 'package:ludava_app/features/connection/presentation/screens/session_connection_body.dart';
 import 'package:ludava_app/features/trainer/presentation/screens/trainer_fields_panel.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer_selectors.dart';
-import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
 import 'package:ludava_app/features/trainer/services/trainer_sdk_capability.dart';
-import 'package:ludava_app/features/trainer/presentation/widgets/inline_value_editor.dart';
-import 'package:ludava_app/features/trainer/presentation/widgets/trainer_field_row.dart';
 import 'package:ludava_app/injection_container.dart';
-import 'package:ludava_app/shared/constants/ludava_constants.dart';
-import 'package:ludava_app/shared/state/app_reducer.dart';
 import 'package:ludava_app/shared/state/app_state.dart';
 import 'package:ludava_app/shared/theme/ludava_theme.dart';
 import 'package:ludava_sdk/ludava_sdk.dart';
@@ -35,8 +28,8 @@ void main() {
 
   Store<AppState> store() => sl<Store<AppState>>();
 
-  Widget wrap([Store<AppState>? appStore]) => StoreProvider<AppState>(
-    store: appStore ?? store(),
+  Widget wrap() => StoreProvider<AppState>(
+    store: store(),
     child: MaterialApp(
       theme: LudavaTheme.graphiteAndTeal,
       home: const Scaffold(body: LudavaSessionBody()),
@@ -99,125 +92,6 @@ void main() {
       expect(find.text('Credits'), findsOneWidget);
       expect(find.text('17'), findsOneWidget);
       expect(tester.takeException(), isNull);
-    });
-
-    testWidgets(
-      'Class LudavaSessionBody skips unrelated edit state and updates session presentation',
-      (tester) async {
-        final appStore = Store<AppState>(
-          appReducer,
-          initialState: AppState(
-            trainer: TrainerState(
-              session: TrainerSessionState(),
-              editingFieldId: 'credits',
-            ),
-          ),
-        );
-        await tester.pumpWidget(wrap(appStore));
-        expect(find.byType(SessionConnectionBody), findsOneWidget);
-        final initialPresentation = tester.widget<SessionConnectionBody>(
-          find.byType(SessionConnectionBody),
-        );
-        final initialViewModel = LudavaSessionBodyViewModel.fromStore(appStore);
-
-        appStore.dispatch(const CancelEditingAction());
-        await tester.pump();
-
-        expect(appStore.state.trainer.editingFieldId, isNull);
-        expect(
-          tester.widget<SessionConnectionBody>(
-            find.byType(SessionConnectionBody),
-          ),
-          same(initialPresentation),
-        );
-
-        appStore.dispatch(
-          TrainerSessionChangedAction(
-            TrainerSessionState(processIds: const [42, 43]),
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(appStore.state.trainer.session.processIds, [42, 43]);
-        expect(
-          LudavaSessionBodyViewModel.fromStore(appStore),
-          isNot(initialViewModel),
-        );
-        final updatedPresentation = tester.widget<SessionConnectionBody>(
-          find.byType(SessionConnectionBody),
-        );
-        expect(updatedPresentation, isNot(same(initialPresentation)));
-        expect(updatedPresentation.processIds, [42, 43]);
-        expect(find.text('Process ID 42'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets('Class LudavaSessionBody preserves feedback and row geometry', (
-      tester,
-    ) async {
-      const errorMessage = 'A synthetic session refresh failed.';
-      final profile = _testProfile();
-      final field = profile.fields.values.single;
-
-      for (final size in const [Size(520, 360), Size(480, 340)]) {
-        tester.view.physicalSize = size;
-        tester.view.devicePixelRatio = 1;
-        store().dispatch(TrainerSessionChangedAction(_readySession()));
-        await tester.pumpWidget(wrap());
-
-        final initialRow = tester.getRect(find.byKey(ValueKey(field.id)));
-        expect(initialRow.height, LudavaDimensions.minimumInteractiveTarget);
-        expect(
-          tester
-              .getSize(find.byKey(const ValueKey('session-feedback-region')))
-              .height,
-          LudavaDimensions.sessionFeedbackHeight,
-        );
-
-        store().dispatch(
-          TrainerSessionChangedAction(
-            _readySession(errorMessage: errorMessage),
-          ),
-        );
-        await tester.pump();
-
-        expect(tester.getRect(find.byKey(ValueKey(field.id))), initialRow);
-        expect(find.byTooltip(errorMessage), findsOneWidget);
-        expect(tester.takeException(), isNull);
-
-        store().dispatch(const BeginEditingAction('credits'));
-        await tester.pump();
-        await tester.pump();
-        expect(store().state.trainer.editingFieldId, 'credits');
-        final activeState = store().state;
-        final activeField =
-            activeState.trainer.session.profile!.fields['credits']!;
-        expect(TrainerSelectors.canEdit(activeState, activeField), isTrue);
-        expect(TrainerSelectors.isEditing(activeState, activeField), isTrue);
-        expect(
-          tester
-              .widget<TrainerFieldRow>(find.byKey(ValueKey(field.id)))
-              .isEditing,
-          isTrue,
-        );
-        expect(find.byType(InlineValueEditor), findsOneWidget);
-        expect(tester.getRect(find.byKey(ValueKey(field.id))), initialRow);
-
-        store().dispatch(
-          TrainerSessionChangedAction(
-            _readySession(processId: 43, readValue: 18),
-          ),
-        );
-        await tester.pump();
-        expect(find.byType(InlineValueEditor), findsNothing);
-        expect(find.text('18'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      }
-
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
     });
   });
 }

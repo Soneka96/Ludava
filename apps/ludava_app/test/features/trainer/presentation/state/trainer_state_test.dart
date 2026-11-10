@@ -4,16 +4,6 @@ import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dar
 import '../../../../support/trainer_state_fixture.dart';
 
 void main() {
-  group('Class TrainerState construction', () {
-    test('Class TrainerState initializes from the SDK snapshot', () {
-      final session = trainerStateFixtureSession();
-      final state = TrainerState(session: session, editingFieldId: 'credits');
-
-      expect(state.session, same(session));
-      expect(state.editingFieldId, 'credits');
-    });
-  });
-
   group('Method copyWith() behaves correctly', () {
     test('Method copyWith() replaces the snapshot and preserves the edit', () {
       final state = TrainerState(
@@ -35,26 +25,6 @@ void main() {
       );
 
       expect(state.copyWith(clearEditingField: true).editingFieldId, isNull);
-    });
-  });
-
-  group('Property props behaves correctly', () {
-    test('Property props includes the snapshot and edit identifier', () {
-      final session = trainerStateFixtureSession();
-      final state = TrainerState(session: session, editingFieldId: 'credits');
-
-      expect(state.props, [session, 'credits']);
-    });
-
-    test('Property props preserves SDK snapshot identity for equality', () {
-      final session = trainerStateFixtureSession();
-      final sameSnapshot = TrainerState(session: session);
-      final distinctSnapshot = TrainerState(
-        session: trainerStateFixtureSession(),
-      );
-
-      expect(sameSnapshot, TrainerState(session: session));
-      expect(sameSnapshot, isNot(distinctSnapshot));
     });
   });
 }

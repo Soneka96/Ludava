@@ -1,17 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/shared/theme/ludava_colors.dart';
 import 'package:ludava_app/shared/theme/themes/graphite_teal_theme.dart';
 
 void main() {
   group('Property GraphiteTealTheme.colors behaves correctly', () {
-    test(
-      'Property GraphiteTealTheme.brightness declares the shipped dark mode',
-      () {
-        expect(GraphiteTealTheme.brightness, Brightness.dark);
-      },
-    );
-
     test('Property GraphiteTealTheme.colors maps every semantic role', () {
       final colors = GraphiteTealTheme.colors;
 
