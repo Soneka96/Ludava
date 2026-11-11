@@ -4,13 +4,21 @@ This is Ludava's **curated backlog of future project-level initiatives**, not a 
 
 New game profiles, memory fields, routine fixes, research experiments and CI results do **not** need roadmap entries unless they become a deliberate broader initiative.
 
-## Next — Flutter Windows application
+## Next — Remove production verification-status bureaucracy
 
-**Goal:** Replace terminal interaction for normal gameplay with a comfortable desktop GUI suitable for a laptop or a handheld gaming PC.
+**Goal:** A game profile and field registered on `main` is an owner-approved, working read-and-write capability, not a candidate whose approval is tracked in code.
 
-**Ideas:** Create `apps/ludava_app` as a Flutter Windows frontend consuming only public `ludava_sdk` capabilities. Show RPCS3 connection and active-game status, currently available fields, values and understandable errors. Support refresh/re-detection, simple value editing and reliable indication of read-only or unavailable fields. Keep the SDK as the source of process identity, session state, and write authorization. No separate game engine or duplicated frontend policy.
+**Ideas:** Remove `VerificationStatus` (`experimental`, `researchConfirmed`, `verified`, `unsupported`, and `none`), the separate `readStatus` and `writeStatus` on `GameProfile` and `GameField`, and their evidence-based `canRead`/`canWrite` gates. Do not replace them with a different approval flag or status system. Research and test incomplete mappings on development branches; do not merge a new game field into `main` until the owner confirms both a successful Ludava read and a guarded write with the intended in-game result, using **either** the TUI **or** Flutter. One frontend is sufficient because both share the SDK. Keep sources, observed build identities, and limitations in the game research records. Retain all runtime safety protections: current process/session and executable identity, guest base, bounds, preliminary reads, complete native transfer, matching read-back, and meaningful read/write operation results. This initiative does not remove runtime failure statuses.
 
-**Done when:** The Windows Flutter build can connect to RPCS3, detect a supported game, read Bolts, perform a guarded edit, report failures clearly, and work in a real gameplay session without terminal commands.
+**Done when:** Production profiles contain only owner-approved working fields without verification/approval status metadata; the SDK and its tests no longer depend on that metadata; authoritative development and architecture rules are updated in their own documents; and no runtime memory or identity safeguard is weakened.
+
+## Next — Refine Flutter Windows UI and validate gameplay
+
+**Goal:** Make the existing Flutter desktop app a cohesive, compact, native-feeling Windows utility, suitable for a laptop and a handheld gaming PC.
+
+**Ideas:** Improve visual hierarchy, spacing, alignment, content density, and the relationship between the title bar, connection status, active-game header, Refresh action, and dynamic field rows; remove unnecessary empty space. Redesign inline numeric editing so the value, editor, apply, cancel, errors, and focus behave coherently without moving or resizing the field row, including at small window sizes. Investigate native Windows 11 maximize-button hover and Snap Layouts integration instead of showing only an ordinary Flutter tooltip; preserve native minimize/maximize/restore/close behavior. Keep the existing Graphite & Teal tokens, Comfortable style preset, a single Refresh action, stable geometry, touch and physical keyboard usability, and SDK/Redux/ViewModel boundaries. Do not start a new UI framework or theme architecture.
+
+**Done when:** Normal, editing, and error states are visually coherent and free of overflow or layout shifts at 520 × 360 and 480 × 340 logical pixels with one or multiple fields; title-bar hover and window controls behave appropriately on Windows 11; mouse, keyboard, and touch input work; and the Flutter app successfully detects a supported game and performs a guarded read/write during a live RPCS3 session without terminal commands.
 
 ## Later — Repository presentation and branding
 
