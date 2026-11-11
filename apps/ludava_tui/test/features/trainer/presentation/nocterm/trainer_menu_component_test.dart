@@ -26,6 +26,7 @@ TrainerMenuComponent _menu(
 
 TrainerSessionState _session({
   GameProfile? profile,
+  GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
   Map<String, GameReadResult> reads = const {
     'credits': GameReadResult(
       status: GameReadStatus.success,
@@ -52,7 +53,7 @@ TrainerSessionState _session({
       status: GameDetectionStatus.supportedGame,
       processId: 42,
       gameTitle: selectedProfile.gameName,
-      confidence: GameIdentityConfidence.confirmed,
+      confidence: confidence,
       profile: selectedProfile,
       evidenceDescription: 'Synthetic menu fixture.',
     ),
@@ -65,6 +66,7 @@ GameProfile _profile({
   bool includeWeapons = true,
   bool includeSecret = false,
   bool includeFields = true,
+  bool unboundedCredits = false,
 }) => GameProfile(
   id: id,
   gameName: 'Synthetic game',
@@ -78,8 +80,8 @@ GameProfile _profile({
         guestOffset: 0x1000,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        minimumValue: 0,
-        maximumValue: 0xffffffff,
+        minimumValue: unboundedCredits ? null : 0,
+        maximumValue: unboundedCredits ? null : 0xffffffff,
       ),
     if (includeFields && includeWeapons)
       'weapons': GameField(
@@ -190,54 +192,73 @@ void main() {
     );
 
     test(
-      'Class TrainerMenuComponent changes edit behavior by field write status',
+      'Class TrainerMenuComponent opens readable unbounded fields for unconfirmed profiles',
       () async {
-        await testNocterm('mixed field write status', (tester) async {
+        await testNocterm('unconfirmed profile and unbounded field', (
+          tester,
+        ) async {
           final openedFields = <GameField>[];
-          final profile = GameProfile(
-            id: 'mixed-test',
-            gameName: 'Mixed test game',
-            buildId: 'MIXED',
-            executable: 'mixed.self',
-            fields: {
-              'credits': GameField(
-                id: 'credits',
-                name: 'Credits',
-                guestOffset: 0x1000,
-                valueType: MemoryValueType.unsigned32,
-                byteOrder: ByteOrder.big,
-              ),
-              'weapons': GameField(
-                id: 'weapons',
-                name: 'Weapons',
-                guestOffset: 0x2000,
-                valueType: MemoryValueType.unsigned32,
-                byteOrder: ByteOrder.big,
-                minimumValue: 0,
-                maximumValue: 100,
-              ),
-            },
-          );
-
           await tester.pumpComponent(
-            _menu(_session(profile: profile), onOpenField: openedFields.add),
+            _menu(
+              _session(
+                profile: _profile(unboundedCredits: true),
+                confidence: GameIdentityConfidence.manuallySelected,
+              ),
+              onOpenField: openedFields.add,
+            ),
           );
 
-          expect(
-            tester.terminalState,
-            containsText('Selected field is unavailable'),
+          expect(tester.terminalState, containsText('1–9 Edit'));
+          await tester.sendEnter();
+          await tester.sendKey(LogicalKey.digit1);
+          await tester.sendArrowDown();
+          await tester.sendEnter();
+          await tester.sendKey(LogicalKey.digit2);
+
+          expect(openedFields.map((field) => field.id), [
+            'credits',
+            'credits',
+            'weapons',
+            'weapons',
+          ]);
+          expect(tester.terminalState, isNot(containsText('(unavailable)')));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerMenuComponent applies one read-availability rule to Enter and shortcuts',
+      () async {
+        await testNocterm('failed read and readable field', (tester) async {
+          final openedFields = <GameField>[];
+          await tester.pumpComponent(
+            _menu(
+              _session(
+                reads: {
+                  'credits': const GameReadResult(
+                    status: GameReadStatus.readFailed,
+                    fieldId: 'credits',
+                  ),
+                  'weapons': const GameReadResult(
+                    status: GameReadStatus.success,
+                    fieldId: 'weapons',
+                    value: 7,
+                  ),
+                },
+              ),
+              onOpenField: openedFields.add,
+            ),
           );
+
           await tester.sendEnter();
           await tester.sendKey(LogicalKey.digit1);
           expect(openedFields, isEmpty);
+          expect(tester.terminalState, containsText('Unavailable'));
 
           await tester.sendArrowDown();
-          expect(tester.terminalState, containsText('1–9 Edit'));
           await tester.sendEnter();
-          expect(openedFields.map((field) => field.id), ['weapons']);
-
-          await tester.sendKey(LogicalKey.digit1);
-          expect(openedFields.map((field) => field.id), ['weapons']);
+          await tester.sendKey(LogicalKey.digit2);
+          expect(openedFields.map((field) => field.id), ['weapons', 'weapons']);
         });
       },
     );

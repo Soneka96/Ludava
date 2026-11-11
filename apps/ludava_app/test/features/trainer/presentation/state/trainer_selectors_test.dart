@@ -31,7 +31,6 @@ void main() {
       expect(rows.map((row) => row.field.id), ['credits', 'scrap']);
       expect(rows.first.readResult?.value, 25);
       expect(rows.first.writeResult?.requestedValue, 26);
-      expect(rows.first.canWrite, isTrue);
       expect(rows.first.isEditing, isTrue);
       expect(rows.last.readResult, isNull);
       expect(rows.last.writeResult, isNull);
@@ -39,7 +38,7 @@ void main() {
     });
 
     test(
-      'Method fieldRows() requires a successful current read for editing',
+      'Method fieldRows() preserves an active edit independently of reads',
       () {
         final session = trainerStateFixtureSession(
           readResult: const GameReadResult(
@@ -51,8 +50,11 @@ void main() {
 
         final row = TrainerSelectors.fieldRows(state).single;
 
-        expect(row.canWrite, isFalse);
-        expect(row.isEditing, isFalse);
+        final active = AppState(
+          trainer: TrainerState(session: session, editingFieldId: 'credits'),
+        );
+        expect(row.readResult, isNotNull);
+        expect(TrainerSelectors.fieldRows(active).single.isEditing, isTrue);
       },
     );
 
@@ -79,7 +81,7 @@ void main() {
 
         final row = TrainerSelectors.fieldRows(state).single;
         expect(row.readResult, isNull);
-        expect(row.canWrite, isFalse);
+        expect(row.isEditing, isFalse);
       },
     );
 
@@ -89,6 +91,24 @@ void main() {
       );
 
       expect(TrainerSelectors.fieldRows(state), isEmpty);
+    });
+
+    test('Method fieldRows() omits a read result for a different field', () {
+      final state = AppState(
+        trainer: TrainerState(
+          session: trainerStateFixtureSession(
+            readResult: const GameReadResult(
+              status: GameReadStatus.success,
+              fieldId: 'other-field',
+              value: 25,
+            ),
+          ),
+        ),
+      );
+
+      final row = TrainerSelectors.fieldRows(state).single;
+
+      expect(row.readResult, isNull);
     });
 
     test('Method fieldRows() returns an immutable projection', () {

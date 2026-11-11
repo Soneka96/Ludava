@@ -1,7 +1,7 @@
 # Task 10 — Slower game identity checks and failure recheck
 
 **Status:** Planned, not implemented or live-validated.
-**Prerequisite:** The existing static verification-status cleanup in docs/ROADMAP.md must be merged before any Flutter UI task.
+**Prerequisite:** PR #16 must be merged before this task begins.
 **Dependencies:** Task 07, Task 09.
 **PR scope:** One primary responsibility in a focused branch from latest merged main.
 

@@ -16,6 +16,7 @@ TrainerSessionState trainerStateFixtureSession({
   String fieldId = 'credits',
   List<String> additionalFieldIds = const [],
   String gameName = 'Synthetic Game',
+  String buildId = 'test-build',
   bool emptyProfile = false,
   int? memoryBase = 0x1000,
   int processId = 42,
@@ -27,16 +28,29 @@ TrainerSessionState trainerStateFixtureSession({
   GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame,
   String profileId = 'synthetic-profile',
   String executableHash = 'synthetic-hash',
+  int guestOffset = 0x100,
+  MemoryValueType valueType = MemoryValueType.unsigned32,
+  ByteOrder byteOrder = ByteOrder.little,
+  int? minimumValue = 0,
+  int? maximumValue = 100000,
 }) {
   final fields = <String, GameField>{
     if (!emptyProfile)
       for (final id in [fieldId, ...additionalFieldIds])
-        id: trainerStateFixtureField(id: id),
+        id: GameField(
+          id: id,
+          name: 'Credits',
+          guestOffset: guestOffset,
+          valueType: valueType,
+          byteOrder: byteOrder,
+          minimumValue: minimumValue,
+          maximumValue: maximumValue,
+        ),
   };
   final profile = GameProfile(
     id: profileId,
     gameName: gameName,
-    buildId: 'test-build',
+    buildId: buildId,
     executable: 'synthetic.exe',
     executableHash: executableHash,
     fields: fields,

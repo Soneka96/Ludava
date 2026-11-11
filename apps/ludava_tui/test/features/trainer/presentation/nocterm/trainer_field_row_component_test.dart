@@ -21,7 +21,6 @@ void main() {
             TrainerFieldRowComponent(
               index: 0,
               field: _field,
-              canEdit: true,
               readResult: GameReadResult(
                 status: GameReadStatus.success,
                 fieldId: 'credits',
@@ -39,14 +38,13 @@ void main() {
     );
 
     test(
-      'Class TrainerFieldRowComponent labels an unavailable target',
+      'Class TrainerFieldRowComponent shows a readable value without permission labels',
       () async {
         await testNocterm('unavailable target field row', (tester) async {
           await tester.pumpComponent(
             TrainerFieldRowComponent(
               index: 0,
               field: _field,
-              canEdit: false,
               readResult: const GameReadResult(
                 status: GameReadStatus.success,
                 fieldId: 'credits',
@@ -56,11 +54,9 @@ void main() {
             ),
           );
 
-          expect(
-            tester.terminalState,
-            containsText('1. Credits (unavailable)'),
-          );
+          expect(tester.terminalState, containsText('1. Credits'));
           expect(tester.terminalState, containsText('1,234'));
+          expect(tester.terminalState, isNot(containsText('(unavailable)')));
         });
       },
     );
@@ -73,7 +69,6 @@ void main() {
             TrainerFieldRowComponent(
               index: 0,
               field: _field,
-              canEdit: false,
               readResult: const GameReadResult(
                 status: GameReadStatus.readFailed,
                 fieldId: 'credits',
@@ -97,7 +92,6 @@ void main() {
             TrainerFieldRowComponent(
               index: 0,
               field: _field,
-              canEdit: false,
               readResult: null,
               selected: false,
             ),
@@ -105,6 +99,29 @@ void main() {
 
           expect(tester.terminalState, containsText('Unavailable'));
           expect(tester.terminalState, isNot(containsText('0')));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerFieldRowComponent rejects a read for another field',
+      () async {
+        await testNocterm('mismatched field read result', (tester) async {
+          await tester.pumpComponent(
+            TrainerFieldRowComponent(
+              index: 0,
+              field: _field,
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'weapons',
+                value: 1234,
+              ),
+              selected: false,
+            ),
+          );
+
+          expect(tester.terminalState, containsText('Unavailable'));
+          expect(tester.terminalState, isNot(containsText('1,234')));
         });
       },
     );

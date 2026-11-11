@@ -28,7 +28,7 @@ abstract final class GameMemoryOutput {
       case GameReadStatus.none:
         lines.add('Status: no read attempted');
       case GameReadStatus.unsupportedProfile:
-        lines.add('Status: profile does not match the current game identity');
+        lines.add('Status: selected profile is unsupported for this request');
       case GameReadStatus.unsupportedField:
         lines.add('Status: field is not registered in the profile');
       case GameReadStatus.invalidMapping:

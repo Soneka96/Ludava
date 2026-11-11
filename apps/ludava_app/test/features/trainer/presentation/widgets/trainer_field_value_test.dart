@@ -22,6 +22,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           TrainerFieldValue(
+            fieldId: 'credits',
             readResult: const GameReadResult(
               status: GameReadStatus.success,
               fieldId: 'credits',
@@ -58,6 +59,7 @@ void main() {
         await tester.pumpWidget(
           _wrap(
             const TrainerFieldValue(
+              fieldId: 'credits',
               readResult: GameReadResult(
                 status: GameReadStatus.success,
                 fieldId: 'credits',
@@ -86,6 +88,7 @@ void main() {
         await tester.pumpWidget(
           _wrap(
             TrainerFieldValue(
+              fieldId: 'credits',
               readResult: const GameReadResult(
                 status: GameReadStatus.success,
                 fieldId: 'credits',
@@ -109,13 +112,14 @@ void main() {
       'Class TrainerFieldValue distinguishes unavailable and failed reads',
       (tester) async {
         await tester.pumpWidget(
-          _wrap(const TrainerFieldValue(readResult: null)),
+          _wrap(const TrainerFieldValue(fieldId: 'credits', readResult: null)),
         );
         expect(find.text('Unavailable'), findsOneWidget);
 
         await tester.pumpWidget(
           _wrap(
             const TrainerFieldValue(
+              fieldId: 'credits',
               readResult: GameReadResult(
                 status: GameReadStatus.readFailed,
                 fieldId: 'credits',
@@ -128,6 +132,7 @@ void main() {
         await tester.pumpWidget(
           _wrap(
             const TrainerFieldValue(
+              fieldId: 'credits',
               readResult: GameReadResult(
                 status: GameReadStatus.success,
                 fieldId: 'credits',
@@ -137,6 +142,21 @@ void main() {
           ),
         );
         expect(find.text('17'), findsOneWidget);
+
+        await tester.pumpWidget(
+          _wrap(
+            const TrainerFieldValue(
+              fieldId: 'credits',
+              readResult: GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'scrap',
+                value: 99,
+              ),
+            ),
+          ),
+        );
+        expect(find.text('Unavailable'), findsOneWidget);
+        expect(find.text('99'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );

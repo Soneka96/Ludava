@@ -51,16 +51,19 @@ Future<void> _replaceAll(NoctermTester tester, String text) async {
   }
 }
 
-GameField _field({int? minimumValue = 0, int? maximumValue = 4294967295}) =>
-    GameField(
-      id: 'credits',
-      name: 'Credits',
-      guestOffset: 0x1000,
-      valueType: MemoryValueType.unsigned32,
-      byteOrder: ByteOrder.big,
-      minimumValue: minimumValue,
-      maximumValue: maximumValue,
-    );
+GameField _field({
+  int? minimumValue = 0,
+  int? maximumValue = 4294967295,
+  int guestOffset = 0x1000,
+}) => GameField(
+  id: 'credits',
+  name: 'Credits',
+  guestOffset: guestOffset,
+  valueType: MemoryValueType.unsigned32,
+  byteOrder: ByteOrder.big,
+  minimumValue: minimumValue,
+  maximumValue: maximumValue,
+);
 
 class _EditorHost extends StatefulComponent {
   final GameField field;
@@ -546,25 +549,29 @@ void main() {
     );
 
     test(
-      'Class TrainerValueEditorComponent rejects values above the unsigned range',
+      'Class TrainerValueEditorComponent submits out-of-range values to the SDK',
       () async {
         await testNocterm('unsigned overflow', (tester) async {
-          var applyCount = 0;
+          final appliedValues = <int>[];
           await tester.pumpComponent(
             _editor(
-              onApply: (_) {
-                applyCount++;
-                return _success(0);
+              onApply: (value) {
+                appliedValues.add(value);
+                return const GameWriteResult(
+                  status: GameWriteStatus.invalidValue,
+                  fieldId: 'credits',
+                  requestedValue: 4294967296,
+                );
               },
             ),
           );
           await _replaceAll(tester, '4294967296');
           await tester.sendEnter();
 
-          expect(applyCount, 0);
+          expect(appliedValues, [4294967296]);
           expect(
             tester.terminalState,
-            containsText('Enter a value from 0 to 4,294,967,295.'),
+            containsText('outside the allowed range'),
           );
         });
       },
@@ -631,49 +638,63 @@ void main() {
     );
 
     test(
-      'Class TrainerValueEditorComponent rejects a value below the minimum',
+      'Class TrainerValueEditorComponent leaves the lower bound to the SDK',
       () async {
         await testNocterm('below minimum', (tester) async {
-          var applyCount = 0;
+          final appliedValues = <int>[];
           await tester.pumpComponent(
             _editor(
               field: _field(minimumValue: 10, maximumValue: 20),
               currentValue: 15,
-              onApply: (_) {
-                applyCount++;
-                return _success(9);
+              onApply: (value) {
+                appliedValues.add(value);
+                return const GameWriteResult(
+                  status: GameWriteStatus.invalidValue,
+                  fieldId: 'credits',
+                  requestedValue: 9,
+                );
               },
             ),
           );
           await _replaceAll(tester, '9');
           await tester.sendEnter();
 
-          expect(applyCount, 0);
-          expect(tester.terminalState, containsText('from 10 to 20'));
+          expect(appliedValues, [9]);
+          expect(
+            tester.terminalState,
+            containsText('outside the allowed range'),
+          );
         });
       },
     );
 
     test(
-      'Class TrainerValueEditorComponent rejects a value above the maximum',
+      'Class TrainerValueEditorComponent leaves the upper bound to the SDK',
       () async {
         await testNocterm('above maximum', (tester) async {
-          var applyCount = 0;
+          final appliedValues = <int>[];
           await tester.pumpComponent(
             _editor(
               field: _field(minimumValue: 10, maximumValue: 20),
               currentValue: 15,
-              onApply: (_) {
-                applyCount++;
-                return _success(21);
+              onApply: (value) {
+                appliedValues.add(value);
+                return const GameWriteResult(
+                  status: GameWriteStatus.invalidValue,
+                  fieldId: 'credits',
+                  requestedValue: 21,
+                );
               },
             ),
           );
           await _replaceAll(tester, '21');
           await tester.sendEnter();
 
-          expect(applyCount, 0);
-          expect(tester.terminalState, containsText('from 10 to 20'));
+          expect(appliedValues, [21]);
+          expect(
+            tester.terminalState,
+            containsText('outside the allowed range'),
+          );
         });
       },
     );
@@ -735,29 +756,41 @@ void main() {
     );
 
     test(
-      'Class TrainerValueEditorComponent disables editing when either bound is absent',
+      'Class TrainerValueEditorComponent allows editing when bounds are absent',
       () async {
         await testNocterm('one missing bound', (tester) async {
           for (final field in [
             _field(minimumValue: null),
             _field(maximumValue: null),
           ]) {
-            var applyCount = 0;
+            final appliedValues = <int>[];
             await tester.pumpComponent(
               _editor(
                 field: field,
-                onApply: (_) {
-                  applyCount++;
-                  return _success(124);
+                onApply: (value) {
+                  appliedValues.add(value);
+                  return GameWriteResult(
+                    status: GameWriteStatus.invalidValue,
+                    fieldId: 'credits',
+                    requestedValue: value,
+                  );
                 },
               ),
             );
             final input = tester.findAllComponents<TextField>().single;
 
-            expect(input.enabled, isFalse);
-            expect(tester.terminalState, containsText('no valid value range'));
+            expect(input.enabled, isTrue);
+            expect(
+              tester.terminalState,
+              isNot(containsText('no valid value range')),
+            );
+            await _replaceAll(tester, '124');
             await tester.sendEnter();
-            expect(applyCount, 0);
+            expect(appliedValues, [124]);
+            expect(
+              tester.terminalState,
+              containsText('outside the allowed range'),
+            );
           }
         });
       },
@@ -812,7 +845,7 @@ void main() {
     );
 
     test(
-      'Class TrainerValueEditorComponent resets text and feedback when the value changes',
+      'Class TrainerValueEditorComponent preserves its draft across value changes and failed reads',
       () async {
         await testNocterm('current value update', (tester) async {
           final appliedValues = <int>[];
@@ -827,21 +860,20 @@ void main() {
             ),
           );
           await tester.enterText('4');
-          await tester.sendEnter();
-          expect(appliedValues, [1234]);
-          expect(tester.terminalState, containsText('Verified value: 1,234'));
-
           tester.findState<_EditorHostState>().updateCurrentValue(456);
           await tester.pump();
-          expect(_controller(tester).text, '456');
-          expect(
-            tester.terminalState,
-            isNot(containsText('Verified value: 1,234')),
-          );
-          await tester.enterText('7');
+          expect(_controller(tester).text, '1234');
+          expect(tester.terminalState, containsText('Current value: 123'));
+
+          tester.findState<_EditorHostState>().updateCurrentValue(null);
+          await tester.pump();
+          expect(_controller(tester).text, '1234');
+          expect(tester.findAllComponents<TextField>().single.enabled, isTrue);
+          expect(tester.terminalState, containsText('Current value: 123'));
           await tester.sendEnter();
 
-          expect(appliedValues, [1234, 4567]);
+          expect(appliedValues, [1234]);
+          expect(tester.terminalState, containsText('Verified value: 1,234'));
         });
       },
     );
@@ -862,7 +894,7 @@ void main() {
           expect(tester.terminalState, containsText('Enter digits only.'));
 
           tester.findState<_EditorHostState>().updateField(
-            _field(maximumValue: 1000),
+            _field(maximumValue: 1000, guestOffset: 0x2000),
           );
           await tester.pump();
 

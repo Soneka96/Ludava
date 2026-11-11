@@ -6,7 +6,7 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Edits one unsigned field value in-place and applies only explicit requests.
 class InlineValueEditor extends StatefulWidget {
-  /// Field metadata used for presentation-oriented range checking.
+  /// Field metadata used to identify the registered write target.
   final GameField field;
 
   /// Latest SDK value when available, or `null` if the read is unavailable.
@@ -176,18 +176,10 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
 
   /// Returns the current presentation-oriented input validation error.
   String? get _validationMessage {
-    final minimum = widget.field.minimumValue;
-    final maximum = widget.field.maximumValue;
-    if (minimum == null || maximum == null) {
-      return 'This field has no valid value range.';
-    }
     final draft = _textController.text;
     if (draft.isEmpty) return 'Enter a whole number.';
     final value = int.tryParse(draft);
     if (value == null) return 'Enter a whole number.';
-    if (value < minimum || value > maximum) {
-      return 'Enter a value from $minimum to $maximum.';
-    }
     return null;
   }
 

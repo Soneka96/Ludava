@@ -30,6 +30,8 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
   late TrainerSessionState _session;
   StreamSubscription<TrainerSessionState>? _stateSubscription;
   GameField? _editingField;
+  TrainerSessionState? _editingOriginSession;
+  int? _editingStartingValue;
   int _selectedFieldIndex = 0;
 
   /// Connects when needed and subscribes to the controller's latest snapshot.
@@ -98,12 +100,10 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
 
   /// Opens the editor with the latest verified value for [field].
   Component _buildEditor(GameField field) {
-    final readResult = _session.readResults[field.id];
     return TrainerValueEditorComponent(
       field: field,
-      currentValue: readResult?.succeeded == true ? readResult?.value : null,
-      onApply:
-          (value) => component.sessionController.writeField(field.id, value),
+      currentValue: _editingStartingValue,
+      onApply: (value) => _applyEdit(field, value),
       onApplied: _returnToMenu,
       onCancel: _returnToMenu,
     );
@@ -153,16 +153,45 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     component.sessionController.selectProcess(processId);
   }
 
-  /// Opens [field] for editing without copying its verified value.
+  /// Opens [field] when its exact registered field value was read.
   void _openField(GameField field) {
     final profile = _session.profile;
     if (profile == null) return;
     final editableField = profile.findField(field.id);
+    final result = _session.readResults[field.id];
     if (editableField == null ||
-        !TrainerWriteEligibility.isWriteEligible(_session, editableField)) {
+        result?.fieldId != field.id ||
+        result?.succeeded != true ||
+        result?.value == null) {
       return;
     }
-    setState(() => _editingField = editableField);
+    setState(() {
+      _editingField = editableField;
+      _editingOriginSession = _session;
+      _editingStartingValue = result!.value;
+    });
+  }
+
+  /// Writes only while the current SDK target still matches the edit origin.
+  GameWriteResult _applyEdit(GameField originField, int value) {
+    final originSession = _editingOriginSession;
+    final currentSession = component.sessionController.state;
+    final editingField = _editingField;
+    if (originSession == null ||
+        editingField == null ||
+        !_sameFieldMapping(originField, editingField) ||
+        !_sameSession(originSession, currentSession) ||
+        !_sameFieldMapping(
+          originField,
+          currentSession.profile?.findField(originField.id),
+        )) {
+      return GameWriteResult(
+        status: GameWriteStatus.none,
+        fieldId: originField.id,
+        requestedValue: value,
+      );
+    }
+    return component.sessionController.writeField(originField.id, value);
   }
 
   /// Reconnects or refreshes the selected process through the controller.
@@ -189,24 +218,20 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
   void _handleStateChanged(TrainerSessionState session) {
     final sessionChanged = !_sameSession(_session, session);
     if (sessionChanged) {
-      _editingField = null;
+      _clearEditing();
       _selectedFieldIndex = 0;
     }
     final editingField = _editingField;
-    final writeResult = session.lastWriteResult;
+    final originSession = _editingOriginSession;
     final currentField =
         editingField == null
             ? null
             : session.profile?.findField(editingField.id);
     if (editingField != null &&
-        (currentField == null ||
-            !TrainerWriteEligibility.hasValidTarget(session, currentField))) {
-      _editingField = null;
-    }
-    if (editingField != null &&
-        session.readResults[editingField.id]?.succeeded != true &&
-        writeResult?.fieldId != editingField.id) {
-      _editingField = null;
+        (originSession == null ||
+            !_sameSession(originSession, session) ||
+            !_sameFieldMapping(editingField, currentField))) {
+      _clearEditing();
     }
     setState(() => _session = session);
   }
@@ -216,16 +241,32 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
       first.selectedProcessId == second.selectedProcessId &&
       first.processMetadata?.startedAtUtc ==
           second.processMetadata?.startedAtUtc &&
-      first.detection?.status == second.detection?.status &&
-      first.detection?.confidence == second.detection?.confidence &&
       first.profile?.id == second.profile?.id &&
+      first.profile?.buildId == second.profile?.buildId &&
+      first.profile?.executable == second.profile?.executable &&
+      first.profile?.executableHash == second.profile?.executableHash &&
       first.detection?.executableHash == second.detection?.executableHash &&
       first.memoryBase == second.memoryBase;
+
+  /// Reports whether [first] and [second] use the same field mapping.
+  bool _sameFieldMapping(GameField first, GameField? second) =>
+      second != null &&
+      first.id == second.id &&
+      first.guestOffset == second.guestOffset &&
+      first.valueType == second.valueType &&
+      first.byteOrder == second.byteOrder;
+
+  /// Clears the editor origin after invalidation or intentional completion.
+  void _clearEditing() {
+    _editingField = null;
+    _editingOriginSession = null;
+    _editingStartingValue = null;
+  }
 
   /// Returns to the field menu using the controller's newest snapshot.
   void _returnToMenu() {
     setState(() {
-      _editingField = null;
+      _clearEditing();
       _session = component.sessionController.state;
     });
   }

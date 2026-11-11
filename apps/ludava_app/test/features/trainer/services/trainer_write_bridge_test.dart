@@ -5,17 +5,30 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../support/mock_trainer_sdk_capability.dart';
+import '../../../support/trainer_state_fixture.dart';
 
 void main() {
   late MockTrainerSdkCapability capability;
   late SdkOperationGate operationGate;
   late TrainerWriteBridge bridge;
+  late TrainerSessionState origin;
+  late GameField field;
 
   setUp(() {
     capability = MockTrainerSdkCapability();
     operationGate = SdkOperationGate();
     bridge = TrainerWriteBridge(capability, operationGate);
+    origin = trainerStateFixtureSession();
+    field = origin.profile!.findField('credits')!;
+    when(() => capability.state).thenReturn(origin);
   });
+
+  GameWriteResult write(int value) => bridge.writeField(
+    'credits',
+    value,
+    expectedSession: origin,
+    expectedField: field,
+  );
 
   group('Method writeField() behaves correctly', () {
     test('Method writeField() returns the actual successful SDK result', () {
@@ -27,8 +40,9 @@ void main() {
       );
       when(() => capability.writeField('credits', 44)).thenReturn(result);
 
-      expect(bridge.writeField('credits', 44), same(result));
+      expect(write(44), same(result));
       verify(() => capability.writeField('credits', 44)).called(1);
+      verify(() => capability.state).called(1);
       verifyNoMoreInteractions(capability);
     });
 
@@ -41,8 +55,9 @@ void main() {
       );
       when(() => capability.writeField('credits', 44)).thenReturn(result);
 
-      expect(bridge.writeField('credits', 44), same(result));
+      expect(write(44), same(result));
       verify(() => capability.writeField('credits', 44)).called(1);
+      verify(() => capability.state).called(1);
       verifyNoMoreInteractions(capability);
     });
 
@@ -50,11 +65,9 @@ void main() {
       when(() => capability.writeField('credits', 44))
           .thenThrow(StateError('write failed'));
 
-      expect(
-        () => bridge.writeField('credits', 44),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => write(44), throwsA(isA<StateError>()));
       verify(() => capability.writeField('credits', 44)).called(1);
+      verify(() => capability.state).called(1);
       verifyNoMoreInteractions(capability);
     });
 
@@ -63,7 +76,7 @@ void main() {
       () {
         operationGate.close();
 
-        final result = bridge.writeField('credits', 44);
+        final result = write(44);
 
         expect(result.status, GameWriteStatus.none);
         expect(result.fieldId, 'credits');
@@ -72,5 +85,30 @@ void main() {
         verifyNever(() => capability.writeField(any(), any()));
       },
     );
+
+    test(
+      'Method writeField() rejects a session replacement before SDK write',
+      () {
+        when(() => capability.state)
+            .thenReturn(trainerStateFixtureSession(profileId: 'other-profile'));
+
+        final result = write(44);
+
+        expect(result.status, GameWriteStatus.none);
+        verifyNever(() => capability.writeField(any(), any()));
+      },
+    );
+
+    test('Method writeField() rejects a changed mapping before SDK write', () {
+      final changedFieldSession = trainerStateFixtureSession(
+        guestOffset: 0x200,
+      );
+      when(() => capability.state).thenReturn(changedFieldSession);
+
+      final result = write(44);
+
+      expect(result.status, GameWriteStatus.none);
+      verifyNever(() => capability.writeField(any(), any()));
+    });
   });
 }

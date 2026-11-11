@@ -2,9 +2,9 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava_tui/shared/constants/layout_constants.dart';
 import 'package:nocterm/nocterm.dart';
 
-/// Edits one field value and applies only a changed, valid value.
+/// Edits one field value and submits only changed, parseable drafts.
 class TrainerValueEditorComponent extends StatefulComponent {
-  /// Field metadata used to enforce edit and write bounds.
+  /// Field metadata used to identify the registered write target.
   final GameField field;
 
   /// Current value, or `null` when the last field read was unavailable.
@@ -37,6 +37,7 @@ class TrainerValueEditorComponent extends StatefulComponent {
 
 class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
   late final TextEditingController _textController;
+  late int? _startingValue;
   bool _applyAttempted = false;
   bool _feedbackIsSuccess = false;
   String? _feedback;
@@ -44,14 +45,15 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
   /// Initializes the editor text from the latest verified field value.
   @override
   void initState() {
+    _startingValue = component.currentValue;
     _textController = TextEditingController(text: _initialText);
   }
 
-  /// Resets temporary edit state when the field or verified value changes.
+  /// Resets temporary edit state only when the field mapping changes.
   @override
   void didUpdateComponent(covariant TrainerValueEditorComponent oldComponent) {
-    if (!identical(oldComponent.field, component.field) ||
-        oldComponent.currentValue != component.currentValue) {
+    if (!_sameFieldMapping(oldComponent.field, component.field)) {
+      _startingValue = component.currentValue;
       _textController.text = _initialText;
       _applyAttempted = false;
       _feedbackIsSuccess = false;
@@ -99,9 +101,9 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
               const SizedBox(height: 1),
               TextField(
                 controller: _textController,
-                focused: _canEdit,
-                enabled: _canEdit,
-                readOnly: !_canEdit,
+                focused: _hasStartingValue,
+                enabled: _hasStartingValue,
+                readOnly: !_hasStartingValue,
                 width: 28,
                 maxLines: 1,
                 onChanged: _handleTextChanged,
@@ -116,7 +118,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
                 ),
               ),
               const SizedBox(height: 1),
-              if (!_canEdit)
+              if (!_hasStartingValue)
                 Text(
                   _disabledReason,
                   style: const TextStyle(color: Colors.yellow),
@@ -136,26 +138,18 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     },
   );
 
-  /// Whether the current field has a value and a valid write range.
-  bool get _canEdit =>
-      component.currentValue != null &&
-      component.field.minimumValue != null &&
-      component.field.maximumValue != null;
+  /// Whether this editor captured a numeric starting value.
+  bool get _hasStartingValue => _startingValue != null;
 
   /// Explains why the editor cannot accept input.
-  String get _disabledReason {
-    if (component.currentValue == null) {
-      return 'Current value unavailable.';
-    }
-    return 'This field has no valid value range.';
-  }
+  String get _disabledReason => 'Current value unavailable.';
 
   /// Returns the ungrouped starting value for the text buffer.
-  String get _initialText => component.currentValue?.toString() ?? '';
+  String get _initialText => _startingValue?.toString() ?? '';
 
   /// Formats the displayed current value while preserving the raw edit text.
   String get _formattedCurrentValue {
-    final value = component.currentValue;
+    final value = _startingValue;
     return value == null ? 'Unavailable' : _formatNumber(value);
   }
 
@@ -170,7 +164,8 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
 
   /// Preserves the cursor when Nocterm's Delete handling moves it to the end.
   bool _preserveCursorAfterDelete(KeyboardEvent event) {
-    if (event.logicalKey != LogicalKey.delete || !_canEdit) return false;
+    if (event.logicalKey != LogicalKey.delete || !_hasStartingValue)
+      return false;
     final selection = _textController.selection;
     if (!selection.isCollapsed) return false;
 
@@ -203,7 +198,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
 
   /// Validates the edit and dispatches at most one apply attempt.
   void _apply() {
-    if (!_canEdit || _applyAttempted) return;
+    if (!_hasStartingValue || _applyAttempted) return;
     final text = _textController.text;
     if (text.isEmpty) {
       setState(() => _feedback = 'Enter a value.');
@@ -218,22 +213,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
       setState(() => _feedback = 'The value is too large.');
       return;
     }
-    final minimum = component.field.minimumValue;
-    final maximum = component.field.maximumValue;
-    if (minimum == null || maximum == null) {
-      setState(() => _feedback = 'This field has no valid value range.');
-      return;
-    }
-    if (value < minimum || value > maximum) {
-      setState(
-        () =>
-            _feedback =
-                'Enter a value from ${_formatNumber(minimum)} to '
-                '${_formatNumber(maximum)}.',
-      );
-      return;
-    }
-    if (value == component.currentValue) {
+    if (value == _startingValue) {
       setState(() => _feedback = 'The value is unchanged.');
       return;
     }
@@ -255,6 +235,13 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     });
     if (result.succeeded) component.onApplied?.call();
   }
+
+  /// Compares the field mapping that owns this editor's captured draft.
+  bool _sameFieldMapping(GameField first, GameField second) =>
+      first.id == second.id &&
+      first.guestOffset == second.guestOffset &&
+      first.valueType == second.valueType &&
+      first.byteOrder == second.byteOrder;
 
   /// Converts [result] into concise feedback for the editor.
   String _feedbackFor(GameWriteResult result) {

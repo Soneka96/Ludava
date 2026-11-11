@@ -1,7 +1,7 @@
 # Task 08 — Optimistic commit on intentional field exit
 
 **Status:** Planned, not implemented or live-validated.
-**Prerequisite:** The existing static verification-status cleanup in docs/ROADMAP.md must be merged before any Flutter UI task.
+**Prerequisite:** PR #16 must be merged before this task begins.
 **Dependencies:** Task 03, Task 05, Task 06, Task 07.
 **PR scope:** One primary responsibility in a focused branch from latest merged main.
 

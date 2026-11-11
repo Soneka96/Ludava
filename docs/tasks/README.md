@@ -1,6 +1,6 @@
 # Task queues
 
-Follow the [roadmap](../ROADMAP.md) priority. **First:** complete the already-planned production verification-status removal from SDK/catalog, with existing runtime read/write and session safety intact.
+Follow the [roadmap](../ROADMAP.md) priority. **First:** merge PR #16, which removes static verification-status metadata and frontend write-eligibility checks while preserving runtime SDK safety.
 
 **Afterward:** follow the [Flutter Windows compact trainer implementation tasks](flutter-ui/README.md). These 16 planned scopes are individually reviewable and include dependencies, acceptance criteria, and test ownership.
 

@@ -24,14 +24,13 @@ TrainerState _sessionChanged(
   }
 
   final field = nextSession.profile?.findField(editingFieldId);
-  final readResult = nextSession.readResults[editingFieldId];
   final retainsEdit =
-      _sameSession(state.session, nextSession) &&
-      field != null &&
-      TrainerWriteEligibility.hasValidTarget(nextSession, field) &&
-      (readResult == null ||
-          readResult.succeeded ||
-          nextSession.lastWriteResult?.fieldId == editingFieldId);
+      _sameTarget(state.session, nextSession) &&
+      _sameFieldMapping(
+        state.session.profile?.findField(editingFieldId),
+        field,
+      ) &&
+      field != null;
 
   return TrainerState(
     session: nextSession,
@@ -39,11 +38,14 @@ TrainerState _sessionChanged(
   );
 }
 
-/// Begins editing only when the SDK snapshot marks the field eligible.
+/// Begins editing when the registered field has an exact successful read.
 TrainerState _beginEditing(TrainerState state, BeginEditingAction action) {
   final field = state.session.profile?.findField(action.fieldId);
+  final readResult = state.session.readResults[action.fieldId];
   if (field == null ||
-      !TrainerWriteEligibility.isWriteEligible(state.session, field) ||
+      readResult?.fieldId != field.id ||
+      readResult?.succeeded != true ||
+      readResult?.value == null ||
       state.editingFieldId == action.fieldId) {
     return state;
   }
@@ -56,13 +58,23 @@ TrainerState _cancelEditing(TrainerState state, CancelEditingAction action) =>
     ? state
     : state.copyWith(clearEditingField: true);
 
-/// Reports whether both snapshots describe the same write target.
-bool _sameSession(TrainerSessionState first, TrainerSessionState second) =>
+/// Reports whether both snapshots still describe the same selected target.
+bool _sameTarget(TrainerSessionState first, TrainerSessionState second) =>
     first.selectedProcessId == second.selectedProcessId &&
     first.processMetadata?.startedAtUtc ==
         second.processMetadata?.startedAtUtc &&
-    first.detection?.status == second.detection?.status &&
-    first.detection?.confidence == second.detection?.confidence &&
     first.profile?.id == second.profile?.id &&
+    first.profile?.buildId == second.profile?.buildId &&
+    first.profile?.executable == second.profile?.executable &&
+    first.profile?.executableHash == second.profile?.executableHash &&
     first.detection?.executableHash == second.detection?.executableHash &&
     first.memoryBase == second.memoryBase;
+
+/// Reports whether [first] and [second] use the same registered field mapping.
+bool _sameFieldMapping(GameField? first, GameField? second) =>
+    first != null &&
+    second != null &&
+    first.id == second.id &&
+    first.guestOffset == second.guestOffset &&
+    first.valueType == second.valueType &&
+    first.byteOrder == second.byteOrder;

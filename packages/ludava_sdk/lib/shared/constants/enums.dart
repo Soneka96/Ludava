@@ -132,7 +132,7 @@ enum GameReadStatus {
   /// The field was read and decoded successfully.
   success,
 
-  /// The selected profile does not match the current game identity.
+  /// The selected profile is unsupported for the requested operation.
   unsupportedProfile,
 
   /// The selected field is missing from the profile.

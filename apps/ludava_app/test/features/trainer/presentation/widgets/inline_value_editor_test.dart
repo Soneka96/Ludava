@@ -102,7 +102,11 @@ void main() {
             _editor(
               field: _field(maximumValue: 50),
               currentValue: 10,
-              onApply: _success,
+              onApply: (_) => const GameWriteResult(
+                status: GameWriteStatus.invalidValue,
+                fieldId: 'credits',
+                requestedValue: 51,
+              ),
             ),
             theme: alternateTheme,
           ),
@@ -426,17 +430,21 @@ void main() {
     );
 
     testWidgets(
-      'Class InlineValueEditor shows validation through its tooltip and border',
+      'Class InlineValueEditor validates numeric text without checking field bounds',
       (tester) async {
-        var writeCalls = 0;
+        final writeValues = <int>[];
         await tester.pumpWidget(
           _wrap(
             _editor(
               field: _field(maximumValue: 50),
               currentValue: 10,
               onApply: (value) {
-                writeCalls++;
-                return _success(value);
+                writeValues.add(value);
+                return const GameWriteResult(
+                  status: GameWriteStatus.invalidValue,
+                  fieldId: 'credits',
+                  requestedValue: 51,
+                );
               },
             ),
           ),
@@ -446,10 +454,16 @@ void main() {
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
-        expect(writeCalls, 0);
+        expect(writeValues, [51]);
         expect(_editorText(tester), '51');
-        expect(find.byTooltip('Enter a value from 0 to 50.'), findsOneWidget);
-        expect(find.text('Enter a value from 0 to 50.'), findsNothing);
+        expect(
+          find.byTooltip('The value is outside the allowed range.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('The value is outside the allowed range.'),
+          findsNothing,
+        );
         final input = tester.widget<TextField>(_inputFinder);
         final tokens = LudavaTheme.graphiteAndTeal
             .extension<LudavaThemeTokens>()!;
@@ -463,7 +477,7 @@ void main() {
         await tester.pump();
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
-        expect(writeCalls, 0);
+        expect(writeValues, [51]);
         expect(find.byTooltip('Enter a whole number.'), findsOneWidget);
         expect(tester.getSize(find.byType(InlineValueEditor)).height, 48);
       },
@@ -663,6 +677,39 @@ void main() {
     });
 
     testWidgets(
+      'Class InlineValueEditor submits values when field bounds are absent',
+      (tester) async {
+        final appliedValues = <int>[];
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              field: _field(minimumValue: null, maximumValue: null),
+              currentValue: 17,
+              onApply: (value) {
+                appliedValues.add(value);
+                return const GameWriteResult(
+                  status: GameWriteStatus.invalidValue,
+                  fieldId: 'credits',
+                  requestedValue: 44,
+                );
+              },
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '44');
+        await tester.pump();
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(appliedValues, [44]);
+        expect(
+          find.byTooltip('The value is outside the allowed range.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
       'Class InlineValueEditor resets its local draft when the field changes',
       (tester) async {
         const editorKey = ValueKey('inline-editor');
@@ -678,9 +725,6 @@ void main() {
         );
         await tester.enterText(_inputFinder, '42');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Credits'));
-        await tester.pump();
-        expect(find.byTooltip('Enter a value from 0 to 20.'), findsOneWidget);
 
         await tester.pumpWidget(
           _wrap(
@@ -698,7 +742,6 @@ void main() {
           findsOneWidget,
         );
         expect(_editorText(tester, fieldId: 'scrap'), '5');
-        expect(find.byTooltip('Enter a value from 0 to 20.'), findsNothing);
       },
     );
 

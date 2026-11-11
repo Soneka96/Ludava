@@ -44,11 +44,12 @@ class TrainerFieldsPanel extends StatelessWidget {
                 key: ValueKey(field.id),
                 field: field,
                 readResult: readResult,
-                currentValue: readResult?.succeeded == true
+                currentValue:
+                    readResult?.fieldId == field.id &&
+                        readResult?.succeeded == true
                     ? readResult?.value
                     : null,
                 writeResult: row.writeResult,
-                canWrite: row.canWrite,
                 isEditing: row.isEditing,
                 onEdit: () => viewModel.onEditField(field.id),
                 onApply: (value) => viewModel.onApplyField(field.id, value),

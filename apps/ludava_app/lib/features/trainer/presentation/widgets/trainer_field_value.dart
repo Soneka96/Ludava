@@ -5,18 +5,28 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Renders a field's current value or an explicit unavailable state.
 class TrainerFieldValue extends StatelessWidget {
+  /// Registered identifier of the row whose value is displayed.
+  final String fieldId;
+
   /// Latest SDK read result for this profile field.
   final GameReadResult? readResult;
 
   /// Creates a current value label for one profile row.
-  const TrainerFieldValue({required this.readResult, super.key});
+  const TrainerFieldValue({
+    required this.fieldId,
+    required this.readResult,
+    super.key,
+  });
 
   /// Fits large integer values without altering their exact representation.
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
-    final value = readResult?.succeeded == true ? readResult?.value : null;
+    final value =
+        readResult?.fieldId == fieldId && readResult?.succeeded == true
+        ? readResult?.value
+        : null;
     if (value == null) {
       final failed = readResult?.status == GameReadStatus.readFailed;
       return Text(

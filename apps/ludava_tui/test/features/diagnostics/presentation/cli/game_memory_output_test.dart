@@ -75,7 +75,7 @@ void main() {
       final expectedStatuses = {
         GameReadStatus.none: 'Status: no read attempted',
         GameReadStatus.unsupportedProfile:
-            'Status: profile does not match the current game identity',
+            'Status: selected profile is unsupported for this request',
         GameReadStatus.unsupportedField:
             'Status: field is not registered in the profile',
         GameReadStatus.invalidReadResult: 'Status: invalid memory read result',
@@ -88,6 +88,18 @@ void main() {
         );
 
         expect(output, contains(entry.value));
+        if (entry.key == GameReadStatus.unsupportedProfile) {
+          expect(
+            output,
+            contains(
+              'Runtime identity: profile selection is manual or unverified.',
+            ),
+          );
+          expect(
+            output,
+            isNot(contains('does not match the current game identity')),
+          );
+        }
       }
     });
 

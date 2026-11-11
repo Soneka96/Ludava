@@ -84,7 +84,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     final String actionHint;
     if (selectedField == null) {
       actionHint = 'No fields available';
-    } else if (_canEditField(selectedField)) {
+    } else if (_hasReadableValue(selectedField)) {
       actionHint = '1–9 Edit   Enter Edit';
     } else {
       actionHint = 'Selected field is unavailable';
@@ -141,7 +141,6 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
                   (entry) => TrainerFieldRowComponent(
                     index: entry.$1,
                     field: entry.$2,
-                    canEdit: _canEditField(entry.$2),
                     selected: entry.$1 == selectedIndex,
                     readResult: component.session.readResults[entry.$2.id],
                   ),
@@ -174,12 +173,12 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     if (digit != null && digit > 0 && digit <= fields.length && digit <= 9) {
       _setSelection(digit - 1);
       final field = fields[digit - 1];
-      if (_canEditField(field)) component.onOpenField(field);
+      if (_hasReadableValue(field)) component.onOpenField(field);
       return true;
     }
     if (key == LogicalKey.enter && fields.isNotEmpty) {
       final field = fields[_selectedIndex.clamp(0, fields.length - 1)];
-      if (_canEditField(field)) component.onOpenField(field);
+      if (_hasReadableValue(field)) component.onOpenField(field);
       return true;
     }
     if (_matchesLetter(event, 'r', LogicalKey.keyR)) {
@@ -216,9 +215,13 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     return profile.fields.values.toList();
   }
 
-  /// Reports whether [field] has a valid current target and successful read.
-  bool _canEditField(GameField field) =>
-      TrainerWriteEligibility.isWriteEligible(component.session, field);
+  /// Reports whether [field] has an exact successful numeric read.
+  bool _hasReadableValue(GameField field) {
+    final result = component.session.readResults[field.id];
+    return result?.fieldId == field.id &&
+        result?.succeeded == true &&
+        result?.value != null;
+  }
 
   /// Renders the menu divider at the available width.
   Component _separator() => Text(

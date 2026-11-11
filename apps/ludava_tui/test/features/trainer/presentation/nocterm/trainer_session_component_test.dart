@@ -1,8 +1,9 @@
 import 'package:ludava_sdk/ludava_sdk.dart';
 import 'package:ludava_tui/features/trainer/presentation/nocterm/trainer_session_component.dart';
+import 'package:ludava_tui/features/value_editor/presentation/nocterm/trainer_value_editor_component.dart';
 import 'package:nocterm/nocterm_test.dart'
     show LogicalKey, containsText, testNocterm;
-import 'package:nocterm/nocterm.dart' show SizedBox;
+import 'package:nocterm/nocterm.dart' show SizedBox, TextField;
 import 'package:test/test.dart';
 
 TrainerSessionComponent _app(
@@ -25,6 +26,7 @@ class _SessionFixture {
   bool failMetadata = false;
   GameReadStatus readStatus = GameReadStatus.success;
   GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame;
+  GameIdentityConfidence confidence = GameIdentityConfidence.confirmed;
   String evidenceDescription = 'Synthetic session evidence.';
 
   late final TrainerSessionController controller = TrainerSessionController(
@@ -50,10 +52,7 @@ class _SessionFixture {
         gameTitle: profile.gameName,
         executable: profile.executable,
         executableHash: profile.executableHash,
-        confidence:
-            detectionStatus == GameDetectionStatus.supportedGame
-                ? GameIdentityConfidence.confirmed
-                : GameIdentityConfidence.none,
+        confidence: confidence,
         profile:
             detectionStatus == GameDetectionStatus.supportedGame
                 ? profile
@@ -98,6 +97,8 @@ GameProfile _profile({
   String id = 'synthetic-profile',
   String executableHash = 'measured-hash',
   bool twoFields = false,
+  bool unboundedCredits = false,
+  int guestOffset = 0x1000,
 }) => GameProfile(
   id: id,
   gameName: 'Synthetic game',
@@ -108,11 +109,11 @@ GameProfile _profile({
     'credits': GameField(
       id: 'credits',
       name: 'Credits',
-      guestOffset: 0x1000,
+      guestOffset: guestOffset,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      minimumValue: 0,
-      maximumValue: 0xffffffff,
+      minimumValue: unboundedCredits ? null : 0,
+      maximumValue: unboundedCredits ? null : 0xffffffff,
     ),
     if (twoFields)
       'weapons': GameField(
@@ -280,7 +281,7 @@ void main() {
     );
 
     test(
-      'Class TrainerSessionComponent closes stale editing state when refresh loses the field value',
+      'Class TrainerSessionComponent preserves a draft when refresh loses the field value',
       () async {
         await testNocterm('field becomes unavailable during refresh', (
           tester,
@@ -289,14 +290,36 @@ void main() {
           await tester.pumpComponent(_app(fixture));
           await tester.sendEnter();
           expect(tester.terminalState, containsText('EDIT CREDITS'));
+          await tester.enterText('42');
 
           fixture.readStatus = GameReadStatus.readFailed;
           fixture.controller.refresh();
           await tester.pump();
 
-          expect(tester.terminalState, containsText('Unavailable'));
-          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          expect(tester.terminalState, containsText('Current value: 100'));
+          expect(tester.terminalState, containsText('10042'));
           expect(fixture.writeCalls, 0);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent allows an unconfirmed readable unbounded field',
+      () async {
+        await testNocterm('manually selected unbounded profile', (
+          tester,
+        ) async {
+          final fixture =
+              _SessionFixture()
+                ..profile = _profile(unboundedCredits: true)
+                ..confidence = GameIdentityConfidence.manuallySelected;
+          await tester.pumpComponent(_app(fixture));
+
+          await tester.sendEnter();
+
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          expect(tester.findAllComponents<TextField>().single.enabled, isTrue);
         });
       },
     );
@@ -496,6 +519,32 @@ void main() {
           expect(fixture.controller.state.profile, isNull);
           expect(fixture.controller.state.readResults, isEmpty);
           expect(tester.terminalState, containsText('session changed'));
+          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent rejects a stale callback after a same-ID game switch',
+      () async {
+        await testNocterm('same field ID on another profile', (tester) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          final staleEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+
+          fixture.profile = _profile(
+            id: 'other-profile',
+            executableHash: 'other-hash',
+            guestOffset: 0x2000,
+          );
+          fixture.controller.refresh();
+          await tester.pump();
+
+          final result = staleEditor.onApply(999);
+          expect(result.status, GameWriteStatus.none);
+          expect(fixture.writeCalls, 0);
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
         });
       },
