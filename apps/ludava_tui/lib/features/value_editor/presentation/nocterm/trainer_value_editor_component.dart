@@ -136,30 +136,26 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     },
   );
 
-  /// Whether the current field has a readable value and approved write range.
+  /// Whether the current field has a value and a valid write range.
   bool get _canEdit =>
-      component.field.canRead &&
-      component.field.canWrite &&
       component.currentValue != null &&
       component.field.minimumValue != null &&
       component.field.maximumValue != null;
 
   /// Explains why the editor cannot accept input.
   String get _disabledReason {
-    if (component.currentValue == null || !component.field.canRead) {
+    if (component.currentValue == null) {
       return 'Current value unavailable.';
     }
-    if (!component.field.canWrite) return 'This field is read-only.';
-    return 'This field has no approved value range.';
+    return 'This field has no valid value range.';
   }
 
   /// Returns the ungrouped starting value for the text buffer.
-  String get _initialText =>
-      component.field.canRead ? component.currentValue?.toString() ?? '' : '';
+  String get _initialText => component.currentValue?.toString() ?? '';
 
   /// Formats the displayed current value while preserving the raw edit text.
   String get _formattedCurrentValue {
-    final value = component.field.canRead ? component.currentValue : null;
+    final value = component.currentValue;
     return value == null ? 'Unavailable' : _formatNumber(value);
   }
 
@@ -225,7 +221,7 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     final minimum = component.field.minimumValue;
     final maximum = component.field.maximumValue;
     if (minimum == null || maximum == null) {
-      setState(() => _feedback = 'This field has no approved value range.');
+      setState(() => _feedback = 'This field has no valid value range.');
       return;
     }
     if (value < minimum || value > maximum) {
@@ -267,8 +263,10 @@ class _TrainerValueEditorState extends State<TrainerValueEditorComponent> {
     }
     return switch (result.status) {
       GameWriteStatus.none => 'No value was applied.',
-      GameWriteStatus.unsupportedProfile || GameWriteStatus.unsupportedField =>
-        'This field is not approved for writing.',
+      GameWriteStatus.unsupportedProfile =>
+        'The current game identity or session is unavailable.',
+      GameWriteStatus.unsupportedField =>
+        'The selected field is not registered in the current profile.',
       GameWriteStatus.confirmationRequired => 'The write was not authorized.',
       GameWriteStatus.invalidValue => 'The value is outside the allowed range.',
       GameWriteStatus.invalidMapping => 'The field address is unavailable.',

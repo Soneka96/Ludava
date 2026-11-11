@@ -10,19 +10,17 @@ Public visibility is for reading and learning; it is not an open-source license 
 
 - Keep each branch and pull request focused on one task. Record the problem, evidence, scope, verification, and limitations in the task or PR.
 - Do not claim a game/build is compatible without reproducible live-game validation. Automated tests and plausible values are not compatibility evidence.
-- Enable writes only for profile fields with research-confirmed or verified evidence. Keep Ludava live-runtime validation distinct from external research; process discovery and manual profile selection alone do not identify a live game/build.
+- Treat profiles and fields registered in the production catalog as owner-approved capabilities. Do not add new mappings until the owner has confirmed a successful Ludava read and guarded write with the intended in-game result using either the TUI or Flutter. Process discovery and manual profile selection alone do not identify a live game/build; runtime validation remains mandatory for every operation.
 - Prefer incremental changes with clear responsibilities. Cross-package architecture is owned by [ARCHITECTURE.md](ARCHITECTURE.md); Flutter Redux architecture is owned by [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
 ## Researching game fields
 
-Check existing trainer references before adding a game or field, including Cheat Engine tables, community sources, emulator cheat tools, and original research. In that game's `docs/games/` record, capture sources, versions, observed address and guest-offset derivation, value representation/endianness, and what was actually tested.
+Check existing trainer references before researching a game or field, including Cheat Engine tables, community sources, emulator cheat tools, and original research. In that game's `docs/games/` record, capture sources, versions, observed address and guest-offset derivation, value representation/endianness, and what was actually tested. Keep incomplete mappings and experiments on a development branch. A mapping may enter the production catalog only after the owner confirms a successful Ludava read and guarded write with the intended in-game result using either supported frontend.
 
-- An address copied from a third party without live corroboration remains a candidate; it does not enable writes.
-- Documented external live testing of the matching build and field can qualify as `researchConfirmed` when it includes source, observed behavior, address derivation, representation, and limitations. It does not claim Ludava itself was tested.
-- Reserve `verified` for corresponding recorded live Ludava results. Preserve uncertainty across builds.
-- Regardless of research status, writes retain current process/session, executable hash, guest base, bounds, preliminary read, complete transfer, and matching read-back checks. See [game memory](features/game-memory.md).
+- Preserve external findings and any live Ludava observations accurately in the game's research record, including what was tested and uncertainty across builds. Historical evidence describes research; it does not control runtime access.
+- Regardless of research history, every operation retains current process/session, executable hash, guest base, field membership, bounds, preliminary read, complete transfer, explicit confirmation, and matching read-back checks. See [game memory](features/game-memory.md).
 - Research and test on the development machine where practical. Use the ROG Ally for final interactive testing; do not require lengthy handheld commands or add data-collection tooling when local evidence is available.
-- Reuse generic engine tests. Add focused mapping coverage and a proportionate smoke test where useful; do not require repeated approval ceremonies for each field.
+- Reuse generic engine tests. Add focused mapping coverage and a proportionate smoke test where useful; keep incomplete experiments on development branches until the owner validates the mapping for production.
 
 ## Dart source conventions
 
@@ -48,7 +46,7 @@ Check existing trainer references before adding a game or field, including Cheat
 ### Dart documentation
 
 - Add concise `///` documentation to every public class, method, and property, and to every public or private method. Explain the contract, constraints, or non-obvious reason; do not narrate an obvious implementation.
-- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.canRead]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
+- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.findField]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
 - Import symbols to resolve Dart documentation references when needed for IDE navigation. Documentation-only imports are permitted when the target is already an allowed, declared package dependency; they do not justify new dependencies or executable cross-package access. Boundary checks must distinguish documentation-only imports from executable usage (see [package ownership](ARCHITECTURE.md#dart-workspace-and-package-ownership)).
 - Use `[Class]` and `[Class.member]` rather than plain-text names when referring to code. Keep comments aligned with what the symbol guarantees, especially compatibility and memory-write safety.
 

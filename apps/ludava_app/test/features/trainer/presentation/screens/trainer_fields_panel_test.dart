@@ -20,7 +20,6 @@ class _MockTrainerFieldsViewModel extends Mock
   GameField field,
   GameReadResult? readResult,
   GameWriteResult? writeResult,
-  bool canRead,
   bool canWrite,
   bool isEditing,
 })
@@ -29,7 +28,6 @@ _row(
   String? name,
   GameReadResult? readResult,
   GameWriteResult? writeResult,
-  bool canRead = true,
   bool canWrite = true,
   bool isEditing = false,
 }) => (
@@ -39,14 +37,11 @@ _row(
     guestOffset: 0x100,
     valueType: MemoryValueType.unsigned32,
     byteOrder: ByteOrder.little,
-    readStatus: VerificationStatus.verified,
-    writeStatus: VerificationStatus.researchConfirmed,
     minimumValue: 0,
     maximumValue: 100000,
   ),
   readResult: readResult,
   writeResult: writeResult,
-  canRead: canRead,
   canWrite: canWrite,
   isEditing: isEditing,
 );
@@ -57,7 +52,6 @@ _MockTrainerFieldsViewModel _viewModel({
           GameField field,
           GameReadResult? readResult,
           GameWriteResult? writeResult,
-          bool canRead,
           bool canWrite,
           bool isEditing,
         })

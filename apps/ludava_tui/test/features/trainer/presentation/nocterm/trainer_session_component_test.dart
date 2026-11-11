@@ -98,18 +98,12 @@ GameProfile _profile({
   String id = 'synthetic-profile',
   String executableHash = 'measured-hash',
   bool twoFields = false,
-  bool profileWritable = true,
 }) => GameProfile(
   id: id,
   gameName: 'Synthetic game',
   buildId: 'SYNTHETIC',
   executable: 'SYNTHETIC.self',
   executableHash: executableHash,
-  readStatus: VerificationStatus.verified,
-  writeStatus:
-      profileWritable
-          ? VerificationStatus.researchConfirmed
-          : VerificationStatus.none,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -117,8 +111,6 @@ GameProfile _profile({
       guestOffset: 0x1000,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.verified,
-      writeStatus: VerificationStatus.researchConfirmed,
       minimumValue: 0,
       maximumValue: 0xffffffff,
     ),
@@ -129,8 +121,6 @@ GameProfile _profile({
         guestOffset: 0x2000,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: 0xffffffff,
       ),
@@ -254,26 +244,21 @@ void main() {
     );
 
     test(
-      'Class TrainerSessionComponent closes editing when the current profile becomes read-only',
+      'Class TrainerSessionComponent closes editing when current identity is no longer confirmed',
       () async {
-        await testNocterm('profile permission changes during refresh', (
-          tester,
-        ) async {
+        await testNocterm('identity changes during refresh', (tester) async {
           final fixture =
               _SessionFixture()..profile = _profile(twoFields: true);
           await tester.pumpComponent(_app(fixture));
           await tester.sendEnter();
           expect(tester.terminalState, containsText('EDIT CREDITS'));
 
-          fixture.profile = _profile(twoFields: true, profileWritable: false);
+          fixture.detectionStatus = GameDetectionStatus.noActiveGame;
           fixture.controller.refresh();
           await tester.pump();
 
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
-          expect(
-            tester.terminalState,
-            containsText('Selected field is read-only'),
-          );
+          expect(tester.terminalState, containsText('No fields available'));
           await tester.sendKey(LogicalKey.digit1);
           await tester.sendEnter();
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
@@ -281,8 +266,9 @@ void main() {
 
           final readCalls = fixture.readCalls;
           await tester.sendKey(LogicalKey.keyR);
-          expect(fixture.readCalls, greaterThan(readCalls));
+          expect(fixture.readCalls, readCalls);
 
+          fixture.detectionStatus = GameDetectionStatus.supportedGame;
           fixture.profile = _profile(twoFields: true);
           fixture.controller.refresh();
           await tester.pump();

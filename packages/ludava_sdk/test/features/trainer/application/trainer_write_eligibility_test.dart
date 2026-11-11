@@ -9,10 +9,6 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 TrainerSessionState _session({
-  VerificationStatus profileReadStatus = VerificationStatus.verified,
-  VerificationStatus profileWriteStatus = VerificationStatus.verified,
-  VerificationStatus fieldReadStatus = VerificationStatus.verified,
-  VerificationStatus fieldWriteStatus = VerificationStatus.verified,
   GameIdentityConfidence confidence = GameIdentityConfidence.confirmed,
   GameReadStatus readStatus = GameReadStatus.success,
   bool selected = true,
@@ -30,8 +26,6 @@ TrainerSessionState _session({
     guestOffset: 0,
     valueType: MemoryValueType.unsigned32,
     byteOrder: ByteOrder.big,
-    readStatus: fieldReadStatus,
-    writeStatus: fieldWriteStatus,
     minimumValue: omitMinimum ? null : 0,
     maximumValue: omitMaximum ? null : 4294967295,
   );
@@ -40,8 +34,6 @@ TrainerSessionState _session({
     gameName: 'Test game',
     buildId: 'TEST',
     executable: 'test.self',
-    readStatus: profileReadStatus,
-    writeStatus: profileWriteStatus,
     fields: {'credits': field},
   );
   return TrainerSessionState(
@@ -86,8 +78,6 @@ GameField _standaloneField() => GameField(
   guestOffset: 0,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.verified,
   minimumValue: 0,
   maximumValue: 4294967295,
 );
@@ -103,7 +93,7 @@ void _expectInvalidTarget(String scenario, TrainerSessionState session) {
 void main() {
   group('Method TrainerWriteEligibility.hasValidTarget() behaves correctly', () {
     test(
-      'Method TrainerWriteEligibility.hasValidTarget() accepts approved target evidence',
+      'Method TrainerWriteEligibility.hasValidTarget() accepts a valid current target',
       () {
         final session = _session();
 
@@ -112,38 +102,6 @@ void main() {
           isTrue,
         );
       },
-    );
-
-    test(
-      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved profile reads',
-      () => _expectInvalidTarget(
-        'profile read approval is missing',
-        _session(profileReadStatus: VerificationStatus.none),
-      ),
-    );
-
-    test(
-      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved profile writes',
-      () => _expectInvalidTarget(
-        'profile write approval is missing',
-        _session(profileWriteStatus: VerificationStatus.none),
-      ),
-    );
-
-    test(
-      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved field reads',
-      () => _expectInvalidTarget(
-        'field read approval is missing',
-        _session(fieldReadStatus: VerificationStatus.none),
-      ),
-    );
-
-    test(
-      'Method TrainerWriteEligibility.hasValidTarget() rejects unapproved field writes',
-      () => _expectInvalidTarget(
-        'field write approval is missing',
-        _session(fieldWriteStatus: VerificationStatus.none),
-      ),
     );
 
     test(
@@ -267,21 +225,6 @@ void main() {
           ),
           isFalse,
           reason: 'current read failed for an otherwise valid target',
-        );
-      },
-    );
-
-    test(
-      'Method TrainerWriteEligibility.isWriteEligible() denies an approved field when the profile is not approved',
-      () {
-        final session = _session(profileWriteStatus: VerificationStatus.none);
-        final field = _field(session);
-
-        expect(field.canWrite, isTrue);
-        expect(session.profile!.canWrite, isFalse);
-        expect(
-          TrainerWriteEligibility.isWriteEligible(session, field),
-          isFalse,
         );
       },
     );

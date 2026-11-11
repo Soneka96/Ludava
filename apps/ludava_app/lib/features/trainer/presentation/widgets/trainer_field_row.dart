@@ -18,9 +18,6 @@ class TrainerFieldRow extends StatelessWidget {
   /// Latest SDK write outcome for this field, if one has been attempted.
   final GameWriteResult? writeResult;
 
-  /// Whether the profile permits reading this field.
-  final bool canRead;
-
   /// Whether the current session can apply a write.
   final bool canWrite;
 
@@ -45,7 +42,6 @@ class TrainerFieldRow extends StatelessWidget {
     required this.readResult,
     required this.currentValue,
     required this.writeResult,
-    required this.canRead,
     required this.canWrite,
     required this.isEditing,
     required this.onEdit,
@@ -93,10 +89,7 @@ class TrainerFieldRow extends StatelessWidget {
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: TrainerFieldValue(
-                            readResult: readResult,
-                            canRead: canRead,
-                          ),
+                          child: TrainerFieldValue(readResult: readResult),
                         ),
                       ),
                       if (canWrite)

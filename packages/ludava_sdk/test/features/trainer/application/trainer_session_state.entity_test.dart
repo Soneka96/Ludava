@@ -44,7 +44,6 @@ void main() {
         gameName: 'Synthetic Game',
         buildId: 'TEST00000',
         executable: 'TEST.self',
-        readStatus: VerificationStatus.verified,
       );
       final state = TrainerSessionState(
         detection: GameDetectionResult(

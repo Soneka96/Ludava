@@ -31,7 +31,6 @@ void main() {
       expect(rows.map((row) => row.field.id), ['credits', 'scrap']);
       expect(rows.first.readResult?.value, 25);
       expect(rows.first.writeResult?.requestedValue, 26);
-      expect(rows.first.canRead, isTrue);
       expect(rows.first.canWrite, isTrue);
       expect(rows.first.isEditing, isTrue);
       expect(rows.last.readResult, isNull);
@@ -39,49 +38,50 @@ void main() {
       expect(rows.last.isEditing, isFalse);
     });
 
-    test('Method fieldRows() keeps SDK write eligibility authoritative', () {
-      final session = trainerStateFixtureSession(
-        fieldWriteStatus: VerificationStatus.experimental,
-        readResult: const GameReadResult(
-          status: GameReadStatus.success,
-          fieldId: 'credits',
-          value: 25,
-        ),
-      );
-      final state = AppState(
-        trainer: TrainerState(session: session, editingFieldId: 'credits'),
-      );
+    test(
+      'Method fieldRows() requires a successful current read for editing',
+      () {
+        final session = trainerStateFixtureSession(
+          readResult: const GameReadResult(
+            status: GameReadStatus.readFailed,
+            fieldId: 'credits',
+          ),
+        );
+        final state = AppState(trainer: TrainerState(session: session));
 
-      final row = TrainerSelectors.fieldRows(state).single;
+        final row = TrainerSelectors.fieldRows(state).single;
 
-      expect(row.canWrite, isFalse);
-      expect(row.isEditing, isFalse);
-    });
+        expect(row.canWrite, isFalse);
+        expect(row.isEditing, isFalse);
+      },
+    );
 
-    test('Method fieldRows() respects field read permission', () {
-      final field = trainerStateFixtureField(
-        readStatus: VerificationStatus.none,
-      );
-      final profile = GameProfile(
-        id: 'synthetic-profile',
-        gameName: 'Synthetic Game',
-        buildId: 'test-build',
-        executable: 'synthetic.exe',
-        readStatus: VerificationStatus.verified,
-        fields: {field.id: field},
-      );
-      final session = TrainerSessionState(
-        detection: GameDetectionResult(
-          status: GameDetectionStatus.supportedGame,
-          confidence: GameIdentityConfidence.confirmed,
-          profile: profile,
-          evidenceDescription: 'Synthetic test evidence',
-        ),
-      );
-      final state = AppState(trainer: TrainerState(session: session));
+    test(
+      'Method fieldRows() preserves registered fields without read results',
+      () {
+        final field = trainerStateFixtureField();
+        final profile = GameProfile(
+          id: 'synthetic-profile',
+          gameName: 'Synthetic Game',
+          buildId: 'test-build',
+          executable: 'synthetic.exe',
+          fields: {field.id: field},
+        );
+        final session = TrainerSessionState(
+          detection: GameDetectionResult(
+            status: GameDetectionStatus.supportedGame,
+            confidence: GameIdentityConfidence.confirmed,
+            profile: profile,
+            evidenceDescription: 'Synthetic test evidence',
+          ),
+        );
+        final state = AppState(trainer: TrainerState(session: session));
 
-      expect(TrainerSelectors.fieldRows(state).single.canRead, isFalse);
-    });
+        final row = TrainerSelectors.fieldRows(state).single;
+        expect(row.readResult, isNull);
+        expect(row.canWrite, isFalse);
+      },
+    );
 
     test('Method fieldRows() returns no rows without a selected profile', () {
       final state = AppState(

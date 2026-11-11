@@ -9,7 +9,6 @@ GameProfile _profile() => GameProfile(
   gameName: 'Synthetic game',
   buildId: 'SYNTHETIC',
   executable: 'SYNTHETIC.self',
-  readStatus: VerificationStatus.experimental,
 );
 
 /// Builds the identity snapshot for the requested detection state.

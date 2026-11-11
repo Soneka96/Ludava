@@ -29,7 +29,7 @@ These rules apply across the SDK, Nocterm TUI, Flutter app, and Windows integrat
 
 ## SDK safety and native integration
 
-- Preserve distinct safety and lifecycle cases. Do not combine different rejected preconditions merely to shorten a suite. Cover unverified profiles, unsupported/read-only fields, missing confirmation, stale or incorrect process identity and PPU hash, process termination/change, memory-base changes, invalid values/ranges, address overflow, incomplete transfers, native and preliminary-read failures, read-back mismatch, cleanup failure, rejected dependency calls, and correct disposal. Never weaken write protection to simplify tests.
+- Preserve distinct safety and lifecycle cases. Do not combine different rejected preconditions merely to shorten a suite. Cover unconfirmed identity, missing or foreign fields, missing confirmation, stale or incorrect process identity and PPU hash, process termination/change, memory-base changes, invalid values/ranges, address overflow, incomplete transfers, native and preliminary-read failures, read-back mismatch, cleanup failure, rejected dependency calls, and correct disposal. Never weaken write protection to simplify tests.
 - Use controlled native API mocks or a dedicated memory simulator for deterministic memory boundaries; unit tests must not read or write a live game's memory. Test Windows adapters through injected native calls and retain focused Windows integration tests for important native seams.
 - Keep tests for root compatibility entry points and run those checks in workspace CI alongside the SDK and TUI suites.
 

@@ -179,7 +179,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final minimum = widget.field.minimumValue;
     final maximum = widget.field.maximumValue;
     if (minimum == null || maximum == null) {
-      return 'This field has no approved value range.';
+      return 'This field has no valid value range.';
     }
     final draft = _textController.text;
     if (draft.isEmpty) return 'Enter a whole number.';
@@ -256,10 +256,10 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   ) => switch (result.status) {
     GameWriteStatus.none => 'No value was written.',
     GameWriteStatus.unsupportedProfile =>
-      'The current profile is not approved for writing.',
+      'The current game identity or session is unavailable.',
     GameWriteStatus.confirmationRequired => 'The write was not authorized.',
     GameWriteStatus.unsupportedField =>
-      'This field is not approved for writing.',
+      'The selected field is not registered in the current profile.',
     GameWriteStatus.invalidValue => 'The value is outside the allowed range.',
     GameWriteStatus.invalidMapping => 'The field mapping is unavailable.',
     GameWriteStatus.preliminaryReadFailed =>

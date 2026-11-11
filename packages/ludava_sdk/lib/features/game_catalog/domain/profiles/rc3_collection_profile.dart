@@ -19,8 +19,6 @@ abstract final class Rc3CollectionProfile {
     buildId: 'BCUS98282',
     executable: 'RC3.ppu.self',
     executableHash: executableHash,
-    readStatus: VerificationStatus.experimental,
-    writeStatus: VerificationStatus.researchConfirmed,
     fields: {
       'bolts': GameField(
         id: 'bolts',
@@ -28,8 +26,6 @@ abstract final class Rc3CollectionProfile {
         guestOffset: 0x00c1edac,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.experimental,
-        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: GameMemoryConstants.maxUnsigned32,
       ),

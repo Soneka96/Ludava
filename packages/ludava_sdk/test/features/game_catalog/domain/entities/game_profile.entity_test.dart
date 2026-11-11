@@ -4,19 +4,14 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 abstract final class _GameProfileTestData {
-  static GameProfile build({
-    VerificationStatus readStatus = VerificationStatus.experimental,
-    VerificationStatus writeStatus = VerificationStatus.none,
-    Map<String, GameField> fields = const {},
-  }) => GameProfile(
-    id: 'synthetic-profile',
-    gameName: 'Synthetic game',
-    buildId: 'TEST00001',
-    executable: 'SYNTHETIC.self',
-    readStatus: readStatus,
-    writeStatus: writeStatus,
-    fields: fields,
-  );
+  static GameProfile build({Map<String, GameField> fields = const {}}) =>
+      GameProfile(
+        id: 'synthetic-profile',
+        gameName: 'Synthetic game',
+        buildId: 'TEST00001',
+        executable: 'SYNTHETIC.self',
+        fields: fields,
+      );
 
   static GameField buildCreditField() => GameField(
     id: 'credits',
@@ -24,7 +19,6 @@ abstract final class _GameProfileTestData {
     guestOffset: 0x1234,
     valueType: MemoryValueType.unsigned32,
     byteOrder: ByteOrder.big,
-    readStatus: VerificationStatus.experimental,
   );
 
   static GameField buildHealthField() => GameField(
@@ -33,7 +27,6 @@ abstract final class _GameProfileTestData {
     guestOffset: 0x2000,
     valueType: MemoryValueType.unsigned32,
     byteOrder: ByteOrder.big,
-    readStatus: VerificationStatus.experimental,
   );
 }
 
@@ -68,77 +61,6 @@ void main() {
         );
       },
     );
-  });
-
-  group('Property canRead behaves correctly', () {
-    test('Property canRead returns true when status is experimental', () {
-      expect(
-        _GameProfileTestData.build(
-          readStatus: VerificationStatus.experimental,
-        ).canRead,
-        isTrue,
-      );
-    });
-
-    test('Property canRead returns true when status is verified', () {
-      expect(
-        _GameProfileTestData.build(
-          readStatus: VerificationStatus.verified,
-        ).canRead,
-        isTrue,
-      );
-    });
-
-    test(
-      'Property canRead returns false when status is none or unsupported',
-      () {
-        for (final status in [
-          VerificationStatus.none,
-          VerificationStatus.unsupported,
-        ]) {
-          expect(
-            _GameProfileTestData.build(readStatus: status).canRead,
-            isFalse,
-          );
-        }
-      },
-    );
-  });
-
-  group('Property canWrite behaves correctly', () {
-    test('Property canWrite returns true when status is verified', () {
-      expect(
-        _GameProfileTestData.build(
-          writeStatus: VerificationStatus.verified,
-        ).canWrite,
-        isTrue,
-      );
-    });
-
-    test(
-      'Property canWrite returns true when status is research-confirmed',
-      () {
-        expect(
-          _GameProfileTestData.build(
-            writeStatus: VerificationStatus.researchConfirmed,
-          ).canWrite,
-          isTrue,
-        );
-      },
-    );
-
-    test('Property canWrite returns false when status is not verified', () {
-      for (final status in [
-        VerificationStatus.none,
-        VerificationStatus.experimental,
-        VerificationStatus.unsupported,
-      ]) {
-        expect(
-          _GameProfileTestData.build(writeStatus: status).canWrite,
-          isFalse,
-        );
-      }
-    });
   });
 
   group('Method findField() behaves correctly', () {

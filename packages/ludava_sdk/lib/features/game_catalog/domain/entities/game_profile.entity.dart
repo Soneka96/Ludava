@@ -1,5 +1,4 @@
 import 'package:ludava_sdk/features/game_catalog/domain/entities/game_field.entity.dart';
-import 'package:ludava_sdk/shared/constants/enums.dart';
 
 /// Describes one game build and the [GameField] values mapped for it.
 class GameProfile {
@@ -18,12 +17,6 @@ class GameProfile {
   /// Measured RPCS3 PPU executable hash required for automatic matching.
   final String? executableHash;
 
-  /// Evidence status for reading this build from [VerificationStatus].
-  final VerificationStatus readStatus;
-
-  /// Evidence status for writing this build from [VerificationStatus].
-  final VerificationStatus writeStatus;
-
   /// Fields mapped for this profile, keyed by their stable identifier.
   final Map<String, GameField> fields;
 
@@ -33,8 +26,6 @@ class GameProfile {
     required this.buildId,
     required this.executable,
     required this.executableHash,
-    required this.readStatus,
-    required this.writeStatus,
     required this.fields,
   });
 
@@ -47,8 +38,6 @@ class GameProfile {
     required String buildId,
     required String executable,
     String? executableHash,
-    required VerificationStatus readStatus,
-    VerificationStatus writeStatus = VerificationStatus.none,
     Map<String, GameField> fields = const {},
   }) {
     if (fields.entries.any((entry) => entry.key != entry.value.id)) {
@@ -64,21 +53,9 @@ class GameProfile {
       buildId: buildId,
       executable: executable,
       executableHash: executableHash,
-      readStatus: readStatus,
-      writeStatus: writeStatus,
       fields: Map.unmodifiable(fields),
     );
   }
-
-  /// Whether recorded evidence permits reading this profile.
-  bool get canRead =>
-      readStatus == VerificationStatus.experimental ||
-      readStatus == VerificationStatus.verified;
-
-  /// Whether recorded evidence permits writing this profile.
-  bool get canWrite =>
-      writeStatus == VerificationStatus.researchConfirmed ||
-      writeStatus == VerificationStatus.verified;
 
   /// Finds a field by [fieldId].
   GameField? findField(String fieldId) => fields[fieldId];

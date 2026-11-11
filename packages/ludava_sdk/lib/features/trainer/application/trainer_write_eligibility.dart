@@ -8,17 +8,13 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 /// trainer session still revalidates the live process and memory target before
 /// every write.
 abstract final class TrainerWriteEligibility {
-  /// Reports whether [session] and [field] describe an approved write target.
+  /// Reports whether [session] and [field] describe a valid current write target.
   static bool hasValidTarget(TrainerSessionState session, GameField field) {
     final profile = session.profile;
     final processId = session.selectedProcessId;
     final detection = session.detection;
     return profile != null &&
         identical(profile.fields[field.id], field) &&
-        profile.canRead &&
-        profile.canWrite &&
-        field.canRead &&
-        field.canWrite &&
         field.minimumValue != null &&
         field.maximumValue != null &&
         processId != null &&

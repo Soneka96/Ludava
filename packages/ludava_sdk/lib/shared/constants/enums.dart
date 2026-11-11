@@ -1,24 +1,5 @@
-/// Verification and value types used throughout Ludava.
+/// Memory operation and value types used throughout Ludava.
 library;
-
-/// Describes how much evidence supports an operation.
-enum VerificationStatus {
-  /// No evidence has been recorded.
-  none,
-
-  /// A candidate is available for controlled experimentation.
-  experimental,
-
-  /// Owner-confirmed research supports the capability; live Ludava evidence
-  /// is separate.
-  researchConfirmed,
-
-  /// The capability has been independently verified.
-  verified,
-
-  /// Evidence shows that the capability must not be used.
-  unsupported,
-}
 
 /// Describes a value's binary representation.
 enum MemoryValueType {
@@ -151,10 +132,10 @@ enum GameReadStatus {
   /// The field was read and decoded successfully.
   success,
 
-  /// The profile is not approved for reading.
+  /// The selected profile does not match the current game identity.
   unsupportedProfile,
 
-  /// The selected field is missing or not approved for reading.
+  /// The selected field is missing from the profile.
   unsupportedField,
 
   /// The profile's address mapping is invalid.
@@ -178,13 +159,13 @@ enum GameWriteStatus {
   /// The value was written and matched the read-back value.
   success,
 
-  /// The profile is not approved for writing.
+  /// The selected profile does not match the current game session.
   unsupportedProfile,
 
   /// The user did not explicitly confirm this write.
   confirmationRequired,
 
-  /// The selected field is missing or not approved for writing.
+  /// The selected field is missing from the profile.
   unsupportedField,
 
   /// The requested value is outside the field's allowed range.

@@ -4,9 +4,9 @@ This document defines package and feature ownership, dependency direction, SDK c
 
 ## Feature ownership
 
-Ludava separates the game catalog, RPCS3 connection, game detection, game memory, shared trainer application behavior, and frontend presentation. A game or build is profile data in `game_catalog`, not a separate feature. Adding a supported game adds its researched profile and fields with their actual evidence status; it reuses the existing detection and read/write workflows. `researchConfirmed` records owner-confirmed external research and remains distinct from evidence that Ludava was tested in a live game session.
+Ludava separates the game catalog, RPCS3 connection, game detection, game memory, shared trainer application behavior, and frontend presentation. A game or build is profile data in `game_catalog`, not a separate feature. Every profile and field registered in the production catalog is an owner-approved read/write capability. Research and experiments stay on development branches until the owner has confirmed a successful Ludava read and guarded write with the intended in-game result using either frontend.
 
-Keep game-specific offsets, value types, endianness, write bounds, and evidence status in that game's profile. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Only fields marked `researchConfirmed` or `verified` can be written, and every write requires a deliberate user action and matching read-back. The interactive TUI applies on Enter; diagnostic writes require `--confirm-write`.
+Keep game-specific offsets, value types, endianness, and write bounds in that game's profile. Keep sources, observed builds, measurements, limitations, and historical evidence in that game's research record. Do not put game-specific offsets in the process adapter or duplicate generic memory logic for every game. Every write still requires a deliberate user action and matching read-back. The interactive TUI applies on Enter; diagnostic writes require `--confirm-write`.
 
 | Feature | Owns |
 | --- | --- |
@@ -20,7 +20,7 @@ The raw Windows RPCS3 log reader belongs to `rpcs3_connection`. Parsing PPU load
 
 ### Game identity and evidence ownership
 
-Game/build profiles are data in `game_catalog`; current identity uses the registered title ID, executable name and measured PPU hash, evaluated with fresh lifecycle evidence. External live research can qualify for `researchConfirmed` under the [development workflow](DEVELOPMENT.md#researching-game-fields); an untested address cannot enable writes by itself. See [game detection](features/game-detection.md), [game memory](features/game-memory.md), and per-game research in [`games/`](games/collection.md).
+Game/build profiles are data in `game_catalog`; current identity uses the registered title ID, executable name and measured PPU hash, evaluated with fresh lifecycle evidence. A profile's presence in the production catalog records owner approval; it does not replace current runtime identity checks. An untested address cannot enter the production catalog. See [game detection](features/game-detection.md), [game memory](features/game-memory.md), and per-game research in [`games/`](games/collection.md).
 
 `game_memory` owns the shared process-memory operation that opens a process handle, executes the generic field read or guarded write use case, records operation and cleanup failures separately, and closes the handle. Trainer-session and diagnostic services share this operation while keeping their distinct identity and authorization policies. `game_detection` owns the RPCS3 evidence workflow and profile decision; session and diagnostic services request detection through that feature capability.
 
@@ -101,7 +101,7 @@ Within each frontend, organize screens and components by the user-facing feature
 
 ## Adding capability
 
-- **Supported game or build:** add a profile definition and register it in `game_catalog`. Preserve the source and evidence status for each field. Do not create a per-game memory engine.
+- **Supported game or build:** after the owner verifies a successful Ludava read and guarded write with the intended in-game result, add its profile and fields to `game_catalog`. Preserve supporting sources and limitations in the game's research record. Do not create a per-game memory engine.
 - **Game identity evidence:** parse RPCS3 log syntax in `game_detection/data`; update detection policy in `game_detection`. Keep raw file reading and process/session ownership in `rpcs3_connection`.
 - **Trainer field:** add the researched field to its game profile. Reuse the generic address, read, and write use cases in `game_memory`; add focused profile and operation tests.
 - **Emulator integration:** add process/log/session adapters under a dedicated connection feature. Keep emulator-specific process and log details out of `game_memory`.
@@ -119,7 +119,7 @@ The Flutter app uses one Redux store, trainer state, middleware-owned SDK observ
 
 The Flutter GetIt/Redux composition, action and middleware flow, widget-specific ViewModels, synchronous write bridge, and native-window shutdown are defined in [`FLUTTER_ARCHITECTURE_CONVENTIONS.md`](FLUTTER_ARCHITECTURE_CONVENTIONS.md). Migration-specific visual and interaction acceptance belongs with its implementation task or pull request.
 
-Flutter and Nocterm consume SDK-owned write eligibility and valid-target capabilities. They are presentation guidance only: the SDK revalidates process identity, executable hash, session memory base, approval, bounds, complete transfer, and matching read-back for every write. See [game-memory safeguards](features/game-memory.md).
+Flutter and Nocterm consume SDK-owned write eligibility and valid-target capabilities. They are presentation guidance only: the SDK revalidates process identity, executable hash, session memory base, explicit confirmation, bounds, complete transfer, and matching read-back for every write. See [game-memory safeguards](features/game-memory.md).
 
 The diagnostics feature follows the same boundary: the TUI owns command syntax, argument parsing, human-readable output, and CLI exit codes. The SDK owns reusable diagnostic operation orchestration, including process discovery, identity and memory-base evaluation, memory access, and structured result classifications. Preserve the read policy: a manually selected profile may be read without matching current identity when the request does not require current identity, and the SDK must classify that result as unverified. A request that requires current identity must fail when identity does not match. Writes always require matching current process identity and memory base, explicit confirmation, and the existing complete read/write/read-back checks. TUI command runners must call typed SDK operations; they must not construct memory repositories or use cases, open native process-memory adapters, or decide diagnostic write authorization. Keep message formatting in the TUI and operation status in typed SDK results rather than parsing SDK error strings.
 
@@ -129,11 +129,11 @@ Construct application services and presentation dependencies at their compositio
 
 These SDK safety requirements are enforced by responsibility-focused tests under [testing conventions](TESTING.md#sdk-safety-and-native-integration).
 
-1. Only an explicitly selected profile and a field with `researchConfirmed` or `verified` write evidence can be written; report when Ludava has not checked the live runtime identity.
+1. A field must belong to the selected registered profile. A manually selected or otherwise unconfirmed profile never authorizes a write; current runtime identity must be confirmed.
 2. Preserve 64-bit host addresses and validate the complete requested memory range.
 3. Require native success and the exact byte count before decoding or reporting a value.
 4. A failed read is never reported as numeric zero.
-5. A write requires a research-confirmed or verified field, a valid value range, a deliberate user action, a complete native transfer, and a matching read-back. The TUI uses Enter to apply; diagnostic commands require `--confirm-write`. Live-game validation is required before claiming Ludava compatibility.
+5. A write requires a registered field with a valid value range, a deliberate user action, a complete native transfer, and a matching read-back. The TUI uses Enter to apply; diagnostic commands require `--confirm-write`. Live-game validation is required before adding a capability to the production catalog or claiming compatibility.
 6. Surface process and native errors; do not silently retry writes.
 
 ## Windows last-error capture
@@ -142,7 +142,7 @@ For Tool Help calls that report failure through `GetLastError`, the `rpcs3_conne
 
 ## Compatibility evidence
 
-Compatibility is recorded per exact game/build and capability. Keep experimental, read-verified, write-verified, and unsupported states distinct. A process ID, selected profile, passing unit test, or plausible value is not proof of game identity or compatibility. See [per-game evidence](games/collection.md) for the evidence required to change a status.
+Compatibility evidence is recorded per exact game/build and capability. Preserve historical research findings and uncertainty in the game's research record; these records do not act as runtime approval metadata. A process ID, selected profile, passing unit test, or plausible value is not proof of current game identity or compatibility. See [per-game evidence](games/collection.md) for required research details.
 
 ## SDK runtime API
 

@@ -51,26 +51,16 @@ Future<void> _replaceAll(NoctermTester tester, String text) async {
   }
 }
 
-GameField _field({
-  bool readEnabled = true,
-  bool writeEnabled = true,
-  int? minimumValue = 0,
-  int? maximumValue = 4294967295,
-}) => GameField(
-  id: 'credits',
-  name: 'Credits',
-  guestOffset: 0x1000,
-  valueType: MemoryValueType.unsigned32,
-  byteOrder: ByteOrder.big,
-  readStatus:
-      readEnabled ? VerificationStatus.verified : VerificationStatus.none,
-  writeStatus:
-      writeEnabled
-          ? VerificationStatus.researchConfirmed
-          : VerificationStatus.none,
-  minimumValue: minimumValue,
-  maximumValue: maximumValue,
-);
+GameField _field({int? minimumValue = 0, int? maximumValue = 4294967295}) =>
+    GameField(
+      id: 'credits',
+      name: 'Credits',
+      guestOffset: 0x1000,
+      valueType: MemoryValueType.unsigned32,
+      byteOrder: ByteOrder.big,
+      minimumValue: minimumValue,
+      maximumValue: maximumValue,
+    );
 
 class _EditorHost extends StatefulComponent {
   final GameField field;
@@ -253,11 +243,11 @@ void main() {
           const feedbackByStatus = <GameWriteStatus, String>{
             GameWriteStatus.none: 'No value was applied.',
             GameWriteStatus.unsupportedProfile:
-                'This field is not approved for writing.',
+                'The current game identity or session is unavailable.',
             GameWriteStatus.confirmationRequired:
                 'The write was not authorized.',
             GameWriteStatus.unsupportedField:
-                'This field is not approved for writing.',
+                'The selected field is not registered in the current profile.',
             GameWriteStatus.invalidValue:
                 'The value is outside the allowed range.',
             GameWriteStatus.invalidMapping: 'The field address is unavailable.',
@@ -745,36 +735,6 @@ void main() {
     );
 
     test(
-      'Class TrainerValueEditorComponent disables read-only fields',
-      () async {
-        await testNocterm('read-only field', (tester) async {
-          var applyCount = 0;
-          await tester.pumpComponent(
-            _editor(
-              field: _field(writeEnabled: false),
-              onApply: (_) {
-                applyCount++;
-                return _success(1);
-              },
-            ),
-          );
-          final input = tester.findAllComponents<TextField>().single;
-
-          await tester.enterText('9');
-          await tester.sendEnter();
-
-          expect(input.enabled, isFalse);
-          expect(_controller(tester).text, '123');
-          expect(applyCount, 0);
-          expect(
-            tester.terminalState,
-            containsText('This field is read-only.'),
-          );
-        });
-      },
-    );
-
-    test(
       'Class TrainerValueEditorComponent disables editing when either bound is absent',
       () async {
         await testNocterm('one missing bound', (tester) async {
@@ -795,10 +755,7 @@ void main() {
             final input = tester.findAllComponents<TextField>().single;
 
             expect(input.enabled, isFalse);
-            expect(
-              tester.terminalState,
-              containsText('no approved value range'),
-            );
+            expect(tester.terminalState, containsText('no valid value range'));
             await tester.sendEnter();
             expect(applyCount, 0);
           }

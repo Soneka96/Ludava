@@ -27,7 +27,6 @@ void main() {
               fieldId: 'credits',
               value: 4294967295,
             ),
-            canRead: true,
           ),
         ),
       );
@@ -64,7 +63,6 @@ void main() {
                 fieldId: 'credits',
                 value: 42,
               ),
-              canRead: true,
             ),
             theme: alternateTheme,
           ),
@@ -93,7 +91,6 @@ void main() {
                 fieldId: 'credits',
                 value: 4294967295,
               ),
-              canRead: true,
             ),
             width: 80,
           ),
@@ -112,7 +109,7 @@ void main() {
       'Class TrainerFieldValue distinguishes unavailable and failed reads',
       (tester) async {
         await tester.pumpWidget(
-          _wrap(const TrainerFieldValue(readResult: null, canRead: true)),
+          _wrap(const TrainerFieldValue(readResult: null)),
         );
         expect(find.text('Unavailable'), findsOneWidget);
 
@@ -123,7 +120,6 @@ void main() {
                 status: GameReadStatus.readFailed,
                 fieldId: 'credits',
               ),
-              canRead: true,
             ),
           ),
         );
@@ -137,11 +133,10 @@ void main() {
                 fieldId: 'credits',
                 value: 17,
               ),
-              canRead: false,
             ),
           ),
         );
-        expect(find.text('Unavailable'), findsOneWidget);
+        expect(find.text('17'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

@@ -9,7 +9,6 @@ final _field = GameField(
   guestOffset: 0x1000,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
 );
 
 void main() {
@@ -40,9 +39,9 @@ void main() {
     );
 
     test(
-      'Class TrainerFieldRowComponent labels a non-writable field read-only',
+      'Class TrainerFieldRowComponent labels an unavailable target',
       () async {
-        await testNocterm('read-only field row', (tester) async {
+        await testNocterm('unavailable target field row', (tester) async {
           await tester.pumpComponent(
             TrainerFieldRowComponent(
               index: 0,
@@ -57,7 +56,10 @@ void main() {
             ),
           );
 
-          expect(tester.terminalState, containsText('1. Credits (read-only)'));
+          expect(
+            tester.terminalState,
+            containsText('1. Credits (unavailable)'),
+          );
           expect(tester.terminalState, containsText('1,234'));
         });
       },

@@ -10,7 +10,6 @@ GameProfile _profile() => GameProfile(
   gameName: 'Synthetic game',
   buildId: 'SYNTHETIC',
   executable: 'SYNTHETIC.self',
-  readStatus: VerificationStatus.experimental,
 );
 
 Widget _wrap(Widget child) => MaterialApp(

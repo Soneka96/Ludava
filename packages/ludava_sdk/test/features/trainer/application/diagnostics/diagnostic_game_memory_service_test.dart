@@ -14,31 +14,22 @@ import 'package:test/test.dart';
 
 import '../../../../support/fake_windows_memory_api.dart';
 
-GameField _field({
-  VerificationStatus writeStatus = VerificationStatus.researchConfirmed,
-}) => GameField(
+GameField _field() => GameField(
   id: 'credits',
   name: 'Credits',
   guestOffset: 0x1000,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.experimental,
-  writeStatus: writeStatus,
   minimumValue: 0,
   maximumValue: 0xffffffff,
 );
 
-GameProfile _profile({
-  VerificationStatus writeStatus = VerificationStatus.researchConfirmed,
-  Map<String, GameField>? fields,
-}) => GameProfile(
+GameProfile _profile({Map<String, GameField>? fields}) => GameProfile(
   id: 'synthetic-profile',
   gameName: 'Synthetic game',
   buildId: 'TEST00001',
   executable: 'SYNTHETIC.self',
   executableHash: 'PPU-synthetic-hash',
-  readStatus: VerificationStatus.experimental,
-  writeStatus: writeStatus,
   fields: fields ?? {'credits': _field()},
 );
 
@@ -478,51 +469,6 @@ void main() {
 
       expect(result.status, DiagnosticGameMemoryStatus.memoryOperationFailed);
       expect(result.writeResult?.status, GameWriteStatus.unsupportedField);
-      expect(discoveryCalls, 0);
-      expect(api.openCalls, 0);
-      expect(api.writeCalls, 0);
-    });
-
-    test('Method execute() rejects a read-only field before discovery', () {
-      var discoveryCalls = 0;
-      final api = FakeWindowsMemoryApi();
-      final profile = _profile(
-        fields: {'credits': _field(writeStatus: VerificationStatus.none)},
-      );
-      final result = _createService(
-        profiles: [profile],
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-        discoverProcessIds: () {
-          discoveryCalls++;
-          return const [];
-        },
-      ).execute(_writeRequest());
-
-      expect(result.status, DiagnosticGameMemoryStatus.memoryOperationFailed);
-      expect(result.writeResult?.status, GameWriteStatus.unsupportedField);
-      expect(discoveryCalls, 0);
-      expect(api.openCalls, 0);
-      expect(api.writeCalls, 0);
-    });
-
-    test('Method execute() rejects a read-only profile before discovery', () {
-      var discoveryCalls = 0;
-      final api = FakeWindowsMemoryApi();
-      final result = _createService(
-        profiles: [_profile(writeStatus: VerificationStatus.none)],
-        api: api.adapter,
-        isWindows: true,
-        pointerSize: 8,
-        discoverProcessIds: () {
-          discoveryCalls++;
-          return const [];
-        },
-      ).execute(_writeRequest());
-
-      expect(result.status, DiagnosticGameMemoryStatus.memoryOperationFailed);
-      expect(result.writeResult?.status, GameWriteStatus.unsupportedProfile);
       expect(discoveryCalls, 0);
       expect(api.openCalls, 0);
       expect(api.writeCalls, 0);

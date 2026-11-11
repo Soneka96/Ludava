@@ -49,7 +49,6 @@ abstract final class TrainerSelectors {
       GameField field,
       GameReadResult? readResult,
       GameWriteResult? writeResult,
-      bool canRead,
       bool canWrite,
       bool isEditing,
     })
@@ -67,7 +66,6 @@ abstract final class TrainerSelectors {
           writeResult: currentSession.lastWriteResult?.fieldId == field.id
               ? currentSession.lastWriteResult
               : null,
-          canRead: currentProfile.canRead && field.canRead,
           canWrite: TrainerWriteEligibility.isWriteEligible(
             currentSession,
             field,

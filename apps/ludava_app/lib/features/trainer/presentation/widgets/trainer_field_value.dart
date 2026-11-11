@@ -8,15 +8,8 @@ class TrainerFieldValue extends StatelessWidget {
   /// Latest SDK read result for this profile field.
   final GameReadResult? readResult;
 
-  /// Whether the profile permits reading this field.
-  final bool canRead;
-
   /// Creates a current value label for one profile row.
-  const TrainerFieldValue({
-    required this.readResult,
-    required this.canRead,
-    super.key,
-  });
+  const TrainerFieldValue({required this.readResult, super.key});
 
   /// Fits large integer values without altering their exact representation.
   @override
@@ -24,7 +17,7 @@ class TrainerFieldValue extends StatelessWidget {
     final theme = Theme.of(context);
     final tokens = theme.extension<LudavaThemeTokens>()!;
     final value = readResult?.succeeded == true ? readResult?.value : null;
-    if (!canRead || value == null) {
+    if (value == null) {
       final failed = readResult?.status == GameReadStatus.readFailed;
       return Text(
         failed ? 'Read failed' : 'Unavailable',

@@ -14,7 +14,6 @@ abstract final class GameMemoryOutput {
     final lines = [
       'Game: ${profile.gameName} (${profile.id})',
       'Build: ${profile.buildId}',
-      'Profile status: ${profile.readStatus.name}',
       _runtimeIdentityNote(identityConfirmed),
     ];
     switch (result.status) {
@@ -29,9 +28,9 @@ abstract final class GameMemoryOutput {
       case GameReadStatus.none:
         lines.add('Status: no read attempted');
       case GameReadStatus.unsupportedProfile:
-        lines.add('Status: profile is not approved for reading');
+        lines.add('Status: profile does not match the current game identity');
       case GameReadStatus.unsupportedField:
-        lines.add('Status: field is not approved for reading');
+        lines.add('Status: field is not registered in the profile');
       case GameReadStatus.invalidMapping:
         lines.add('Status: invalid memory mapping');
       case GameReadStatus.readFailed:
@@ -59,7 +58,6 @@ abstract final class GameMemoryOutput {
     final lines = [
       'Game: ${profile.gameName} (${profile.id})',
       'Build: ${profile.buildId}',
-      'Profile status: ${profile.writeStatus.name}',
       _runtimeIdentityNote(identityConfirmed),
     ];
     switch (result.status) {
@@ -72,11 +70,11 @@ abstract final class GameMemoryOutput {
       case GameWriteStatus.none:
         lines.add('Status: no write attempted');
       case GameWriteStatus.unsupportedProfile:
-        lines.add('Status: profile is not approved for writing');
+        lines.add('Status: current game identity or session is unavailable');
       case GameWriteStatus.confirmationRequired:
         lines.add('Status: explicit write confirmation is required');
       case GameWriteStatus.unsupportedField:
-        lines.add('Status: field is not approved for writing');
+        lines.add('Status: field is not registered in the profile');
       case GameWriteStatus.invalidValue:
         lines.add('Status: value is outside the field range');
       case GameWriteStatus.invalidMapping:

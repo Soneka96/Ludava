@@ -68,8 +68,6 @@ GameField _field({
   guestOffset: 0,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.verified,
   minimumValue: minimumValue,
   maximumValue: maximumValue,
 );
@@ -542,7 +540,7 @@ void main() {
           (GameWriteStatus.none, 'No value was written.', null),
           (
             GameWriteStatus.unsupportedProfile,
-            'The current profile is not approved for writing.',
+            'The current game identity or session is unavailable.',
             null,
           ),
           (
@@ -552,7 +550,7 @@ void main() {
           ),
           (
             GameWriteStatus.unsupportedField,
-            'This field is not approved for writing.',
+            'The selected field is not registered in the current profile.',
             null,
           ),
           (

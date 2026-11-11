@@ -16,7 +16,6 @@ GameProfile _profile() => GameProfile(
   buildId: 'TEST00001',
   executable: 'SYNTHETIC.self',
   executableHash: 'PPU-synthetic-hash',
-  readStatus: VerificationStatus.experimental,
 );
 
 TrainerWriteValidator _validator({

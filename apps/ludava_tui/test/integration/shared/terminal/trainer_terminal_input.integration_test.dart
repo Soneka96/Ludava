@@ -116,8 +116,6 @@ GameField _editableField() => GameField(
   guestOffset: 0x1000,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.researchConfirmed,
   minimumValue: 0,
   maximumValue: 0xffffffff,
 );

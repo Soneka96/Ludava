@@ -13,16 +13,12 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: child),
 );
 
-GameField _field({
-  VerificationStatus writeStatus = VerificationStatus.verified,
-}) => GameField(
+GameField _field() => GameField(
   id: 'credits',
   name: 'Credits',
   guestOffset: 0,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: writeStatus,
   minimumValue: 0,
   maximumValue: 4294967295,
 );
@@ -56,7 +52,6 @@ void main() {
                 readResult: _read(4294967295),
                 currentValue: 4294967295,
                 writeResult: null,
-                canRead: true,
                 canWrite: true,
                 isEditing: false,
                 onEdit: () => editCalls++,
@@ -103,11 +98,10 @@ void main() {
           SizedBox(
             width: LudavaDimensions.minimumWindowWidth,
             child: TrainerFieldRow(
-              field: _field(writeStatus: VerificationStatus.none),
+              field: _field(),
               readResult: null,
               currentValue: null,
               writeResult: null,
-              canRead: true,
               canWrite: false,
               isEditing: false,
               onEdit: () {},
@@ -138,7 +132,6 @@ void main() {
               readResult: _read(42),
               currentValue: 42,
               writeResult: null,
-              canRead: true,
               canWrite: true,
               isEditing: true,
               onEdit: () {},
@@ -185,7 +178,6 @@ void main() {
                   readResult: _read(42),
                   currentValue: 42,
                   writeResult: null,
-                  canRead: true,
                   canWrite: false,
                   isEditing: false,
                   onEdit: () {},

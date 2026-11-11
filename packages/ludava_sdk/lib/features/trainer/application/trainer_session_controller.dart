@@ -336,20 +336,12 @@ class TrainerSessionController {
     final metadata = _state.processMetadata;
     final base = _state.memoryBase;
     final field = profile?.findField(fieldId);
-    if (profile == null || field == null || !field.canWrite) {
+    if (profile == null || field == null) {
       return _rejectWrite(
         GameWriteStatus.unsupportedField,
         fieldId,
         value,
-        'This field is not approved for writing.',
-      );
-    }
-    if (!profile.canWrite) {
-      return _rejectWrite(
-        GameWriteStatus.unsupportedProfile,
-        fieldId,
-        value,
-        'This profile is not approved for writing.',
+        'The selected field is not registered in the current profile.',
       );
     }
     if (processId == null ||
@@ -456,19 +448,18 @@ class TrainerSessionController {
     }
   }
 
-  /// Reads every approved field and replaces the snapshot with those results.
+  /// Reads every registered field and replaces the snapshot with those results.
   void _readAvailableFields(
     int processId,
     GameDetectionResult detection,
     int? memoryBase,
   ) {
     final profile = detection.profile;
-    if (profile == null || memoryBase == null || !profile.canRead) return;
+    if (profile == null || memoryBase == null) return;
     final results = <String, GameReadResult>{};
     String? readError;
     for (final field in profile.fields.values) {
       _ensureActive();
-      if (!field.canRead) continue;
       try {
         results[field.id] = _readField(
           processId,

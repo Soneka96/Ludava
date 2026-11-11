@@ -3,7 +3,7 @@ import 'package:ludava_sdk/features/game_catalog/domain/entities/game_profile.en
 import 'package:ludava_sdk/shared/constants/app_constants.dart';
 import 'package:ludava_sdk/shared/constants/enums.dart';
 
-/// Defines the BCUS98127 profile with verified reads and researched writes.
+/// Defines the BCUS98127 profile.
 abstract final class ToolsOfDestructionBcus98127Profile {
   /// Stable profile identifier used by commands and the profile catalog.
   static const String id = 'tools-of-destruction-bcus98127';
@@ -12,15 +12,13 @@ abstract final class ToolsOfDestructionBcus98127Profile {
   static const String executableHash =
       'PPU-c14042df6304d3e420a9917e6f8e5fc05cc38b4c';
 
-  /// Exposes the read-verified Bolts and Raritanium fields for this build.
+  /// Exposes the Bolts and Raritanium fields for this build.
   static final GameProfile profile = GameProfile(
     id: id,
     gameName: 'Ratchet & Clank Future: Tools of Destruction',
     buildId: 'BCUS98127',
     executable: 'EBOOT.BIN',
     executableHash: executableHash,
-    readStatus: VerificationStatus.verified,
-    writeStatus: VerificationStatus.researchConfirmed,
     fields: {
       'bolts': GameField(
         id: 'bolts',
@@ -28,8 +26,6 @@ abstract final class ToolsOfDestructionBcus98127Profile {
         guestOffset: 0x101eff3c,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: GameMemoryConstants.maxUnsigned32,
       ),
@@ -39,8 +35,6 @@ abstract final class ToolsOfDestructionBcus98127Profile {
         guestOffset: 0x101eff40,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: GameMemoryConstants.maxUnsigned32,
       ),

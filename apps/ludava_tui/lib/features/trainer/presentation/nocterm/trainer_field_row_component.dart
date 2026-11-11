@@ -12,7 +12,7 @@ class TrainerFieldRowComponent extends StatelessComponent {
   /// Latest read result, or `null` when no read is available.
   final GameReadResult? readResult;
 
-  /// Whether both the profile and field permit editing.
+  /// Whether the current session and field permit editing.
   final bool canEdit;
 
   /// Whether the row is currently selected.
@@ -36,7 +36,7 @@ class TrainerFieldRowComponent extends StatelessComponent {
         result?.succeeded == true && result?.value != null
             ? _formatNumber(result!.value!)
             : 'Unavailable';
-    final writeLabel = canEdit ? '' : ' (read-only)';
+    final writeLabel = canEdit ? '' : ' (unavailable)';
     return Row(
       children: [
         Text(selected ? '❯ ' : '  '),

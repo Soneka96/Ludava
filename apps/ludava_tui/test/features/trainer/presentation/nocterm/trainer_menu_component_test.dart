@@ -62,18 +62,14 @@ TrainerSessionState _session({
 
 GameProfile _profile({
   String id = 'synthetic-profile',
-  bool profileReadable = true,
-  bool readableFields = true,
   bool includeWeapons = true,
+  bool includeSecret = false,
   bool includeFields = true,
 }) => GameProfile(
   id: id,
   gameName: 'Synthetic game',
   buildId: 'SYNTHETIC',
   executable: 'SYNTHETIC.self',
-  readStatus:
-      profileReadable ? VerificationStatus.verified : VerificationStatus.none,
-  writeStatus: VerificationStatus.researchConfirmed,
   fields: {
     if (includeFields)
       'credits': GameField(
@@ -82,11 +78,6 @@ GameProfile _profile({
         guestOffset: 0x1000,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus:
-            readableFields
-                ? VerificationStatus.verified
-                : VerificationStatus.none,
-        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: 0xffffffff,
       ),
@@ -97,22 +88,16 @@ GameProfile _profile({
         guestOffset: 0x2000,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus:
-            readableFields
-                ? VerificationStatus.verified
-                : VerificationStatus.none,
-        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: 0xffffffff,
       ),
-    if (includeFields)
+    if (includeFields && includeSecret)
       'secret': GameField(
         id: 'secret',
         name: 'Secret',
         guestOffset: 0x3000,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.none,
       ),
   },
 );
@@ -214,8 +199,6 @@ void main() {
             gameName: 'Mixed test game',
             buildId: 'MIXED',
             executable: 'mixed.self',
-            readStatus: VerificationStatus.verified,
-            writeStatus: VerificationStatus.researchConfirmed,
             fields: {
               'credits': GameField(
                 id: 'credits',
@@ -223,7 +206,6 @@ void main() {
                 guestOffset: 0x1000,
                 valueType: MemoryValueType.unsigned32,
                 byteOrder: ByteOrder.big,
-                readStatus: VerificationStatus.verified,
               ),
               'weapons': GameField(
                 id: 'weapons',
@@ -231,8 +213,6 @@ void main() {
                 guestOffset: 0x2000,
                 valueType: MemoryValueType.unsigned32,
                 byteOrder: ByteOrder.big,
-                readStatus: VerificationStatus.verified,
-                writeStatus: VerificationStatus.researchConfirmed,
                 minimumValue: 0,
                 maximumValue: 100,
               ),
@@ -245,7 +225,7 @@ void main() {
 
           expect(
             tester.terminalState,
-            containsText('Selected field is read-only'),
+            containsText('Selected field is unavailable'),
           );
           await tester.sendEnter();
           await tester.sendKey(LogicalKey.digit1);
@@ -534,32 +514,42 @@ void main() {
       },
     );
 
-    test(
-      'Class TrainerMenuComponent omits fields from unreadable profiles',
-      () async {
-        await testNocterm('unreadable profile', (tester) async {
-          await tester.pumpComponent(
-            _menu(_session(profile: _profile(profileReadable: false))),
-          );
+    test('Class TrainerMenuComponent shows every registered field', () async {
+      await testNocterm('registered field without a read result', (
+        tester,
+      ) async {
+        await tester.pumpComponent(
+          _menu(
+            _session(
+              profile: _profile(includeWeapons: false, includeSecret: true),
+            ),
+          ),
+        );
 
-          expect(tester.terminalState, isNot(containsText('Credits')));
-          expect(
-            tester.terminalState,
-            containsText('Synthetic game · PS3 SYNTHETIC'),
-          );
-        });
-      },
-    );
+        expect(tester.terminalState, containsText('Credits'));
+        expect(tester.terminalState, containsText('Secret'));
+        expect(tester.terminalState, containsText('Unavailable'));
+        expect(
+          tester.terminalState,
+          containsText('Synthetic game · PS3 SYNTHETIC'),
+        );
+      });
+    });
 
     test(
-      'Class TrainerMenuComponent ignores navigation when no fields are readable',
+      'Class TrainerMenuComponent allows navigation over registered fields',
       () async {
-        await testNocterm('no readable fields', (tester) async {
+        await testNocterm('registered fields without current reads', (
+          tester,
+        ) async {
           final openedFields = <GameField>[];
           final selections = <int>[];
           await tester.pumpComponent(
             _menu(
-              _session(profile: _profile(readableFields: false)),
+              _session(
+                profile: _profile(includeWeapons: false, includeSecret: true),
+                reads: const {},
+              ),
               onOpenField: openedFields.add,
               onSelectionChanged: selections.add,
             ),
@@ -571,8 +561,9 @@ void main() {
           await tester.sendEnter();
 
           expect(openedFields, isEmpty);
-          expect(selections, isEmpty);
-          expect(tester.terminalState, isNot(containsText('Credits')));
+          expect(selections, [1, 0]);
+          expect(tester.terminalState, containsText('Credits'));
+          expect(tester.terminalState, containsText('Secret'));
         });
       },
     );
@@ -590,7 +581,7 @@ void main() {
           await tester.sendEnter();
 
           expect(openedFields, isEmpty);
-          expect(tester.terminalState, containsText('No readable fields'));
+          expect(tester.terminalState, containsText('No fields available'));
         });
       },
     );

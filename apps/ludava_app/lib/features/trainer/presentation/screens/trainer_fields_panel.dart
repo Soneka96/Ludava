@@ -48,7 +48,6 @@ class TrainerFieldsPanel extends StatelessWidget {
                     ? readResult?.value
                     : null,
                 writeResult: row.writeResult,
-                canRead: row.canRead,
                 canWrite: row.canWrite,
                 isEditing: row.isEditing,
                 onEdit: () => viewModel.onEditField(field.id),

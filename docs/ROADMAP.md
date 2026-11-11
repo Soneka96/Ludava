@@ -4,15 +4,7 @@ This is Ludava's **curated backlog of future project-level initiatives**, not a 
 
 New game profiles, memory fields, routine fixes, research experiments and CI results do **not** need roadmap entries unless they become a deliberate broader initiative.
 
-## Next — Remove production verification-status bureaucracy
-
-**Goal:** A game profile and field registered on `main` is an owner-approved, working read-and-write capability, not a candidate whose approval is tracked in code.
-
-**Ideas:** Remove `VerificationStatus` (`experimental`, `researchConfirmed`, `verified`, `unsupported`, and `none`), the separate `readStatus` and `writeStatus` on `GameProfile` and `GameField`, and their evidence-based `canRead`/`canWrite` gates. Do not replace them with a different approval flag or status system. Research and test incomplete mappings on development branches; do not merge a new game field into `main` until the owner confirms both a successful Ludava read and a guarded write with the intended in-game result, using **either** the TUI **or** Flutter. One frontend is sufficient because both share the SDK. Keep sources, observed build identities, and limitations in the game research records. Retain all runtime safety protections: current process/session and executable identity, guest base, bounds, preliminary reads, complete native transfer, matching read-back, and meaningful read/write operation results. This initiative does not remove runtime failure statuses.
-
-**Done when:** Production profiles contain only owner-approved working fields without verification/approval status metadata; the SDK and its tests no longer depend on that metadata; authoritative development and architecture rules are updated in their own documents; and no runtime memory or identity safeguard is weakened.
-
-## After verification-status cleanup — Refine Flutter Windows UI and validate gameplay
+## Next — Refine Flutter Windows UI and validate gameplay
 
 **Goal:** Build a tiny, cohesive native Windows Flutter trainer for 1–5 numeric values, suitable for mouse/keyboard and the ROG Ally touchscreen.
 

@@ -43,5 +43,4 @@ export 'shared/constants/enums.dart'
         GameMemoryAction,
         GameReadStatus,
         GameWriteStatus,
-        MemoryValueType,
-        VerificationStatus;
+        MemoryValueType;

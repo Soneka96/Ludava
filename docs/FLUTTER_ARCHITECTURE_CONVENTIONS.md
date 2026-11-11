@@ -64,7 +64,7 @@ These rules define the approved Redux architecture implemented in `apps/ludava_a
 - Never invent SDK result constructors, statuses, or success; do not call the SDK after the guard closes, convert writes to fire-and-forget actions, infer success from dispatch, or dispatch cancellation from the bridge.
 - `InlineValueEditor.onApplied` runs only after a successful write or existing unchanged-value behavior; it dispatches the edit-cancellation action for the reducer. Failed writes retain a valid draft and show SDK feedback. Preserve unchanged-value behavior and synchronous stream reentrancy. Flutter does not repeat the SDK's full write-validation matrix.
 
-The SDK remains responsible for current process/session identity, executable hash, profile and field evidence, memory base, user approval, type/range, complete preliminary read, complete native transfer, and matching read-back. Failed/partial reads are not zero. Unsupported, stale, ambiguous, or unverified targets fail closed according to the [game detection](features/game-detection.md) and [game memory](features/game-memory.md) contracts.
+The SDK remains responsible for current process/session identity, executable hash, registered profile and field membership, memory base, explicit user confirmation, type/range, complete preliminary read, complete native transfer, and matching read-back. Production catalog membership records owner approval; it does not authorize an operation without current runtime checks. Failed/partial reads are not zero. Unsupported, stale, ambiguous, or unverified targets fail closed according to the [game detection](features/game-detection.md) and [game memory](features/game-memory.md) contracts.
 
 ## Initialization and native shutdown
 

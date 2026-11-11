@@ -11,8 +11,6 @@ import 'package:test/test.dart';
 class _MockGameMemoryRepository extends Mock implements IGameMemoryRepository {}
 
 GameProfile _profile({
-  VerificationStatus readStatus = VerificationStatus.experimental,
-  VerificationStatus fieldReadStatus = VerificationStatus.experimental,
   MemoryValueType valueType = MemoryValueType.unsigned32,
   ByteOrder byteOrder = ByteOrder.big,
 }) => GameProfile(
@@ -20,7 +18,6 @@ GameProfile _profile({
   gameName: 'Test game',
   buildId: 'TEST',
   executable: 'test.exe',
-  readStatus: readStatus,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -28,7 +25,6 @@ GameProfile _profile({
       guestOffset: 0x1234,
       valueType: valueType,
       byteOrder: byteOrder,
-      readStatus: fieldReadStatus,
     ),
   },
 );
@@ -85,36 +81,19 @@ void main() {
       verify(() => repository.read(0x300001234, 4)).called(1);
     });
 
-    test('Method execute() rejects unsupported profiles before reading', () {
+    test('Method execute() rejects missing fields before reading', () {
       final repository = _MockGameMemoryRepository();
-      final result = ReadGameFieldUseCase(repository).execute(
-        _params(profile: _profile(readStatus: VerificationStatus.unsupported)),
-      );
+      final missingField = ReadGameFieldUseCase(
+        repository,
+      ).execute(_params(fieldId: 'missing'));
+      final missing = ReadGameFieldUseCase(
+        repository,
+      ).execute(_params(fieldId: 'also-missing'));
 
-      expect(result.status, GameReadStatus.unsupportedProfile);
+      expect(missingField.status, GameReadStatus.unsupportedField);
+      expect(missing.status, GameReadStatus.unsupportedField);
       verifyNever(() => repository.read(any(), any()));
     });
-
-    test(
-      'Method execute() rejects missing or unapproved fields before reading',
-      () {
-        final repository = _MockGameMemoryRepository();
-        final profile = _profile(
-          fieldReadStatus: VerificationStatus.unsupported,
-        );
-
-        final unsupported = ReadGameFieldUseCase(
-          repository,
-        ).execute(_params(profile: profile));
-        final missing = ReadGameFieldUseCase(
-          repository,
-        ).execute(_params(profile: profile, fieldId: 'missing'));
-
-        expect(unsupported.status, GameReadStatus.unsupportedField);
-        expect(missing.status, GameReadStatus.unsupportedField);
-        verifyNever(() => repository.read(any(), any()));
-      },
-    );
 
     test(
       'Method execute() rejects negative and overflowing mappings before reading',
