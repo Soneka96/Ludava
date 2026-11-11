@@ -12,13 +12,15 @@ New game profiles, memory fields, routine fixes, research experiments and CI res
 
 **Done when:** Production profiles contain only owner-approved working fields without verification/approval status metadata; the SDK and its tests no longer depend on that metadata; authoritative development and architecture rules are updated in their own documents; and no runtime memory or identity safeguard is weakened.
 
-## Next — Refine Flutter Windows UI and validate gameplay
+## After verification-status cleanup — Refine Flutter Windows UI and validate gameplay
 
-**Goal:** Make the existing Flutter desktop app a cohesive, compact, native-feeling Windows utility, suitable for a laptop and a handheld gaming PC.
+**Goal:** Build a tiny, cohesive native Windows Flutter trainer for 1–5 numeric values, suitable for mouse/keyboard and the ROG Ally touchscreen.
 
-**Ideas:** Improve visual hierarchy, spacing, alignment, content density, and the relationship between the title bar, connection status, active-game header, Refresh action, and dynamic field rows; remove unnecessary empty space. Redesign inline numeric editing so the value, editor, apply, cancel, errors, and focus behave coherently without moving or resizing the field row, including at small window sizes. Investigate native Windows 11 maximize-button hover and Snap Layouts integration instead of showing only an ordinary Flutter tooltip; preserve native minimize/maximize/restore/close behavior. Keep the existing Graphite & Teal tokens, Comfortable style preset, a single Refresh action, stable geometry, touch and physical keyboard usability, and SDK/Redux/ViewModel boundaries. Do not start a new UI framework or theme architecture.
+**Ideas:** Native title with dynamic game name and no duplicated content title; compact fixed-height status/error/Refresh header; permanent right-aligned comma-formatted numeric inputs; commit when the field is intentionally left with optimistic, guarded writes and silent success; show failure in the existing header without moving controls. Add fast Flutter-only automatic value reads paused for edits, slower game identity checks, meaningful Refresh recovery, and no changes to Nocterm's manual workflow. Size window naturally for 1–5 fields, permit proportional DPI-aware scaling, remember usable position, and support the Windows touch keyboard. Add animations only after lifecycle and window correctness.
 
-**Done when:** Normal, editing, and error states are visually coherent and free of overflow or layout shifts at 520 × 360 and 480 × 340 logical pixels with one or multiple fields; title-bar hover and window controls behave appropriately on Windows 11; mouse, keyboard, and touch input work; and the Flutter app successfully detects a supported game and performs a guarded read/write during a live RPCS3 session without terminal commands.
+**Execution:** [16 staged, small Flutter UI tasks](tasks/flutter-ui/README.md), to start only **after** the verification-status cleanup above. Keep the SDK safety authority, existing Redux/GetIt/ViewModel architecture, Graphite & Teal tokens and strict test boundaries; authoritative conventions change alongside implementation, not by duplicating rules in this roadmap.
+
+**Done when:** Editing, refresh and errors cause no layout shift; dynamic native window and keyboard work on actual Windows/Ally; automatic synchronization and optimistic writes remain safe across session changes; and the owner successfully performs a guarded Flutter read/write during a live RPCS3 session without terminal commands.
 
 ## Later — Repository presentation and branding
 
