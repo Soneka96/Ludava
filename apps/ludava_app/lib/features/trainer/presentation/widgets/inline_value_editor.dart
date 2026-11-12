@@ -43,6 +43,7 @@ class InlineValueEditor extends StatefulWidget {
 class _InlineValueEditorState extends State<InlineValueEditor> {
   late final TextEditingController _textController;
   late final FocusNode _inputFocusNode;
+  late int? _startingValue;
   String? _feedback;
   bool _submissionInProgress = false;
   bool _actionPendingThisFrame = false;
@@ -51,6 +52,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   @override
   void initState() {
     super.initState();
+    _startingValue = widget.currentValue;
     final initialText = widget.currentValue?.toString() ?? '';
     _textController = TextEditingController.fromValue(
       TextEditingValue(
@@ -66,7 +68,8 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   @override
   void didUpdateWidget(covariant InlineValueEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.field.id != widget.field.id) {
+    if (!_sameFieldMapping(oldWidget.field, widget.field)) {
+      _startingValue = widget.currentValue;
       final newText = widget.currentValue?.toString() ?? '';
       _textController.value = TextEditingValue(
         text: newText,
@@ -210,7 +213,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final value = int.tryParse(_textController.text);
     if (value == null) return;
 
-    if (value == widget.currentValue) {
+    if (value == _startingValue) {
       widget.onApplied();
       return;
     }
@@ -295,4 +298,11 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
           first.requestedValue == second.requestedValue &&
           first.readBackValue == second.readBackValue &&
           first.errorCode == second.errorCode);
+
+  /// Reports whether both fields describe the same captured edit target.
+  bool _sameFieldMapping(GameField first, GameField second) =>
+      first.id == second.id &&
+      first.guestOffset == second.guestOffset &&
+      first.valueType == second.valueType &&
+      first.byteOrder == second.byteOrder;
 }

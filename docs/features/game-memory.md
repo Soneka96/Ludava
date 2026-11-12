@@ -4,9 +4,9 @@ The SDK's `game_memory` feature owns generic address resolution, encoding/decodi
 
 ## Read and write contracts
 
-A read uses the resolved current-session base plus the selected profile field's guest offset and decodes the field using its declared representation. A failed/partial read is **not** a valid zero. The frontend should clear stale values on failed refreshes.
+A read uses a valid field mapping and address and decodes bytes using the field's declared representation only after native read-result validation succeeds. A failed or partial read is **not** a valid zero. The frontend should clear stale values on failed refreshes. Diagnostic reads may use a manually selected profile while current game identity is unconfirmed when the request does not require identity confirmation; the result must say that identity is unverified. Reads do not require write confirmation, a preliminary read, or read-back.
 
-A write requires a deliberate user action; matching selected process/session, executable identity and base; a field registered in the selected profile; valid type and range; a complete preliminary read; a complete native write; and a matching read-back. The TUI applies deliberate edits on Enter; diagnostic CLI writes require `--confirm-write`. SDK safeguards remain mandatory regardless of how a memory address was researched. See [game detection](game-detection.md) for current identity rules.
+A write requires a deliberate user action and current process/session revalidation; matching game and executable identity and memory base; a field registered in the selected profile; valid type and numeric range; explicit confirmation; a complete preliminary read; a complete native transfer; and an exact matching read-back. Failures must remain accurately classified; the operation guard, process cleanup, and terminal disposal safeguards remain in force. The TUI applies deliberate edits on Enter; diagnostic CLI writes require `--confirm-write`. SDK safeguards remain mandatory regardless of how a memory address was researched. See [game detection](game-detection.md) for current identity rules.
 
 A successful native call, plausible read, or matching read-back alone does not prove compatibility with a game build.
 

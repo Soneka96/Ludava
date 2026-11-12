@@ -62,10 +62,11 @@ GameField _field({
   String id = 'credits',
   required int? maximumValue,
   int? minimumValue = 0,
+  int guestOffset = 0,
 }) => GameField(
   id: id,
   name: 'Credits',
-  guestOffset: 0,
+  guestOffset: guestOffset,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
   minimumValue: minimumValue,
@@ -301,6 +302,217 @@ void main() {
         expect(find.byType(InlineValueEditor), findsNothing);
         expect(find.byTooltip('No value was written.'), findsNothing);
         expect(find.byTooltip('Applied and verified: 123'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor completes unchanged draft after a failed refresh without writing',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        final initialSize = tester.getSize(find.byType(InlineValueEditor));
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: null,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        expect(_editorText(tester), '17');
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(find.byType(InlineValueEditor), findsOneWidget);
+        expect(tester.getSize(find.byType(InlineValueEditor)), initialSize);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor completes untouched draft after a changed read without writing',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        final initialSize = tester.getSize(find.byType(InlineValueEditor));
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 25,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        expect(_editorText(tester), '17');
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(find.byType(InlineValueEditor), findsOneWidget);
+        expect(tester.getSize(find.byType(InlineValueEditor)), initialSize);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor does not write a draft restored to its starting value',
+      (tester) async {
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+        await tester.enterText(_inputFinder, '17');
+        await tester.pump();
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor sends a changed draft after a failed refresh to the SDK callback',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        final requestedValues = <int>[];
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: null,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(requestedValues, [25]);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor writes a changed draft when a later read matches it',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        final requestedValues = <int>[];
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 25,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(requestedValues, [25]);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
       },
     );
 
@@ -742,6 +954,53 @@ void main() {
           findsOneWidget,
         );
         expect(_editorText(tester, fieldId: 'scrap'), '5');
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor resets its starting value when a same-ID mapping changes',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              field: _field(maximumValue: 20, guestOffset: 0x1000),
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              field: _field(maximumValue: 20, guestOffset: 0x2000),
+              currentValue: 5,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        expect(_editorText(tester), '5');
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
       },
     );
 

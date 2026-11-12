@@ -22,9 +22,14 @@ class _SessionFixture {
   int readCalls = 0;
   int detectCalls = 0;
   int writeCalls = 0;
+  int creditsValue = 100;
+  String? lastWrittenFieldId;
+  int? lastWrittenValue;
+  void Function()? beforeWriteResult;
   bool? lastConfirmed;
   bool failMetadata = false;
   GameReadStatus readStatus = GameReadStatus.success;
+  GameWriteStatus writeStatus = GameWriteStatus.success;
   GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame;
   GameIdentityConfidence confidence = GameIdentityConfidence.confirmed;
   String evidenceDescription = 'Synthetic session evidence.';
@@ -69,7 +74,7 @@ class _SessionFixture {
             readStatus == GameReadStatus.success
                 ? fieldId == 'weapons'
                     ? 7
-                    : 100
+                    : creditsValue
                 : null,
       );
     },
@@ -83,11 +88,14 @@ class _SessionFixture {
     ) {
       writeCalls++;
       lastConfirmed = confirmed;
+      lastWrittenFieldId = fieldId;
+      lastWrittenValue = value;
+      beforeWriteResult?.call();
       return GameWriteResult(
-        status: GameWriteStatus.success,
+        status: writeStatus,
         fieldId: fieldId,
         requestedValue: value,
-        readBackValue: value,
+        readBackValue: writeStatus == GameWriteStatus.success ? value : null,
       );
     },
   );
@@ -300,6 +308,72 @@ void main() {
           expect(tester.terminalState, containsText('Current value: 100'));
           expect(tester.terminalState, containsText('10042'));
           expect(fixture.writeCalls, 0);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent preserves its draft across a successful same-session read update',
+      () async {
+        await testNocterm('successful field value refresh while editing', (
+          tester,
+        ) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          await tester.enterText('42');
+          fixture.creditsValue = 250;
+
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(fixture.controller.state.readResults['credits']?.value, 250);
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          expect(tester.terminalState, containsText('Current value: 100'));
+          expect(tester.terminalState, containsText('10042'));
+          expect(fixture.writeCalls, 0);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent does not write an untouched draft after a changed read',
+      () async {
+        await testNocterm('successful read changes while draft is untouched', (
+          tester,
+        ) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          fixture.creditsValue = 250;
+          fixture.controller.refresh();
+          await tester.pump();
+
+          expect(fixture.controller.state.readResults['credits']?.value, 250);
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          await tester.sendEnter();
+
+          expect(fixture.writeCalls, 0);
+          expect(tester.terminalState, containsText('The value is unchanged.'));
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent displays the current SDK write failure',
+      () async {
+        await testNocterm('current session write failure', (tester) async {
+          final fixture =
+              _SessionFixture()..writeStatus = GameWriteStatus.writeFailed;
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          await tester.enterText('42');
+          await tester.sendEnter();
+
+          expect(fixture.writeCalls, 1);
+          expect(tester.terminalState, containsText('The write failed.'));
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
         });
       },
     );
@@ -525,27 +599,152 @@ void main() {
     );
 
     test(
-      'Class TrainerSessionComponent rejects a stale callback after a same-ID game switch',
+      'Class TrainerSessionComponent rejects an old Apply after a same-mapping game switch and keeps the new editor usable',
       () async {
-        await testNocterm('same field ID on another profile', (tester) async {
+        await testNocterm('same field ID and mapping on another profile', (
+          tester,
+        ) async {
           final fixture = _SessionFixture();
           await tester.pumpComponent(_app(fixture));
           await tester.sendEnter();
-          final staleEditor =
+          final oldEditor =
               tester.findAllComponents<TrainerValueEditorComponent>().single;
 
           fixture.profile = _profile(
             id: 'other-profile',
             executableHash: 'other-hash',
-            guestOffset: 0x2000,
+            guestOffset: 0x1000,
           );
           fixture.controller.refresh();
           await tester.pump();
+          expect(fixture.controller.state.readResults['credits']?.value, 100);
+          await tester.sendEnter();
+          final newEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
 
-          final result = staleEditor.onApply(999);
+          final result = oldEditor.onApply(999);
           expect(result.status, GameWriteStatus.none);
           expect(fixture.writeCalls, 0);
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+
+          await tester.enterText('25');
+          await tester.sendEnter();
+
+          expect(fixture.writeCalls, 1);
+          expect(fixture.lastConfirmed, isTrue);
+          expect(fixture.lastWrittenFieldId, 'credits');
+          expect(fixture.lastWrittenValue, 10025);
+          expect(fixture.controller.state.profile?.id, 'other-profile');
+          expect(
+            tester.terminalState,
+            containsText('Credits updated to 10,025'),
+          );
+          expect(newEditor.field.guestOffset, oldEditor.field.guestOffset);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent rejects an old Apply after cancel and reopen in the same session',
+      () async {
+        await testNocterm('cancel then reopen the same field', (tester) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          final oldEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+
+          await tester.sendEscape();
           expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
+          await tester.sendEnter();
+          final newEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+
+          final staleResult = oldEditor.onApply(999);
+          expect(staleResult.status, GameWriteStatus.none);
+          expect(fixture.writeCalls, 0);
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+
+          final currentResult = newEditor.onApply(125);
+          expect(currentResult.status, GameWriteStatus.success);
+          expect(fixture.writeCalls, 1);
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          newEditor.onApplied?.call();
+          await tester.pump();
+          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent ignores stale Cancel and completion callbacks',
+      () async {
+        await testNocterm('old lifecycle callbacks after a new edit opens', (
+          tester,
+        ) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          final oldEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+          await tester.sendEscape();
+          await tester.sendEnter();
+          final newEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+
+          oldEditor.onCancel();
+          oldEditor.onApplied?.call();
+          await tester.pump();
+
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          expect(fixture.writeCalls, 0);
+          final currentResult = newEditor.onApply(125);
+          expect(currentResult.status, GameWriteStatus.success);
+          expect(fixture.writeCalls, 1);
+        });
+      },
+    );
+
+    test(
+      'Class TrainerSessionComponent keeps a new editor after a reentrant session change during write',
+      () async {
+        await testNocterm('session changes while write callback is running', (
+          tester,
+        ) async {
+          final fixture = _SessionFixture();
+          await tester.pumpComponent(_app(fixture));
+          await tester.sendEnter();
+          final oldEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+          fixture.beforeWriteResult = () {
+            fixture.profile = _profile(
+              id: 'replacement-profile',
+              executableHash: 'replacement-hash',
+              guestOffset: 0x1000,
+            );
+            fixture.controller.refresh();
+          };
+
+          final oldResult = oldEditor.onApply(125);
+          expect(oldResult.status, GameWriteStatus.success);
+          expect(fixture.writeCalls, 1);
+          expect(fixture.controller.state.profile?.id, 'replacement-profile');
+          fixture.beforeWriteResult = null;
+          await tester.pump();
+          expect(tester.terminalState, isNot(containsText('EDIT CREDITS')));
+
+          await tester.sendEnter();
+          final newEditor =
+              tester.findAllComponents<TrainerValueEditorComponent>().single;
+          oldEditor.onApplied?.call();
+          oldEditor.onCancel();
+          await tester.pump();
+
+          expect(tester.terminalState, containsText('EDIT CREDITS'));
+          final currentResult = newEditor.onApply(150);
+          expect(currentResult.status, GameWriteStatus.success);
+          expect(fixture.writeCalls, 2);
         });
       },
     );

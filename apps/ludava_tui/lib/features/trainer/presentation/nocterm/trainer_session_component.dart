@@ -32,6 +32,8 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
   GameField? _editingField;
   TrainerSessionState? _editingOriginSession;
   int? _editingStartingValue;
+  int? _editingInstanceId;
+  int _nextEditingInstanceId = 0;
   int _selectedFieldIndex = 0;
 
   /// Connects when needed and subscribes to the controller's latest snapshot.
@@ -100,12 +102,15 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
 
   /// Opens the editor with the latest verified value for [field].
   Component _buildEditor(GameField field) {
+    final originSession = _editingOriginSession;
+    final editInstanceId = _editingInstanceId;
     return TrainerValueEditorComponent(
       field: field,
       currentValue: _editingStartingValue,
-      onApply: (value) => _applyEdit(field, value),
-      onApplied: _returnToMenu,
-      onCancel: _returnToMenu,
+      onApply:
+          (value) => _applyEdit(editInstanceId, originSession, field, value),
+      onApplied: () => _returnToMenu(editInstanceId),
+      onCancel: () => _returnToMenu(editInstanceId),
     );
   }
 
@@ -165,19 +170,28 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
         result?.value == null) {
       return;
     }
+    final editInstanceId = ++_nextEditingInstanceId;
     setState(() {
       _editingField = editableField;
       _editingOriginSession = _session;
       _editingStartingValue = result!.value;
+      _editingInstanceId = editInstanceId;
     });
   }
 
-  /// Writes only while the current SDK target still matches the edit origin.
-  GameWriteResult _applyEdit(GameField originField, int value) {
-    final originSession = _editingOriginSession;
+  /// Writes only while the callback still owns the active edit instance.
+  GameWriteResult _applyEdit(
+    int? editInstanceId,
+    TrainerSessionState? originSession,
+    GameField originField,
+    int value,
+  ) {
     final currentSession = component.sessionController.state;
     final editingField = _editingField;
-    if (originSession == null ||
+    if (editInstanceId == null ||
+        editInstanceId != _editingInstanceId ||
+        originSession == null ||
+        !identical(originSession, _editingOriginSession) ||
         editingField == null ||
         !_sameFieldMapping(originField, editingField) ||
         !_sameSession(originSession, currentSession) ||
@@ -261,10 +275,12 @@ class _TrainerSessionState extends State<TrainerSessionComponent> {
     _editingField = null;
     _editingOriginSession = null;
     _editingStartingValue = null;
+    _editingInstanceId = null;
   }
 
-  /// Returns to the field menu using the controller's newest snapshot.
-  void _returnToMenu() {
+  /// Completes or cancels only the edit instance that owns the callback.
+  void _returnToMenu(int? editInstanceId) {
+    if (editInstanceId == null || editInstanceId != _editingInstanceId) return;
     setState(() {
       _clearEditing();
       _session = component.sessionController.state;
