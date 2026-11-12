@@ -6,7 +6,7 @@ import 'package:ludava_sdk/ludava_sdk.dart';
 
 /// Edits one unsigned field value in-place and applies only explicit requests.
 class InlineValueEditor extends StatefulWidget {
-  /// Field metadata used for presentation-oriented range checking.
+  /// Field metadata used to identify the registered write target.
   final GameField field;
 
   /// Latest SDK value when available, or `null` if the read is unavailable.
@@ -43,6 +43,7 @@ class InlineValueEditor extends StatefulWidget {
 class _InlineValueEditorState extends State<InlineValueEditor> {
   late final TextEditingController _textController;
   late final FocusNode _inputFocusNode;
+  late int? _startingValue;
   String? _feedback;
   bool _submissionInProgress = false;
   bool _actionPendingThisFrame = false;
@@ -51,6 +52,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   @override
   void initState() {
     super.initState();
+    _startingValue = widget.currentValue;
     final initialText = widget.currentValue?.toString() ?? '';
     _textController = TextEditingController.fromValue(
       TextEditingValue(
@@ -66,7 +68,8 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   @override
   void didUpdateWidget(covariant InlineValueEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.field.id != widget.field.id) {
+    if (!_sameFieldMapping(oldWidget.field, widget.field)) {
+      _startingValue = widget.currentValue;
       final newText = widget.currentValue?.toString() ?? '';
       _textController.value = TextEditingValue(
         text: newText,
@@ -176,18 +179,10 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
 
   /// Returns the current presentation-oriented input validation error.
   String? get _validationMessage {
-    final minimum = widget.field.minimumValue;
-    final maximum = widget.field.maximumValue;
-    if (minimum == null || maximum == null) {
-      return 'This field has no approved value range.';
-    }
     final draft = _textController.text;
     if (draft.isEmpty) return 'Enter a whole number.';
     final value = int.tryParse(draft);
     if (value == null) return 'Enter a whole number.';
-    if (value < minimum || value > maximum) {
-      return 'Enter a value from $minimum to $maximum.';
-    }
     return null;
   }
 
@@ -218,7 +213,7 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
     final value = int.tryParse(_textController.text);
     if (value == null) return;
 
-    if (value == widget.currentValue) {
+    if (value == _startingValue) {
       widget.onApplied();
       return;
     }
@@ -256,10 +251,10 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
   ) => switch (result.status) {
     GameWriteStatus.none => 'No value was written.',
     GameWriteStatus.unsupportedProfile =>
-      'The current profile is not approved for writing.',
+      'The current game identity or session is unavailable.',
     GameWriteStatus.confirmationRequired => 'The write was not authorized.',
     GameWriteStatus.unsupportedField =>
-      'This field is not approved for writing.',
+      'The selected field is not registered in the current profile.',
     GameWriteStatus.invalidValue => 'The value is outside the allowed range.',
     GameWriteStatus.invalidMapping => 'The field mapping is unavailable.',
     GameWriteStatus.preliminaryReadFailed =>
@@ -303,4 +298,11 @@ class _InlineValueEditorState extends State<InlineValueEditor> {
           first.requestedValue == second.requestedValue &&
           first.readBackValue == second.readBackValue &&
           first.errorCode == second.errorCode);
+
+  /// Reports whether both fields describe the same captured edit target.
+  bool _sameFieldMapping(GameField first, GameField second) =>
+      first.id == second.id &&
+      first.guestOffset == second.guestOffset &&
+      first.valueType == second.valueType &&
+      first.byteOrder == second.byteOrder;
 }

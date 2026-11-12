@@ -57,20 +57,53 @@ void main() {
           readBackValue: 44,
         );
         final bridge = _MockTrainerWriteBridge();
-        when(() => bridge.writeField('credits', 44)).thenReturn(result);
+        final session = trainerStateFixtureSession();
+        final field = session.profile!.findField('credits')!;
+        when(
+          () => bridge.writeField(
+            'credits',
+            44,
+            expectedSession: session,
+            expectedField: field,
+          ),
+        ).thenReturn(result);
         GetIt.instance.registerSingleton<TrainerWriteBridge>(bridge);
         final store = Store<AppState>(
           (state, action) => state,
           initialState: AppState(
-            trainer: TrainerState(session: trainerStateFixtureSession()),
+            trainer: TrainerState(session: session, editingFieldId: 'credits'),
           ),
         );
         final viewModel = TrainerFieldsViewModel.fromStore(store);
 
         expect(viewModel.onApplyField('credits', 44), same(result));
-        verify(() => bridge.writeField('credits', 44)).called(1);
+        verify(
+          () => bridge.writeField(
+            'credits',
+            44,
+            expectedSession: session,
+            expectedField: field,
+          ),
+        ).called(1);
         verifyNoMoreInteractions(bridge);
       },
     );
+
+    test('Class TrainerFieldsViewModel.fromStore rejects a callback without an active edit', () {
+      final bridge = _MockTrainerWriteBridge();
+      GetIt.instance.registerSingleton<TrainerWriteBridge>(bridge);
+      final store = Store<AppState>(
+        (state, action) => state,
+        initialState: AppState(
+          trainer: TrainerState(session: trainerStateFixtureSession()),
+        ),
+      );
+      final viewModel = TrainerFieldsViewModel.fromStore(store);
+
+      final result = viewModel.onApplyField('credits', 44);
+
+      expect(result.status, GameWriteStatus.none);
+      verifyNoMoreInteractions(bridge);
+    });
   });
 }

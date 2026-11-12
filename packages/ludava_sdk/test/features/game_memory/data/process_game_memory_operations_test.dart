@@ -13,8 +13,6 @@ final _profile = GameProfile(
   buildId: 'TEST00001',
   executable: 'SYNTHETIC.self',
   executableHash: 'PPU-synthetic-hash',
-  readStatus: VerificationStatus.experimental,
-  writeStatus: VerificationStatus.researchConfirmed,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -22,8 +20,6 @@ final _profile = GameProfile(
       guestOffset: 0x1000,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.experimental,
-      writeStatus: VerificationStatus.researchConfirmed,
       minimumValue: 0,
       maximumValue: 0xffffffff,
     ),

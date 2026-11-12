@@ -12,7 +12,6 @@ GameProfile _profile() => GameProfile(
   buildId: 'SYNTHETIC',
   executable: 'SYNTHETIC.self',
   executableHash: 'PPU-synthetic-hash',
-  readStatus: VerificationStatus.experimental,
 );
 
 Widget _connectionBody({

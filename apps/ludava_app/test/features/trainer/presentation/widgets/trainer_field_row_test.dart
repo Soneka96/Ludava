@@ -13,16 +13,12 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: child),
 );
 
-GameField _field({
-  VerificationStatus writeStatus = VerificationStatus.verified,
-}) => GameField(
+GameField _field() => GameField(
   id: 'credits',
   name: 'Credits',
   guestOffset: 0,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: writeStatus,
   minimumValue: 0,
   maximumValue: 4294967295,
 );
@@ -56,8 +52,6 @@ void main() {
                 readResult: _read(4294967295),
                 currentValue: 4294967295,
                 writeResult: null,
-                canRead: true,
-                canWrite: true,
                 isEditing: false,
                 onEdit: () => editCalls++,
                 onApply: _success,
@@ -103,12 +97,10 @@ void main() {
           SizedBox(
             width: LudavaDimensions.minimumWindowWidth,
             child: TrainerFieldRow(
-              field: _field(writeStatus: VerificationStatus.none),
+              field: _field(),
               readResult: null,
               currentValue: null,
               writeResult: null,
-              canRead: true,
-              canWrite: false,
               isEditing: false,
               onEdit: () {},
               onApply: _success,
@@ -126,6 +118,52 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'Class TrainerFieldRow hides Edit for failed or mismatched reads',
+      (tester) async {
+        for (final result in [
+          const GameReadResult(
+            status: GameReadStatus.readFailed,
+            fieldId: 'credits',
+          ),
+          const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'scrap',
+            value: 42,
+          ),
+        ]) {
+          await tester.pumpWidget(
+            _wrap(
+              SizedBox(
+                width: LudavaDimensions.minimumWindowWidth,
+                child: TrainerFieldRow(
+                  field: _field(),
+                  readResult: result,
+                  currentValue: null,
+                  writeResult: null,
+                  isEditing: false,
+                  onEdit: () {},
+                  onApply: _success,
+                  onCancel: () {},
+                  onApplied: () {},
+                ),
+              ),
+            ),
+          );
+
+          expect(
+            find.text(
+              result.status == GameReadStatus.readFailed
+                  ? 'Read failed'
+                  : 'Unavailable',
+            ),
+            findsOneWidget,
+          );
+          expect(find.byTooltip('Edit Credits'), findsNothing);
+        }
+      },
+    );
+
     testWidgets('Class TrainerFieldRow hides Edit while its editor is open', (
       tester,
     ) async {
@@ -138,8 +176,6 @@ void main() {
               readResult: _read(42),
               currentValue: 42,
               writeResult: null,
-              canRead: true,
-              canWrite: true,
               isEditing: true,
               onEdit: () {},
               onApply: _success,
@@ -185,8 +221,6 @@ void main() {
                   readResult: _read(42),
                   currentValue: 42,
                   writeResult: null,
-                  canRead: true,
-                  canWrite: false,
                   isEditing: false,
                   onEdit: () {},
                   onApply: _success,

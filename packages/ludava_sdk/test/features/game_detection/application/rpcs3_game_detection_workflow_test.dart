@@ -21,7 +21,6 @@ GameProfile _profile({
   buildId: buildId,
   executable: executable,
   executableHash: executableHash,
-  readStatus: VerificationStatus.experimental,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -29,7 +28,6 @@ GameProfile _profile({
       guestOffset: 0x1000,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.experimental,
     ),
   },
 );

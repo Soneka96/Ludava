@@ -32,8 +32,6 @@ export 'features/trainer/application/trainer_session_controller.dart'
     show TrainerSessionController;
 export 'features/trainer/application/trainer_session_state.entity.dart'
     show TrainerSessionState;
-export 'features/trainer/application/trainer_write_eligibility.dart'
-    show TrainerWriteEligibility;
 export 'shared/constants/enums.dart'
     show
         ByteOrder,
@@ -43,5 +41,4 @@ export 'shared/constants/enums.dart'
         GameMemoryAction,
         GameReadStatus,
         GameWriteStatus,
-        MemoryValueType,
-        VerificationStatus;
+        MemoryValueType;

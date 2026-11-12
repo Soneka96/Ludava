@@ -37,7 +37,7 @@ class DiagnosticGameMemoryResult {
     this.cleanupError,
   });
 
-  /// Whether the requested read or verified write completed successfully.
+  /// Whether the requested read or guarded write completed successfully.
   bool get succeeded =>
       status == DiagnosticGameMemoryStatus.completed &&
       (readResult?.succeeded ?? writeResult?.succeeded ?? false);

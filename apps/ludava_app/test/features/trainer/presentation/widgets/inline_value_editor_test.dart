@@ -62,14 +62,13 @@ GameField _field({
   String id = 'credits',
   required int? maximumValue,
   int? minimumValue = 0,
+  int guestOffset = 0,
 }) => GameField(
   id: id,
   name: 'Credits',
-  guestOffset: 0,
+  guestOffset: guestOffset,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.big,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.verified,
   minimumValue: minimumValue,
   maximumValue: maximumValue,
 );
@@ -104,7 +103,11 @@ void main() {
             _editor(
               field: _field(maximumValue: 50),
               currentValue: 10,
-              onApply: _success,
+              onApply: (_) => const GameWriteResult(
+                status: GameWriteStatus.invalidValue,
+                fieldId: 'credits',
+                requestedValue: 51,
+              ),
             ),
             theme: alternateTheme,
           ),
@@ -303,6 +306,217 @@ void main() {
     );
 
     testWidgets(
+      'Class InlineValueEditor completes unchanged draft after a failed refresh without writing',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        final initialSize = tester.getSize(find.byType(InlineValueEditor));
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: null,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        expect(_editorText(tester), '17');
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(find.byType(InlineValueEditor), findsOneWidget);
+        expect(tester.getSize(find.byType(InlineValueEditor)), initialSize);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor completes untouched draft after a changed read without writing',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        final initialSize = tester.getSize(find.byType(InlineValueEditor));
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 25,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        expect(_editorText(tester), '17');
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(find.byType(InlineValueEditor), findsOneWidget);
+        expect(tester.getSize(find.byType(InlineValueEditor)), initialSize);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor does not write a draft restored to its starting value',
+      (tester) async {
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+        await tester.enterText(_inputFinder, '17');
+        await tester.pump();
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor sends a changed draft after a failed refresh to the SDK callback',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        final requestedValues = <int>[];
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: null,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(requestedValues, [25]);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor writes a changed draft when a later read matches it',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        final requestedValues = <int>[];
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 17,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              currentValue: 25,
+              onApply: (value) {
+                requestedValues.add(value);
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(requestedValues, [25]);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
       'Class InlineValueEditor applies once through the explicit check action',
       (tester) async {
         var writeCalls = 0;
@@ -428,17 +642,21 @@ void main() {
     );
 
     testWidgets(
-      'Class InlineValueEditor shows validation through its tooltip and border',
+      'Class InlineValueEditor validates numeric text without checking field bounds',
       (tester) async {
-        var writeCalls = 0;
+        final writeValues = <int>[];
         await tester.pumpWidget(
           _wrap(
             _editor(
               field: _field(maximumValue: 50),
               currentValue: 10,
               onApply: (value) {
-                writeCalls++;
-                return _success(value);
+                writeValues.add(value);
+                return const GameWriteResult(
+                  status: GameWriteStatus.invalidValue,
+                  fieldId: 'credits',
+                  requestedValue: 51,
+                );
               },
             ),
           ),
@@ -448,10 +666,16 @@ void main() {
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
 
-        expect(writeCalls, 0);
+        expect(writeValues, [51]);
         expect(_editorText(tester), '51');
-        expect(find.byTooltip('Enter a value from 0 to 50.'), findsOneWidget);
-        expect(find.text('Enter a value from 0 to 50.'), findsNothing);
+        expect(
+          find.byTooltip('The value is outside the allowed range.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('The value is outside the allowed range.'),
+          findsNothing,
+        );
         final input = tester.widget<TextField>(_inputFinder);
         final tokens = LudavaTheme.graphiteAndTeal
             .extension<LudavaThemeTokens>()!;
@@ -465,7 +689,7 @@ void main() {
         await tester.pump();
         await tester.tap(find.byTooltip('Apply Credits'));
         await tester.pump();
-        expect(writeCalls, 0);
+        expect(writeValues, [51]);
         expect(find.byTooltip('Enter a whole number.'), findsOneWidget);
         expect(tester.getSize(find.byType(InlineValueEditor)).height, 48);
       },
@@ -542,7 +766,7 @@ void main() {
           (GameWriteStatus.none, 'No value was written.', null),
           (
             GameWriteStatus.unsupportedProfile,
-            'The current profile is not approved for writing.',
+            'The current game identity or session is unavailable.',
             null,
           ),
           (
@@ -552,7 +776,7 @@ void main() {
           ),
           (
             GameWriteStatus.unsupportedField,
-            'This field is not approved for writing.',
+            'The selected field is not registered in the current profile.',
             null,
           ),
           (
@@ -665,6 +889,39 @@ void main() {
     });
 
     testWidgets(
+      'Class InlineValueEditor submits values when field bounds are absent',
+      (tester) async {
+        final appliedValues = <int>[];
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              field: _field(minimumValue: null, maximumValue: null),
+              currentValue: 17,
+              onApply: (value) {
+                appliedValues.add(value);
+                return const GameWriteResult(
+                  status: GameWriteStatus.invalidValue,
+                  fieldId: 'credits',
+                  requestedValue: 44,
+                );
+              },
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '44');
+        await tester.pump();
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(appliedValues, [44]);
+        expect(
+          find.byTooltip('The value is outside the allowed range.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
       'Class InlineValueEditor resets its local draft when the field changes',
       (tester) async {
         const editorKey = ValueKey('inline-editor');
@@ -680,9 +937,6 @@ void main() {
         );
         await tester.enterText(_inputFinder, '42');
         await tester.pump();
-        await tester.tap(find.byTooltip('Apply Credits'));
-        await tester.pump();
-        expect(find.byTooltip('Enter a value from 0 to 20.'), findsOneWidget);
 
         await tester.pumpWidget(
           _wrap(
@@ -700,7 +954,53 @@ void main() {
           findsOneWidget,
         );
         expect(_editorText(tester, fieldId: 'scrap'), '5');
-        expect(find.byTooltip('Enter a value from 0 to 20.'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Class InlineValueEditor resets its starting value when a same-ID mapping changes',
+      (tester) async {
+        const editorKey = ValueKey('inline-editor');
+        var writeCalls = 0;
+        var appliedCalls = 0;
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              field: _field(maximumValue: 20, guestOffset: 0x1000),
+              currentValue: 17,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        await tester.enterText(_inputFinder, '25');
+        await tester.pump();
+
+        await tester.pumpWidget(
+          _wrap(
+            _editor(
+              key: editorKey,
+              field: _field(maximumValue: 20, guestOffset: 0x2000),
+              currentValue: 5,
+              onApply: (value) {
+                writeCalls++;
+                return _success(value);
+              },
+              onApplied: () => appliedCalls++,
+            ),
+          ),
+        );
+        expect(_editorText(tester), '5');
+        await tester.tap(find.byTooltip('Apply Credits'));
+        await tester.pump();
+
+        expect(writeCalls, 0);
+        expect(appliedCalls, 1);
+        expect(tester.takeException(), isNull);
       },
     );
 

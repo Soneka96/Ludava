@@ -1,6 +1,6 @@
 # Flutter Windows compact trainer — implementation tasks
 
-**Priority gate:** Finish and merge the existing [production verification-status removal](../../ROADMAP.md) first. Only then begin task 01 here. Tasks are planned scopes, not completed PR numbers or validated Windows behavior.
+**Priority gate:** Merge PR #16 before beginning task 01 or any later Flutter UI task. These tasks are planned scopes, not completed PR numbers or validated Windows behavior.
 
 ## Approved interaction contract
 
@@ -8,6 +8,7 @@
 - Compact Graphite & Teal trainer for 1–5 numeric fields. Single fixed-height connectivity/error/Refresh header. Left labels; permanent right-aligned numeric inputs. No extra screens, field cards, pencil, Apply/Cancel, plus/minus, sliders, success indicators or error row.
 - Always-formatted comma-grouped integer text, correct caret/selection/IME, paste and undo/redo. Typing is immediate and local; automatically **commit on intentional field blur**, with optional Enter, not idle debounce. Do not require Escape/Enter.
 - SDK-confirmed state remains separate from the optimistic visible value. Writes are guarded and serialized by session/field/revision. Success is silent; latest applicable failure restores the same-session confirmed value and uses the existing fixed header status. Never overwrite a newer edit with an older result.
+- Offer editing only for registered fields with an exact successful numeric read. The frontend parses numeric input, while the SDK owns field ranges and write authorization at submission. Keep each active draft bound to its originating process, game/profile/build, memory base, and field mapping.
 - **Flutter only:** fast automatic value reads pause for editing/conflicting writes; slower game identity checks continue during editing; SDK always independently validates every write; relevant failure triggers identity recheck. Nocterm keeps its current manual workflow.
 - Keep one meaningful Refresh button as real coalesced fresh sync/recovery; no overlapping SDK operations, no draft interruption.
 - Window uses field-count natural size and user-controlled proportional client-area scale, remembered position/scale, DPI-aware usable-monitor clamping, and touch keyboard avoidance. Caption is Windows-owned. Open small then expand, animate meaningful game changes, and close only after safe shutdown.
@@ -16,7 +17,7 @@
 
 | # | Group | Task | Dependencies |
 | --- | --- | --- | --- |
-| 01 | Conventions | [Reconcile Flutter UX conventions](01-foundation/01-ux-contract.md) | Prior cleanup |
+| 01 | Conventions | [Reconcile Flutter UX conventions](01-foundation/01-ux-contract.md) | PR #16 merged |
 | 02 | Visual structure | [Native Windows caption and dynamic game title](02-presentation/02-native-title.md) | 01 |
 | 03 | Visual structure | [One fixed-height status and Refresh header](02-presentation/03-header.md) | 01, 02 |
 | 04 | Visual structure | [Compact and stable 1–5-field layout](02-presentation/04-compact-layout.md) | 01, 03 |
@@ -37,7 +38,7 @@ Task 01 is a documentation-only convention reconciliation. Later tasks should us
 
 ## Shared implementation and testing rules
 
-- The SDK owns detection evidence, game/session identity, guarded reads and writes, range/guest-base checks, read-back verification and runtime results. Removing static VerificationStatus/readStatus/writeStatus does not remove safety or runtime GameReadStatus/GameWriteStatus.
+- The SDK owns detection evidence, game/session identity, guarded reads and writes, range/guest-base checks, read-back verification and runtime results. Runtime GameReadStatus/GameWriteStatus remain the operation outcomes frontends present.
 - Use existing Redux + GetIt, selectors, feature middleware and exclusive per-connected-widget ViewModels. Only local editor text/focus/selection belongs in the widget. No second SDK, parallel state framework, direct widget memory I/O or speculative wrapper layers.
 - Tests own their behavior at the relevant layer. Ordinary connected-widget tests must Mocktail-mock the exclusive ViewModel; integration of SDK/Redux event flows lives in explicit integration tests. Verify forbidden calls and preserve safety regressions.
 - Finish each task with formatting, analysis, relevant tests and Windows CI as appropriate; don't claim actual native/ROG Ally/RPCS3 functionality without live tests. Owner approval of real read and guarded write remains required.

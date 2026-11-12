@@ -12,7 +12,6 @@ GameField _field({String id = 'credits', int guestOffset = 0x1000}) =>
       guestOffset: guestOffset,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.experimental,
     );
 
 GameProfile _profile({
@@ -28,7 +27,6 @@ GameProfile _profile({
   buildId: buildId,
   executable: executable,
   executableHash: executableHash,
-  readStatus: VerificationStatus.experimental,
   fields: fields ?? {'credits': _field()},
 );
 

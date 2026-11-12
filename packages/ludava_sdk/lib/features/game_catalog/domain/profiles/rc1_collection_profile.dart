@@ -12,15 +12,13 @@ abstract final class Rc1CollectionProfile {
   static const String executableHash =
       'PPU-3de6ba9344eb2079d5afda4552e831826af4bd09';
 
-  /// Owner-confirmed bolt mapping and measured Collection executable identity.
+  /// Bolt mapping and measured Collection executable identity.
   static final GameProfile profile = GameProfile(
     id: id,
     gameName: 'Ratchet & Clank',
     buildId: 'BCUS98282',
     executable: 'RC1.ppu.self',
     executableHash: executableHash,
-    readStatus: VerificationStatus.experimental,
-    writeStatus: VerificationStatus.researchConfirmed,
     fields: {
       'bolts': GameField(
         id: 'bolts',
@@ -28,8 +26,6 @@ abstract final class Rc1CollectionProfile {
         guestOffset: 0x009bc3a0,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.experimental,
-        writeStatus: VerificationStatus.researchConfirmed,
         minimumValue: 0,
         maximumValue: GameMemoryConstants.maxUnsigned32,
       ),

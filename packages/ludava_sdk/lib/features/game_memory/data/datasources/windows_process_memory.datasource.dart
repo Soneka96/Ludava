@@ -16,7 +16,7 @@ class WindowsProcessMemoryDataSource {
   /// Opens [processId] with read access and optional explicitly granted write access.
   ///
   /// Write access is granted only when [allowWrites] is explicitly true. A
-  /// verified write use case must still authorize each operation.
+  /// guarded write use case must still authorize each operation.
   factory WindowsProcessMemoryDataSource.open(
     int processId, {
     WindowsMemoryApi? api,

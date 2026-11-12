@@ -4,19 +4,12 @@ import 'package:ludava_sdk/shared/constants/enums.dart';
 import 'package:test/test.dart';
 
 abstract final class _GameFieldTestData {
-  static GameField build({
-    VerificationStatus readStatus = VerificationStatus.none,
-    VerificationStatus writeStatus = VerificationStatus.none,
-    int? minimumValue,
-    int? maximumValue,
-  }) => GameField(
+  static GameField build({int? minimumValue, int? maximumValue}) => GameField(
     id: 'credits',
     name: 'Credits',
     guestOffset: 0x1234,
     valueType: MemoryValueType.unsigned32,
     byteOrder: ByteOrder.big,
-    readStatus: readStatus,
-    writeStatus: writeStatus,
     minimumValue: minimumValue,
     maximumValue: maximumValue,
   );
@@ -24,20 +17,6 @@ abstract final class _GameFieldTestData {
 
 void main() {
   group('Class GameField construction', () {
-    test('Class GameField defaults to no write approval', () {
-      final field = GameField(
-        id: 'credits',
-        name: 'Credits',
-        guestOffset: 0x1234,
-        valueType: MemoryValueType.unsigned32,
-        byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.experimental,
-      );
-
-      expect(field.writeStatus, VerificationStatus.none);
-      expect(field.canWrite, isFalse);
-    });
-
     test('Class GameField accepts valid inclusive unsigned bounds', () {
       final field = _GameFieldTestData.build(
         minimumValue: GameMemoryConstants.maxUnsigned32,
@@ -92,67 +71,6 @@ void main() {
         () => _GameFieldTestData.build(minimumValue: 2, maximumValue: 1),
         throwsArgumentError,
       );
-    });
-  });
-
-  group('Property canRead behaves correctly', () {
-    test('Property canRead returns true when status is experimental', () {
-      final field = _GameFieldTestData.build(
-        readStatus: VerificationStatus.experimental,
-      );
-
-      expect(field.canRead, isTrue);
-    });
-
-    test('Property canRead returns true when status is verified', () {
-      final field = _GameFieldTestData.build(
-        readStatus: VerificationStatus.verified,
-      );
-
-      expect(field.canRead, isTrue);
-    });
-
-    test(
-      'Property canRead returns false when status is none or unsupported',
-      () {
-        for (final status in [
-          VerificationStatus.none,
-          VerificationStatus.unsupported,
-        ]) {
-          expect(_GameFieldTestData.build(readStatus: status).canRead, isFalse);
-        }
-      },
-    );
-  });
-
-  group('Property canWrite behaves correctly', () {
-    test('Property canWrite returns true when status is verified', () {
-      final field = _GameFieldTestData.build(
-        writeStatus: VerificationStatus.verified,
-      );
-
-      expect(field.canWrite, isTrue);
-    });
-
-    test(
-      'Property canWrite returns true when status is research-confirmed',
-      () {
-        final field = _GameFieldTestData.build(
-          writeStatus: VerificationStatus.researchConfirmed,
-        );
-
-        expect(field.canWrite, isTrue);
-      },
-    );
-
-    test('Property canWrite returns false when status is not verified', () {
-      for (final status in [
-        VerificationStatus.none,
-        VerificationStatus.experimental,
-        VerificationStatus.unsupported,
-      ]) {
-        expect(_GameFieldTestData.build(writeStatus: status).canWrite, isFalse);
-      }
     });
   });
 }

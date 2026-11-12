@@ -19,11 +19,8 @@ class ReadGameFieldUseCase {
 
   /// Resolves, reads, validates, and decodes [params].
   GameReadResult execute(ReadGameFieldParams params) {
-    if (!params.profile.canRead) {
-      return const GameReadResult(status: GameReadStatus.unsupportedProfile);
-    }
     final field = params.profile.findField(params.fieldId);
-    if (field == null || !field.canRead) {
+    if (field == null) {
       return GameReadResult(
         status: GameReadStatus.unsupportedField,
         fieldId: params.fieldId,

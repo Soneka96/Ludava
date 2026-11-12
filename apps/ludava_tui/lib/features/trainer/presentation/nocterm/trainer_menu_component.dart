@@ -11,7 +11,7 @@ class TrainerMenuComponent extends StatefulComponent {
   /// Opens the selected [GameField] editor.
   final void Function(GameField field) onOpenField;
 
-  /// Refreshes all readable values for the current game.
+  /// Refreshes all registered field values for the current game.
   final void Function() onRefresh;
 
   /// Re-detects the current RPCS3 game identity.
@@ -49,7 +49,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
   /// Initializes selection from the value restored by the root component.
   @override
   void initState() {
-    final fields = _readableFields(component.session.profile);
+    final fields = _registeredFields(component.session.profile);
     _selectedIndex =
         fields.isEmpty
             ? 0
@@ -67,7 +67,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
       component.onSelectionChanged?.call(0);
       return;
     }
-    final fields = _readableFields(component.session.profile);
+    final fields = _registeredFields(component.session.profile);
     if (_selectedIndex >= fields.length) {
       _selectedIndex = fields.isEmpty ? 0 : fields.length - 1;
       component.onSelectionChanged?.call(_selectedIndex);
@@ -77,17 +77,17 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
   /// Renders the current game, field values, selection, and keyboard hints.
   @override
   Component build(BuildContext context) {
-    final fields = _readableFields(component.session.profile);
+    final fields = _registeredFields(component.session.profile);
     final selectedIndex =
         fields.isEmpty ? 0 : _selectedIndex.clamp(0, fields.length - 1);
     final selectedField = fields.isEmpty ? null : fields[selectedIndex];
     final String actionHint;
     if (selectedField == null) {
-      actionHint = 'No readable fields';
-    } else if (_canEditField(selectedField)) {
+      actionHint = 'No fields available';
+    } else if (_hasReadableValue(selectedField)) {
       actionHint = '1–9 Edit   Enter Edit';
     } else {
-      actionHint = 'Selected field is read-only';
+      actionHint = 'Selected field is unavailable';
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -141,7 +141,6 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
                   (entry) => TrainerFieldRowComponent(
                     index: entry.$1,
                     field: entry.$2,
-                    canEdit: _canEditField(entry.$2),
                     selected: entry.$1 == selectedIndex,
                     readResult: component.session.readResults[entry.$2.id],
                   ),
@@ -160,7 +159,7 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
 
   /// Handles field navigation, direct field shortcuts, and menu actions.
   bool _handleKeyEvent(KeyboardEvent event) {
-    final fields = _readableFields(component.session.profile);
+    final fields = _registeredFields(component.session.profile);
     final key = event.logicalKey;
     if (key == LogicalKey.arrowUp) {
       _moveSelection(-1, fields.length);
@@ -174,12 +173,12 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     if (digit != null && digit > 0 && digit <= fields.length && digit <= 9) {
       _setSelection(digit - 1);
       final field = fields[digit - 1];
-      if (_canEditField(field)) component.onOpenField(field);
+      if (_hasReadableValue(field)) component.onOpenField(field);
       return true;
     }
     if (key == LogicalKey.enter && fields.isNotEmpty) {
       final field = fields[_selectedIndex.clamp(0, fields.length - 1)];
-      if (_canEditField(field)) component.onOpenField(field);
+      if (_hasReadableValue(field)) component.onOpenField(field);
       return true;
     }
     if (_matchesLetter(event, 'r', LogicalKey.keyR)) {
@@ -210,15 +209,19 @@ class _TrainerMenuState extends State<TrainerMenuComponent> {
     component.onSelectionChanged?.call(index);
   }
 
-  /// Returns only fields that the selected profile allows the trainer to read.
-  List<GameField> _readableFields(GameProfile? profile) {
-    if (profile == null || !profile.canRead) return const [];
-    return profile.fields.values.where((field) => field.canRead).toList();
+  /// Returns the fields registered in the selected profile.
+  List<GameField> _registeredFields(GameProfile? profile) {
+    if (profile == null) return const [];
+    return profile.fields.values.toList();
   }
 
-  /// Reports whether [field] has an approved current target and successful read.
-  bool _canEditField(GameField field) =>
-      TrainerWriteEligibility.isWriteEligible(component.session, field);
+  /// Reports whether [field] has an exact successful numeric read.
+  bool _hasReadableValue(GameField field) {
+    final result = component.session.readResults[field.id];
+    return result?.fieldId == field.id &&
+        result?.succeeded == true &&
+        result?.value != null;
+  }
 
   /// Renders the menu divider at the available width.
   Component _separator() => Text(

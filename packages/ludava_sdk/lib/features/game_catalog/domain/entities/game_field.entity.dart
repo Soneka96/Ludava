@@ -19,16 +19,10 @@ class GameField {
   /// Byte order selected from [ByteOrder].
   final ByteOrder byteOrder;
 
-  /// Evidence status for reading this field from [VerificationStatus].
-  final VerificationStatus readStatus;
-
-  /// Evidence status for writing this field from [VerificationStatus].
-  final VerificationStatus writeStatus;
-
-  /// Lowest value allowed for a verified write, when bounded.
+  /// Lowest value allowed for a write, when bounded.
   final int? minimumValue;
 
-  /// Highest value allowed for a verified write, when bounded.
+  /// Highest value allowed for a write, when bounded.
   final int? maximumValue;
 
   GameField._({
@@ -37,13 +31,11 @@ class GameField {
     required this.guestOffset,
     required this.valueType,
     required this.byteOrder,
-    required this.readStatus,
-    required this.writeStatus,
     required this.minimumValue,
     required this.maximumValue,
   });
 
-  /// Creates a field with its address, encoding, evidence status, and bounds.
+  /// Creates a field with its address, encoding, and optional write bounds.
   ///
   /// Bounds must fit in an unsigned 32-bit value and, when both are supplied,
   /// [minimumValue] must not exceed [maximumValue].
@@ -53,8 +45,6 @@ class GameField {
     required int guestOffset,
     required MemoryValueType valueType,
     required ByteOrder byteOrder,
-    required VerificationStatus readStatus,
-    VerificationStatus writeStatus = VerificationStatus.none,
     int? minimumValue,
     int? maximumValue,
   }) {
@@ -65,22 +55,10 @@ class GameField {
       guestOffset: guestOffset,
       valueType: valueType,
       byteOrder: byteOrder,
-      readStatus: readStatus,
-      writeStatus: writeStatus,
       minimumValue: minimumValue,
       maximumValue: maximumValue,
     );
   }
-
-  /// Whether recorded evidence permits reading this field.
-  bool get canRead =>
-      readStatus == VerificationStatus.experimental ||
-      readStatus == VerificationStatus.verified;
-
-  /// Whether recorded evidence permits writing this field.
-  bool get canWrite =>
-      writeStatus == VerificationStatus.researchConfirmed ||
-      writeStatus == VerificationStatus.verified;
 
   static void _validateBounds(int? minimumValue, int? maximumValue) {
     if (minimumValue != null &&

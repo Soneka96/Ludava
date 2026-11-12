@@ -10,14 +10,12 @@ import 'package:redux/redux.dart';
 
 /// Presentation state and callbacks for the connected trainer fields list.
 class TrainerFieldsViewModel extends Equatable {
-  /// Selected SDK data and eligibility used to render each field row.
+  /// Selected SDK data and edit state used to render each field row.
   final List<
     ({
       GameField field,
       GameReadResult? readResult,
       GameWriteResult? writeResult,
-      bool canRead,
-      bool canWrite,
       bool isEditing,
     })
   >
@@ -51,8 +49,33 @@ class TrainerFieldsViewModel extends Equatable {
       hasProfile: TrainerSelectors.hasProfile(state),
       fields: TrainerSelectors.fieldRows(state),
       onEditField: (fieldId) => store.dispatch(BeginEditingAction(fieldId)),
-      onApplyField: (fieldId, value) =>
-          GetIt.instance<TrainerWriteBridge>().writeField(fieldId, value),
+      onApplyField: (fieldId, value) {
+        final originSession = state.trainer.session;
+        final originField = originSession.profile?.findField(fieldId);
+        final currentState = store.state.trainer;
+        if (originField == null ||
+            currentState.editingFieldId != fieldId ||
+            !TrainerFieldsViewModel._sameTarget(
+              originSession,
+              currentState.session,
+            ) ||
+            !TrainerFieldsViewModel._sameFieldMapping(
+              originField,
+              currentState.session.profile?.findField(fieldId),
+            )) {
+          return GameWriteResult(
+            status: GameWriteStatus.none,
+            fieldId: fieldId,
+            requestedValue: value,
+          );
+        }
+        return GetIt.instance<TrainerWriteBridge>().writeField(
+          fieldId,
+          value,
+          expectedSession: originSession,
+          expectedField: originField,
+        );
+      },
       onCancelEditing: () => store.dispatch(const CancelEditingAction()),
     );
   }
@@ -67,8 +90,6 @@ class TrainerFieldsViewModel extends Equatable {
           row.field.guestOffset,
           row.field.valueType,
           row.field.byteOrder,
-          row.field.readStatus,
-          row.field.writeStatus,
           row.field.minimumValue,
           row.field.maximumValue,
         ),
@@ -85,11 +106,32 @@ class TrainerFieldsViewModel extends Equatable {
           row.writeResult?.readBackValue,
           row.writeResult?.errorCode,
         ),
-        canRead: row.canRead,
-        canWrite: row.canWrite,
         isEditing: row.isEditing,
       ),
     ),
     hasProfile,
   ];
+
+  /// Compares the target-defining parts of two field mappings.
+  static bool _sameFieldMapping(GameField first, GameField? second) =>
+      second != null &&
+      first.id == second.id &&
+      first.guestOffset == second.guestOffset &&
+      first.valueType == second.valueType &&
+      first.byteOrder == second.byteOrder;
+
+  /// Compares session facts that bind an edit to its original target.
+  static bool _sameTarget(
+    TrainerSessionState first,
+    TrainerSessionState second,
+  ) =>
+      first.selectedProcessId == second.selectedProcessId &&
+      first.processMetadata?.startedAtUtc ==
+          second.processMetadata?.startedAtUtc &&
+      first.profile?.id == second.profile?.id &&
+      first.profile?.buildId == second.profile?.buildId &&
+      first.profile?.executable == second.profile?.executable &&
+      first.profile?.executableHash == second.profile?.executableHash &&
+      first.detection?.executableHash == second.detection?.executableHash &&
+      first.memoryBase == second.memoryBase;
 }

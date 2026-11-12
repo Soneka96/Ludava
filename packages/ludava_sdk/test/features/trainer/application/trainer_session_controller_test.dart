@@ -101,7 +101,7 @@ class _SessionFixture {
 GameProfile _profile({
   String id = 'synthetic-profile',
   String executableHash = 'PPU-synthetic-hash',
-  bool withUnreadableField = false,
+  bool withUnboundedField = false,
   bool twoFields = false,
   bool secondFieldWriteEnabled = false,
 }) => GameProfile(
@@ -110,8 +110,6 @@ GameProfile _profile({
   buildId: 'TEST00001',
   executable: 'SYNTHETIC.self',
   executableHash: executableHash,
-  readStatus: VerificationStatus.verified,
-  writeStatus: VerificationStatus.researchConfirmed,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -119,19 +117,16 @@ GameProfile _profile({
       guestOffset: 0x1000,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.verified,
-      writeStatus: VerificationStatus.researchConfirmed,
       minimumValue: 0,
       maximumValue: 1000000,
     ),
-    if (withUnreadableField)
+    if (withUnboundedField)
       'secret': GameField(
         id: 'secret',
         name: 'Secret',
         guestOffset: 0x2000,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.none,
       ),
     if (twoFields)
       'weapons': GameField(
@@ -140,11 +135,6 @@ GameProfile _profile({
         guestOffset: 0x2000,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-        writeStatus:
-            secondFieldWriteEnabled
-                ? VerificationStatus.researchConfirmed
-                : VerificationStatus.none,
         minimumValue: secondFieldWriteEnabled ? 0 : null,
         maximumValue: secondFieldWriteEnabled ? 1000000 : null,
       ),
@@ -839,14 +829,18 @@ void main() {
       },
     );
 
-    test('Method refresh() skips fields that are not approved for reading', () {
+    test('Method refresh() reads every registered field', () {
       final fixture =
           _SessionFixture()
-            ..profile = _profile(withUnreadableField: true)
+            ..profile = _profile(withUnboundedField: true)
             ..controller.connect();
 
-      expect(fixture.readCalls, 1);
-      expect(fixture.controller.state.readResults.keys, ['credits']);
+      expect(fixture.readCalls, 2);
+      expect(fixture.controller.state.readResults.keys, ['credits', 'secret']);
+      expect(
+        fixture.controller.state.readResults['secret']?.status,
+        GameReadStatus.success,
+      );
     });
   });
 

@@ -20,16 +20,19 @@ import '../../../../support/trainer_state_fixture.dart';
 void main() {
   late MockTrainerSdkCapability capability;
   late StreamController<TrainerSessionState> sessionChanges;
+  late TrainerSessionState sdkSession;
   Store<AppState>? activeStore;
 
   setUp(() {
     sl.pushNewScope();
     capability = MockTrainerSdkCapability();
+    sdkSession = TrainerSessionState();
     sessionChanges = StreamController<TrainerSessionState>.broadcast(
       sync: true,
     );
     when(() => capability.stateChanges)
         .thenAnswer((_) => sessionChanges.stream);
+    when(() => capability.state).thenAnswer((_) => sdkSession);
     when(() => capability.connect()).thenAnswer((_) {});
     sl.registerSingleton<TrainerSdkCapability>(capability);
     final gate = SdkOperationGate();
@@ -56,6 +59,7 @@ void main() {
         'on reentrant success', () {
       final initialSession = trainerStateFixtureSession();
       final nextSession = trainerStateFixtureSession();
+      sdkSession = initialSession;
       const result = GameWriteResult(
         status: GameWriteStatus.success,
         fieldId: 'credits',
@@ -63,6 +67,7 @@ void main() {
         readBackValue: 44,
       );
       when(() => capability.writeField('credits', 44)).thenAnswer((_) {
+        sdkSession = nextSession;
         sessionChanges.add(nextSession);
         return result;
       });
@@ -80,7 +85,12 @@ void main() {
       activeStore = store;
       store.dispatch(const InitializeAppAction());
 
-      final returnedResult = sl<TrainerWriteBridge>().writeField('credits', 44);
+      final returnedResult = sl<TrainerWriteBridge>().writeField(
+        'credits',
+        44,
+        expectedSession: initialSession,
+        expectedField: initialSession.profile!.findField('credits')!,
+      );
 
       expect(returnedResult, same(result));
       expect(store.state.trainer.session, same(nextSession));

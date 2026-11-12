@@ -20,8 +20,6 @@ class _MockTrainerFieldsViewModel extends Mock
   GameField field,
   GameReadResult? readResult,
   GameWriteResult? writeResult,
-  bool canRead,
-  bool canWrite,
   bool isEditing,
 })
 _row(
@@ -29,9 +27,9 @@ _row(
   String? name,
   GameReadResult? readResult,
   GameWriteResult? writeResult,
-  bool canRead = true,
-  bool canWrite = true,
   bool isEditing = false,
+  int? minimumValue = 0,
+  int? maximumValue = 100000,
 }) => (
   field: GameField(
     id: id,
@@ -39,15 +37,11 @@ _row(
     guestOffset: 0x100,
     valueType: MemoryValueType.unsigned32,
     byteOrder: ByteOrder.little,
-    readStatus: VerificationStatus.verified,
-    writeStatus: VerificationStatus.researchConfirmed,
-    minimumValue: 0,
-    maximumValue: 100000,
+    minimumValue: minimumValue,
+    maximumValue: maximumValue,
   ),
   readResult: readResult,
   writeResult: writeResult,
-  canRead: canRead,
-  canWrite: canWrite,
   isEditing: isEditing,
 );
 
@@ -57,8 +51,6 @@ _MockTrainerFieldsViewModel _viewModel({
           GameField field,
           GameReadResult? readResult,
           GameWriteResult? writeResult,
-          bool canRead,
-          bool canWrite,
           bool isEditing,
         })
       >
@@ -212,14 +204,31 @@ void main() {
     );
 
     testWidgets(
-      'Class TrainerFieldsPanel renders denied and empty profile states',
+      'Class TrainerFieldsPanel keeps unreadable values unavailable',
       (tester) async {
-        viewModel = _viewModel(fields: [_row('credits', canWrite: false)]);
+        viewModel = _viewModel(fields: [_row('credits')]);
         await tester.pumpWidget(_wrap(store));
 
         expect(find.byKey(const ValueKey('credits')), findsOneWidget);
         expect(find.byTooltip('Edit credits'), findsNothing);
         expect(find.byType(InlineValueEditor), findsNothing);
+
+        viewModel = _viewModel(
+          fields: [
+            _row(
+              'credits',
+              minimumValue: null,
+              maximumValue: null,
+              readResult: const GameReadResult(
+                status: GameReadStatus.success,
+                fieldId: 'credits',
+                value: 7,
+              ),
+            ),
+          ],
+        );
+        await tester.pumpWidget(_wrap(store, key: const ValueKey('unbounded')));
+        expect(find.byTooltip('Edit credits'), findsOneWidget);
 
         viewModel = _viewModel(fields: const []);
         await tester.pumpWidget(_wrap(store, key: const ValueKey('empty')));

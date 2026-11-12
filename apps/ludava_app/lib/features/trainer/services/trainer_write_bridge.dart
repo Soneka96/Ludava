@@ -10,15 +10,51 @@ class TrainerWriteBridge {
   final TrainerSdkCapability _capability;
   final SdkOperationGate _operationGate;
 
-  /// Returns the SDK result for [fieldId] and [value], or the closed-gate sentinel.
-  GameWriteResult writeField(String fieldId, int value) {
+  /// Writes [value] only while the SDK still matches the editor's origin.
+  GameWriteResult writeField(
+    String fieldId,
+    int value, {
+    required TrainerSessionState expectedSession,
+    required GameField expectedField,
+  }) {
     if (!_operationGate.isOpen) {
-      return GameWriteResult(
-        status: GameWriteStatus.none,
-        fieldId: fieldId,
-        requestedValue: value,
-      );
+      return _notAttempted(fieldId, value);
+    }
+    final currentSession = _capability.state;
+    if (!_sameTarget(expectedSession, currentSession) ||
+        !_sameFieldMapping(
+          expectedField,
+          currentSession.profile?.findField(fieldId),
+        )) {
+      return _notAttempted(fieldId, value);
     }
     return _capability.writeField(fieldId, value);
   }
+
+  /// Creates the SDK's existing result for a write that was not attempted.
+  GameWriteResult _notAttempted(String fieldId, int value) => GameWriteResult(
+    status: GameWriteStatus.none,
+    fieldId: fieldId,
+    requestedValue: value,
+  );
+
+  /// Compares process, profile/build, executable, and memory-base identity.
+  bool _sameTarget(TrainerSessionState first, TrainerSessionState second) =>
+      first.selectedProcessId == second.selectedProcessId &&
+      first.processMetadata?.startedAtUtc ==
+          second.processMetadata?.startedAtUtc &&
+      first.profile?.id == second.profile?.id &&
+      first.profile?.buildId == second.profile?.buildId &&
+      first.profile?.executable == second.profile?.executable &&
+      first.profile?.executableHash == second.profile?.executableHash &&
+      first.detection?.executableHash == second.detection?.executableHash &&
+      first.memoryBase == second.memoryBase;
+
+  /// Compares the field address and numeric representation.
+  bool _sameFieldMapping(GameField first, GameField? second) =>
+      second != null &&
+      first.id == second.id &&
+      first.guestOffset == second.guestOffset &&
+      first.valueType == second.valueType &&
+      first.byteOrder == second.byteOrder;
 }

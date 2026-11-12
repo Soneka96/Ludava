@@ -10,19 +10,18 @@ Public visibility is for reading and learning; it is not an open-source license 
 
 - Keep each branch and pull request focused on one task. Record the problem, evidence, scope, verification, and limitations in the task or PR.
 - Do not claim a game/build is compatible without reproducible live-game validation. Automated tests and plausible values are not compatibility evidence.
-- Enable writes only for profile fields with research-confirmed or verified evidence. Keep Ludava live-runtime validation distinct from external research; process discovery and manual profile selection alone do not identify a live game/build.
+- Treat profiles and fields registered in the production catalog as owner-approved capabilities. Do not add new mappings until the owner has confirmed a successful Ludava read and guarded write with the intended in-game result using either the TUI or Flutter. Process discovery and manual profile selection alone do not identify a live game/build; confirmed identity is mandatory for writes and for reads whose request requires identity confirmation.
 - Prefer incremental changes with clear responsibilities. Cross-package architecture is owned by [ARCHITECTURE.md](ARCHITECTURE.md); Flutter Redux architecture is owned by [FLUTTER_ARCHITECTURE_CONVENTIONS.md](FLUTTER_ARCHITECTURE_CONVENTIONS.md).
 
 ## Researching game fields
 
-Check existing trainer references before adding a game or field, including Cheat Engine tables, community sources, emulator cheat tools, and original research. In that game's `docs/games/` record, capture sources, versions, observed address and guest-offset derivation, value representation/endianness, and what was actually tested.
+Check existing trainer references before researching a game or field, including Cheat Engine tables, community sources, emulator cheat tools, and original research. In that game's `docs/games/` record, capture sources, versions, observed address and guest-offset derivation, value representation/endianness, and what was actually tested. Keep incomplete mappings and experiments on a development branch. A mapping may enter the production catalog only after the owner confirms a successful Ludava read and guarded write with the intended in-game result using either supported frontend.
 
-- An address copied from a third party without live corroboration remains a candidate; it does not enable writes.
-- Documented external live testing of the matching build and field can qualify as `researchConfirmed` when it includes source, observed behavior, address derivation, representation, and limitations. It does not claim Ludava itself was tested.
-- Reserve `verified` for corresponding recorded live Ludava results. Preserve uncertainty across builds.
-- Regardless of research status, writes retain current process/session, executable hash, guest base, bounds, preliminary read, complete transfer, and matching read-back checks. See [game memory](features/game-memory.md).
+- Preserve external findings and any live Ludava observations accurately in the game's research record, including what was tested and uncertainty across builds. Historical evidence describes research; it does not control runtime access.
+- **Reads:** A diagnostic read may use a manually selected profile without confirmed current game identity when the request does not require identity confirmation. Its result must identify that the game identity is unverified. Reads still require a valid registered field mapping and address, decode the declared representation only after successful native read-result validation, and never turn failed or partial reads into a successful zero. Reads do not require write confirmation, a preliminary read, or read-back.
+- **Writes:** Every write retains current process/session revalidation, matching game and executable identity, current memory base, registered field membership, valid type and numeric range, explicit confirmation, a complete preliminary read, a complete native transfer, and an exact matching read-back. Failures remain typed results; the SDK operation guard, process cleanup, and terminal disposal safeguards remain in force. See [game memory](features/game-memory.md).
 - Research and test on the development machine where practical. Use the ROG Ally for final interactive testing; do not require lengthy handheld commands or add data-collection tooling when local evidence is available.
-- Reuse generic engine tests. Add focused mapping coverage and a proportionate smoke test where useful; do not require repeated approval ceremonies for each field.
+- Reuse generic engine tests. Add focused mapping coverage and a proportionate smoke test where useful; keep incomplete experiments on development branches until the owner validates the mapping for production.
 
 ## Dart source conventions
 
@@ -48,7 +47,7 @@ Check existing trainer references before adding a game or field, including Cheat
 ### Dart documentation
 
 - Add concise `///` documentation to every public class, method, and property, and to every public or private method. Explain the contract, constraints, or non-obvious reason; do not narrate an obvious implementation.
-- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.canRead]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
+- Link code symbols using Dart doc references: `[GameProfile]`, `[GameProfile.findField]`, and, in the scope where it is declared, `[profile]`. Use fully qualified class-member references for members outside their scope.
 - Import symbols to resolve Dart documentation references when needed for IDE navigation. Documentation-only imports are permitted when the target is already an allowed, declared package dependency; they do not justify new dependencies or executable cross-package access. Boundary checks must distinguish documentation-only imports from executable usage (see [package ownership](ARCHITECTURE.md#dart-workspace-and-package-ownership)).
 - Use `[Class]` and `[Class.member]` rather than plain-text names when referring to code. Keep comments aligned with what the symbol guarantees, especially compatibility and memory-write safety.
 
@@ -64,7 +63,7 @@ For terminal input and component tests, see [testing conventions](TESTING.md#noc
 
 ### Flutter presentation and design system
 
-The Flutter app is a compact Windows utility that consumes public SDK capabilities. Widgets do not import SDK internals, open process handles, duplicate detection/decoding, or decide write authorization. Keep game fields dynamic and SDK-driven; use a scrollable vertical field list with one horizontal row per numeric field. Keep rows stable through edit, hover, validation, and write feedback; constrain long names/values, and keep keyboard focus, mouse/touch targets, and Windows touch keyboard usable.
+The Flutter app is a compact Windows utility that consumes public SDK capabilities. Widgets do not import SDK internals, open process handles, duplicate detection/decoding, or decide write authorization. Offer editing when a registered field has an exact successful numeric read; keep numeric parsing in the frontend while field ranges and authorization are enforced by the SDK on submission. Bind active drafts to their originating target so updates cannot retarget a callback. Keep game fields dynamic and SDK-driven; use a scrollable vertical field list with one horizontal row per numeric field. Keep rows stable through edit, hover, validation, and write feedback; constrain long names/values, and keep keyboard focus, mouse/touch targets, and Windows touch keyboard usable.
 
 Organize feature UI under `presentation/`: `screens/` owns substantial compositions (including panels and headers), and `widgets/` owns meaningful supporting components. Folder placement does not require a `Screen` suffix. Give each meaningful widget a focused file; compose named widget classes instead of hiding components in private `Widget` subclasses or private widget-returning builders. Private `State` classes and non-UI helpers are fine. Extract meaningful behavior, not every `Row` or `Padding`; avoid behaviorless wrappers. Keep shared UI under `shared/widgets/` only when multiple features use it. Add directories only for real responsibilities.
 

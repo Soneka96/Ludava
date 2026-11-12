@@ -2,10 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer.actions.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_reducer.dart';
 import 'package:ludava_app/features/trainer/presentation/state/trainer_state.dart';
+import 'package:ludava_sdk/ludava_sdk.dart';
 
 import '../../../../support/trainer_state_fixture.dart';
-
-import 'package:ludava_sdk/ludava_sdk.dart';
 
 void main() {
   group('Reducer trainerReducer() behaves correctly', () {
@@ -44,190 +43,153 @@ void main() {
       expect(next.session, same(nextSession));
     });
 
-    test('Reducer trainerReducer() begins editing an eligible field', () {
+    test('Reducer trainerReducer() begins editing an exactly read field', () {
       final session = trainerStateFixtureSession(
-        readResult: GameReadResult(
+        readResult: const GameReadResult(
           status: GameReadStatus.success,
           fieldId: 'credits',
           value: 25,
         ),
       );
-      final state = TrainerState(session: session);
 
       expect(
         trainerReducer(
-          state,
+          TrainerState(session: session),
           const BeginEditingAction('credits'),
         ).editingFieldId,
         'credits',
       );
     });
 
-    test('Reducer trainerReducer() rejects an ineligible field edit', () {
-      final state = TrainerState(session: trainerStateFixtureSession());
-
-      expect(
-        trainerReducer(state, const BeginEditingAction('credits')),
-        same(state),
-      );
-      expect(
-        trainerReducer(state, const BeginEditingAction('missing')),
-        same(state),
-      );
-    });
-
     test(
-      'Reducer trainerReducer() preserves an edit in the same valid session',
+      'Reducer trainerReducer() allows editing unconfirmed unbounded values',
       () {
-        final state = TrainerState(
-          session: trainerStateFixtureSession(),
-          editingFieldId: 'credits',
-        );
-        final nextSession = trainerStateFixtureSession();
-
-        final next = trainerReducer(
-          state,
-          TrainerSessionChangedAction(nextSession),
-        );
-
-        expect(next.editingFieldId, 'credits');
-        expect(next.session, same(nextSession));
-      },
-    );
-
-    test('Reducer trainerReducer() preserves a matching failed-read edit', () {
-      final failedRead = GameReadResult(
-        status: GameReadStatus.readFailed,
-        fieldId: 'credits',
-      );
-      final state = TrainerState(
-        session: trainerStateFixtureSession(),
-        editingFieldId: 'credits',
-      );
-      final nextSession = trainerStateFixtureSession(
-        readResult: failedRead,
-        lastWriteResult: const GameWriteResult(
-          status: GameWriteStatus.writeFailed,
-          fieldId: 'credits',
-        ),
-      );
-
-      expect(
-        trainerReducer(
-          state,
-          TrainerSessionChangedAction(nextSession),
-        ).editingFieldId,
-        'credits',
-      );
-    });
-
-    test('Reducer trainerReducer() clears failed-read edits without a matching write', () {
-      final state = TrainerState(
-        session: trainerStateFixtureSession(),
-        editingFieldId: 'credits',
-      );
-      final nextSession = trainerStateFixtureSession(
-        readResult: GameReadResult(
-          status: GameReadStatus.readFailed,
-          fieldId: 'credits',
-        ),
-      );
-
-      expect(
-        trainerReducer(
-          state,
-          TrainerSessionChangedAction(nextSession),
-        ).editingFieldId,
-        isNull,
-      );
-    });
-
-    test(
-      'Reducer trainerReducer() clears edits when the session target changes',
-      () {
-        final state = TrainerState(
-          session: trainerStateFixtureSession(),
-          editingFieldId: 'credits',
-        );
-        final nextSession = trainerStateFixtureSession(memoryBase: 0x2000);
-
-        expect(
-          trainerReducer(
-            state,
-            TrainerSessionChangedAction(nextSession),
-          ).editingFieldId,
-          isNull,
-        );
-      },
-    );
-
-    test('Reducer trainerReducer() clears edits after the process changes', () {
-      final state = TrainerState(
-        session: trainerStateFixtureSession(),
-        editingFieldId: 'credits',
-      );
-      final nextSession = trainerStateFixtureSession(processId: 43);
-
-      expect(
-        trainerReducer(
-          state,
-          TrainerSessionChangedAction(nextSession),
-        ).editingFieldId,
-        isNull,
-      );
-    });
-
-    test('Reducer trainerReducer() clears edits after process restart', () {
-      final state = TrainerState(
-        session: trainerStateFixtureSession(),
-        editingFieldId: 'credits',
-      );
-      final nextSession = trainerStateFixtureSession(
-        startedAtUtc: DateTime.utc(2025),
-      );
-
-      expect(
-        trainerReducer(
-          state,
-          TrainerSessionChangedAction(nextSession),
-        ).editingFieldId,
-        isNull,
-      );
-    });
-
-    test('Reducer trainerReducer() clears edits after detection changes', () {
-      final state = TrainerState(
-        session: trainerStateFixtureSession(),
-        editingFieldId: 'credits',
-      );
-      final nextSession = trainerStateFixtureSession(
-        detectionStatus: GameDetectionStatus.noActiveGame,
-      );
-
-      expect(
-        trainerReducer(
-          state,
-          TrainerSessionChangedAction(nextSession),
-        ).editingFieldId,
-        isNull,
-      );
-    });
-
-    test(
-      'Reducer trainerReducer() clears edits after identity confidence changes',
-      () {
-        final state = TrainerState(
-          session: trainerStateFixtureSession(),
-          editingFieldId: 'credits',
-        );
-        final nextSession = trainerStateFixtureSession(
+        final session = trainerStateFixtureSession(
           confidence: GameIdentityConfidence.manuallySelected,
+          minimumValue: null,
+          maximumValue: null,
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'credits',
+            value: 25,
+          ),
+        );
+
+        expect(
+          trainerReducer(
+            TrainerState(session: session),
+            const BeginEditingAction('credits'),
+          ).editingFieldId,
+          'credits',
+        );
+      },
+    );
+
+    test(
+      'Reducer trainerReducer() requires a registered successful numeric read',
+      () {
+        final missingProfileField = trainerStateFixtureSession(
+          emptyProfile: true,
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'credits',
+            value: 25,
+          ),
+        );
+        final missingRead = trainerStateFixtureSession();
+        final failedRead = trainerStateFixtureSession(
+          readResult: const GameReadResult(
+            status: GameReadStatus.readFailed,
+            fieldId: 'credits',
+          ),
+        );
+        final mismatchedRead = trainerStateFixtureSession(
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'other-field',
+            value: 25,
+          ),
+        );
+
+        for (final session in [
+          missingProfileField,
+          missingRead,
+          failedRead,
+          mismatchedRead,
+        ]) {
+          final state = TrainerState(session: session);
+          expect(
+            trainerReducer(state, const BeginEditingAction('credits')),
+            same(state),
+          );
+        }
+      },
+    );
+
+    test(
+      'Reducer trainerReducer() preserves drafts across same-target reads',
+      () {
+        final initial = trainerStateFixtureSession(
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'credits',
+            value: 25,
+          ),
+        );
+        final state = TrainerState(session: initial, editingFieldId: 'credits');
+        final updates = [
+          trainerStateFixtureSession(
+            readResult: const GameReadResult(
+              status: GameReadStatus.readFailed,
+              fieldId: 'credits',
+            ),
+          ),
+          trainerStateFixtureSession(
+            readResult: const GameReadResult(
+              status: GameReadStatus.success,
+              fieldId: 'credits',
+              value: 99,
+            ),
+          ),
+          trainerStateFixtureSession(
+            confidence: GameIdentityConfidence.manuallySelected,
+          ),
+        ];
+
+        for (final session in updates) {
+          final next = trainerReducer(
+            state,
+            TrainerSessionChangedAction(session),
+          );
+          expect(next.editingFieldId, 'credits');
+          expect(next.session, same(session));
+        }
+      },
+    );
+
+    test(
+      'Reducer trainerReducer() invalidates drafts when process changes',
+      () {
+        final state = TrainerState(
+          session: trainerStateFixtureSession(),
+          editingFieldId: 'credits',
         );
 
         expect(
           trainerReducer(
             state,
-            TrainerSessionChangedAction(nextSession),
+            TrainerSessionChangedAction(
+              trainerStateFixtureSession(processId: 43),
+            ),
+          ).editingFieldId,
+          isNull,
+        );
+        expect(
+          trainerReducer(
+            state,
+            TrainerSessionChangedAction(
+              trainerStateFixtureSession(startedAtUtc: DateTime.utc(2025)),
+            ),
           ).editingFieldId,
           isNull,
         );
@@ -235,83 +197,51 @@ void main() {
     );
 
     test(
-      'Reducer trainerReducer() clears edits after profile identity changes',
+      'Reducer trainerReducer() invalidates drafts when game target changes',
       () {
         final state = TrainerState(
           session: trainerStateFixtureSession(),
           editingFieldId: 'credits',
         );
-        final nextSession = trainerStateFixtureSession(
-          profileId: 'other-profile',
-        );
+        final changedTargets = [
+          trainerStateFixtureSession(profileId: 'other-profile'),
+          trainerStateFixtureSession(buildId: 'other-build'),
+          trainerStateFixtureSession(executableHash: 'other-hash'),
+          trainerStateFixtureSession(memoryBase: 0x2000),
+        ];
 
-        expect(
-          trainerReducer(
-            state,
-            TrainerSessionChangedAction(nextSession),
-          ).editingFieldId,
-          isNull,
-        );
+        for (final session in changedTargets) {
+          expect(
+            trainerReducer(
+              state,
+              TrainerSessionChangedAction(session),
+            ).editingFieldId,
+            isNull,
+          );
+        }
       },
     );
 
-    test(
-      'Reducer trainerReducer() clears edits after executable hash changes',
-      () {
-        final state = TrainerState(
-          session: trainerStateFixtureSession(),
-          editingFieldId: 'credits',
-        );
-        final nextSession = trainerStateFixtureSession(
-          executableHash: 'new-hash',
-        );
-
-        expect(
-          trainerReducer(
-            state,
-            TrainerSessionChangedAction(nextSession),
-          ).editingFieldId,
-          isNull,
-        );
-      },
-    );
-
-    test('Reducer trainerReducer() clears edits when the field disappears', () {
+    test('Reducer trainerReducer() invalidates a changed field mapping', () {
       final state = TrainerState(
         session: trainerStateFixtureSession(),
         editingFieldId: 'credits',
       );
-      final nextSession = trainerStateFixtureSession(fieldId: 'scrap');
+      final changedMappings = [
+        trainerStateFixtureSession(guestOffset: 0x200),
+        trainerStateFixtureSession(byteOrder: ByteOrder.big),
+      ];
 
-      expect(
-        trainerReducer(
-          state,
-          TrainerSessionChangedAction(nextSession),
-        ).editingFieldId,
-        isNull,
-      );
-    });
-
-    test(
-      'Reducer trainerReducer() clears edits when the target is ineligible',
-      () {
-        final state = TrainerState(
-          session: trainerStateFixtureSession(),
-          editingFieldId: 'credits',
-        );
-        final nextSession = trainerStateFixtureSession(
-          selectedProcessPresent: false,
-        );
-
+      for (final session in changedMappings) {
         expect(
           trainerReducer(
             state,
-            TrainerSessionChangedAction(nextSession),
+            TrainerSessionChangedAction(session),
           ).editingFieldId,
           isNull,
         );
-      },
-    );
+      }
+    });
 
     test('Reducer trainerReducer() cancels an active edit', () {
       final state = TrainerState(

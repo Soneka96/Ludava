@@ -216,25 +216,14 @@ class DiagnosticGameMemoryService {
     );
   }
 
-  /// Returns an SDK memory result when profile or field policy rejects a request.
+  /// Rejects unknown fields before process discovery or memory operations.
   DiagnosticGameMemoryResult? _preflightProfile(
     GameProfile profile,
     DiagnosticGameMemoryRequest request,
   ) {
-    if (request.action == GameMemoryAction.write) {
-      if (!profile.canWrite) {
-        return DiagnosticGameMemoryResult(
-          status: DiagnosticGameMemoryStatus.memoryOperationFailed,
-          profile: profile,
-          writeResult: GameWriteResult(
-            status: GameWriteStatus.unsupportedProfile,
-            fieldId: request.fieldId,
-            requestedValue: request.value,
-          ),
-        );
-      }
-      final field = profile.findField(request.fieldId);
-      if (field == null || !field.canWrite) {
+    final field = profile.findField(request.fieldId);
+    if (field == null) {
+      if (request.action == GameMemoryAction.write) {
         return DiagnosticGameMemoryResult(
           status: DiagnosticGameMemoryStatus.memoryOperationFailed,
           profile: profile,
@@ -245,26 +234,11 @@ class DiagnosticGameMemoryService {
           ),
         );
       }
-      return null;
-    }
-
-    final field = profile.findField(request.fieldId);
-    if (field == null || !field.canRead) {
       return DiagnosticGameMemoryResult(
         status: DiagnosticGameMemoryStatus.memoryOperationFailed,
         profile: profile,
         readResult: GameReadResult(
           status: GameReadStatus.unsupportedField,
-          fieldId: request.fieldId,
-        ),
-      );
-    }
-    if (!profile.canRead) {
-      return DiagnosticGameMemoryResult(
-        status: DiagnosticGameMemoryStatus.memoryOperationFailed,
-        profile: profile,
-        readResult: GameReadResult(
-          status: GameReadStatus.unsupportedProfile,
           fieldId: request.fieldId,
         ),
       );

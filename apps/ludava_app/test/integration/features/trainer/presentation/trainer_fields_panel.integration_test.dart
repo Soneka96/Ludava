@@ -49,16 +49,19 @@ Future<void> _openCreditsEditor(
 void main() {
   late MockTrainerSdkCapability capability;
   late StreamController<TrainerSessionState> sessionChanges;
+  late TrainerSessionState sdkSession;
   Store<AppState>? activeStore;
 
   setUp(() {
     sl.pushNewScope();
     capability = MockTrainerSdkCapability();
+    sdkSession = TrainerSessionState();
     sessionChanges = StreamController<TrainerSessionState>.broadcast(
       sync: true,
     );
     when(() => capability.stateChanges)
         .thenAnswer((_) => sessionChanges.stream);
+    when(() => capability.state).thenAnswer((_) => sdkSession);
     when(() => capability.connect()).thenAnswer((_) {});
     sl.registerSingleton<TrainerSdkCapability>(capability);
     final operationGate = SdkOperationGate();
@@ -93,6 +96,7 @@ void main() {
             value: 17,
           ),
         );
+        sdkSession = initialSession;
         final failure = const GameWriteResult(
           status: GameWriteStatus.writeFailed,
           fieldId: 'credits',
@@ -111,6 +115,7 @@ void main() {
         when(() => capability.writeField('credits', 42)).thenAnswer((_) {
           writeAttempts++;
           if (writeAttempts == 1) {
+            sdkSession = failedSession;
             sessionChanges.add(failedSession);
             return failure;
           }
@@ -163,6 +168,7 @@ void main() {
             value: 17,
           ),
         );
+        sdkSession = initialSession;
         final staleSession = trainerStateFixtureSession(
           memoryBase: 0x2000,
           readResult: const GameReadResult(
@@ -177,6 +183,7 @@ void main() {
           ),
         );
         when(() => capability.writeField('credits', 42)).thenAnswer((_) {
+          sdkSession = staleSession;
           sessionChanges.add(staleSession);
           return staleSession.lastWriteResult!;
         });
@@ -199,6 +206,47 @@ void main() {
         expect(store.state.trainer.session.memoryBase, 0x2000);
         expect(store.state.trainer.editingFieldId, isNull);
         expect(input, findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Integration TrainerFieldsPanel rejects an old callback after a same-field game switch',
+      (tester) async {
+        final initialSession = trainerStateFixtureSession(
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'credits',
+            value: 17,
+          ),
+        );
+        sdkSession = initialSession;
+        final store = _createStore(initialSession);
+        activeStore = store;
+        store.dispatch(const InitializeAppAction());
+        await tester.pumpWidget(_wrap(store));
+        await _openCreditsEditor(tester, store);
+        final staleViewModel = TrainerFieldsViewModel.fromStore(store);
+
+        final nextSession = trainerStateFixtureSession(
+          profileId: 'other-profile',
+          executableHash: 'other-hash',
+          readResult: const GameReadResult(
+            status: GameReadStatus.success,
+            fieldId: 'credits',
+            value: 90,
+          ),
+        );
+        sdkSession = nextSession;
+        sessionChanges.add(nextSession);
+        await tester.pump();
+        await _openCreditsEditor(tester, store);
+
+        final result = staleViewModel.onApplyField('credits', 42);
+
+        expect(result.status, GameWriteStatus.none);
+        expect(store.state.trainer.editingFieldId, 'credits');
+        verifyNever(() => capability.writeField(any(), any()));
         expect(tester.takeException(), isNull);
       },
     );

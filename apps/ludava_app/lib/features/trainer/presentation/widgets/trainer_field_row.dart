@@ -18,16 +18,10 @@ class TrainerFieldRow extends StatelessWidget {
   /// Latest SDK write outcome for this field, if one has been attempted.
   final GameWriteResult? writeResult;
 
-  /// Whether the profile permits reading this field.
-  final bool canRead;
-
-  /// Whether the current session can apply a write.
-  final bool canWrite;
-
   /// Whether the inline editor is already open for this field.
   final bool isEditing;
 
-  /// Opens the inline editor after presentation eligibility is checked.
+  /// Opens the inline editor for an exact successful numeric read.
   final VoidCallback onEdit;
 
   /// Delegates an explicit edit submission to the trainer controller.
@@ -45,8 +39,6 @@ class TrainerFieldRow extends StatelessWidget {
     required this.readResult,
     required this.currentValue,
     required this.writeResult,
-    required this.canRead,
-    required this.canWrite,
     required this.isEditing,
     required this.onEdit,
     required this.onApply,
@@ -94,12 +86,12 @@ class TrainerFieldRow extends StatelessWidget {
                         child: Align(
                           alignment: Alignment.centerRight,
                           child: TrainerFieldValue(
+                            fieldId: field.id,
                             readResult: readResult,
-                            canRead: canRead,
                           ),
                         ),
                       ),
-                      if (canWrite)
+                      if (_hasReadableValue)
                         SizedBox(
                           width: LudavaDimensions.minimumInteractiveTarget,
                           height: LudavaDimensions.minimumInteractiveTarget,
@@ -117,4 +109,10 @@ class TrainerFieldRow extends StatelessWidget {
       ),
     );
   }
+
+  /// Reports whether this row has an exact successful numeric read.
+  bool get _hasReadableValue =>
+      readResult?.fieldId == field.id &&
+      readResult?.succeeded == true &&
+      readResult?.value != null;
 }

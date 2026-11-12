@@ -19,8 +19,6 @@ abstract final class QuestForBootyBces00301Profile {
     buildId: 'BCES00301',
     executable: 'EBOOT.BIN',
     executableHash: executableHash,
-    readStatus: VerificationStatus.verified,
-    writeStatus: VerificationStatus.verified,
     fields: {
       'bolts': GameField(
         id: 'bolts',
@@ -28,8 +26,6 @@ abstract final class QuestForBootyBces00301Profile {
         guestOffset: 0x009ceae4,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-        writeStatus: VerificationStatus.verified,
         minimumValue: 0,
         maximumValue: GameMemoryConstants.maxUnsigned32,
       ),

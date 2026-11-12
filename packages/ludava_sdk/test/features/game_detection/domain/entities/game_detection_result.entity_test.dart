@@ -10,7 +10,6 @@ GameProfile _profile() => GameProfile(
   buildId: 'TEST00001',
   executable: 'SYNTHETIC.self',
   executableHash: 'PPU-synthetic-hash',
-  readStatus: VerificationStatus.experimental,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -18,7 +17,6 @@ GameProfile _profile() => GameProfile(
       guestOffset: 0x1000,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.experimental,
     ),
   },
 );

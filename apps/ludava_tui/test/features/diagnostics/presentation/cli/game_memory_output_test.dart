@@ -7,8 +7,6 @@ final _profile = GameProfile(
   gameName: 'Synthetic game',
   buildId: 'TEST00001',
   executable: 'SYNTHETIC.self',
-  readStatus: VerificationStatus.experimental,
-  writeStatus: VerificationStatus.researchConfirmed,
   fields: {
     'credits': GameField(
       id: 'credits',
@@ -16,8 +14,6 @@ final _profile = GameProfile(
       guestOffset: 0x1000,
       valueType: MemoryValueType.unsigned32,
       byteOrder: ByteOrder.big,
-      readStatus: VerificationStatus.experimental,
-      writeStatus: VerificationStatus.researchConfirmed,
       minimumValue: 0,
       maximumValue: 0xffffffff,
     ),
@@ -39,7 +35,7 @@ void main() {
         );
 
         expect(output, contains('synthetic-profile'));
-        expect(output, contains('Profile status: experimental'));
+        expect(output, isNot(contains('Profile status:')));
         expect(output, contains('profile selection is manual or unverified'));
         expect(output, contains('Status: read complete'));
         expect(output, contains('Field: credits'));
@@ -79,9 +75,9 @@ void main() {
       final expectedStatuses = {
         GameReadStatus.none: 'Status: no read attempted',
         GameReadStatus.unsupportedProfile:
-            'Status: profile is not approved for reading',
+            'Status: selected profile is unsupported for this request',
         GameReadStatus.unsupportedField:
-            'Status: field is not approved for reading',
+            'Status: field is not registered in the profile',
         GameReadStatus.invalidReadResult: 'Status: invalid memory read result',
       };
 
@@ -92,6 +88,18 @@ void main() {
         );
 
         expect(output, contains(entry.value));
+        if (entry.key == GameReadStatus.unsupportedProfile) {
+          expect(
+            output,
+            contains(
+              'Runtime identity: profile selection is manual or unverified.',
+            ),
+          );
+          expect(
+            output,
+            isNot(contains('does not match the current game identity')),
+          );
+        }
       }
     });
 
@@ -130,7 +138,7 @@ void main() {
         ),
       );
 
-      expect(output, contains('Profile status: researchConfirmed'));
+      expect(output, isNot(contains('Profile status:')));
       expect(output, contains('profile selection is manual or unverified'));
       expect(output, contains('Status: write and read-back complete'));
       expect(output, contains('Requested value: 42'));
@@ -210,9 +218,9 @@ void main() {
       final expectedStatuses = {
         GameWriteStatus.none: 'Status: no write attempted',
         GameWriteStatus.unsupportedProfile:
-            'Status: profile is not approved for writing',
+            'Status: current game identity or session is unavailable',
         GameWriteStatus.unsupportedField:
-            'Status: field is not approved for writing',
+            'Status: field is not registered in the profile',
         GameWriteStatus.invalidMapping: 'Status: invalid memory mapping',
         GameWriteStatus.writeFailed: 'Status: native memory write failed',
         GameWriteStatus.incompleteWrite: 'Status: incomplete memory write',

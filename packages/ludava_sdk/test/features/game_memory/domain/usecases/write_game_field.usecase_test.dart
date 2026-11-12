@@ -43,21 +43,18 @@ class _WriteGameFieldTestRepository implements IGameMemoryRepository {
   final MemoryWriteResult _writeResult;
 
   static WriteGameFieldParams params({
-    VerificationStatus profileStatus = VerificationStatus.researchConfirmed,
-    VerificationStatus fieldStatus = VerificationStatus.researchConfirmed,
     int? minimumValue = 0,
     int? maximumValue = 100,
     int value = 42,
     int memoryBase = 0x300000000,
     bool confirmed = true,
+    String fieldId = 'credits',
   }) => WriteGameFieldParams(
     profile: GameProfile(
       id: 'synthetic-profile',
       gameName: 'Test game',
       buildId: 'TEST',
       executable: 'test.exe',
-      readStatus: VerificationStatus.verified,
-      writeStatus: profileStatus,
       fields: {
         'credits': GameField(
           id: 'credits',
@@ -65,14 +62,12 @@ class _WriteGameFieldTestRepository implements IGameMemoryRepository {
           guestOffset: 0x1234,
           valueType: MemoryValueType.unsigned32,
           byteOrder: ByteOrder.big,
-          readStatus: VerificationStatus.verified,
-          writeStatus: fieldStatus,
           minimumValue: minimumValue,
           maximumValue: maximumValue,
         ),
       },
     ),
-    fieldId: 'credits',
+    fieldId: fieldId,
     memoryBase: memoryBase,
     value: value,
     confirmed: confirmed,
@@ -169,29 +164,17 @@ void main() {
       expect(repository.readCalls, 0);
     });
 
-    test(
-      'Method execute() rejects unverified profiles and fields before writing',
-      () {
-        final repository = _WriteGameFieldTestRepository();
-        final useCase = WriteGameFieldUseCase(repository);
+    test('Method execute() rejects missing fields before memory access', () {
+      final repository = _WriteGameFieldTestRepository();
+      final useCase = WriteGameFieldUseCase(repository);
+      final missingField = useCase.execute(
+        _WriteGameFieldTestRepository.params(fieldId: 'missing'),
+      );
 
-        final unsupportedProfile = useCase.execute(
-          _WriteGameFieldTestRepository.params(
-            profileStatus: VerificationStatus.experimental,
-          ),
-        );
-        final unsupportedField = useCase.execute(
-          _WriteGameFieldTestRepository.params(
-            fieldStatus: VerificationStatus.experimental,
-          ),
-        );
-
-        expect(unsupportedProfile.status, GameWriteStatus.unsupportedProfile);
-        expect(unsupportedField.status, GameWriteStatus.unsupportedField);
-        expect(repository.writeCalls, 0);
-        expect(repository.readCalls, 0);
-      },
-    );
+      expect(missingField.status, GameWriteStatus.unsupportedField);
+      expect(repository.writeCalls, 0);
+      expect(repository.readCalls, 0);
+    });
 
     test('Method execute() rejects values without a verified safe range', () {
       final repository = _WriteGameFieldTestRepository();

@@ -1,18 +1,12 @@
 import 'package:ludava_sdk/ludava_sdk.dart';
 
-/// Creates a synthetic field that is approved for reading and writing.
-GameField trainerStateFixtureField({
-  String id = 'credits',
-  VerificationStatus readStatus = VerificationStatus.verified,
-  VerificationStatus writeStatus = VerificationStatus.researchConfirmed,
-}) => GameField(
+/// Creates a synthetic registered field with writable bounds.
+GameField trainerStateFixtureField({String id = 'credits'}) => GameField(
   id: id,
   name: 'Credits',
   guestOffset: 0x100,
   valueType: MemoryValueType.unsigned32,
   byteOrder: ByteOrder.little,
-  readStatus: readStatus,
-  writeStatus: writeStatus,
   minimumValue: 0,
   maximumValue: 100000,
 );
@@ -22,7 +16,7 @@ TrainerSessionState trainerStateFixtureSession({
   String fieldId = 'credits',
   List<String> additionalFieldIds = const [],
   String gameName = 'Synthetic Game',
-  VerificationStatus fieldWriteStatus = VerificationStatus.researchConfirmed,
+  String buildId = 'test-build',
   bool emptyProfile = false,
   int? memoryBase = 0x1000,
   int processId = 42,
@@ -34,20 +28,31 @@ TrainerSessionState trainerStateFixtureSession({
   GameDetectionStatus detectionStatus = GameDetectionStatus.supportedGame,
   String profileId = 'synthetic-profile',
   String executableHash = 'synthetic-hash',
+  int guestOffset = 0x100,
+  MemoryValueType valueType = MemoryValueType.unsigned32,
+  ByteOrder byteOrder = ByteOrder.little,
+  int? minimumValue = 0,
+  int? maximumValue = 100000,
 }) {
   final fields = <String, GameField>{
     if (!emptyProfile)
       for (final id in [fieldId, ...additionalFieldIds])
-        id: trainerStateFixtureField(id: id, writeStatus: fieldWriteStatus),
+        id: GameField(
+          id: id,
+          name: 'Credits',
+          guestOffset: guestOffset,
+          valueType: valueType,
+          byteOrder: byteOrder,
+          minimumValue: minimumValue,
+          maximumValue: maximumValue,
+        ),
   };
   final profile = GameProfile(
     id: profileId,
     gameName: gameName,
-    buildId: 'test-build',
+    buildId: buildId,
     executable: 'synthetic.exe',
     executableHash: executableHash,
-    readStatus: VerificationStatus.verified,
-    writeStatus: VerificationStatus.researchConfirmed,
     fields: fields,
   );
   return TrainerSessionState(

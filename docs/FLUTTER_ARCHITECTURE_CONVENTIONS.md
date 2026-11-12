@@ -4,7 +4,7 @@ These rules define the approved Redux architecture implemented in `apps/ludava_a
 
 ## SDK authority and Redux state
 
-- Keep RPCS3 discovery, process/session identity, detection, memory access, write eligibility, verification, and `GameWriteResult` authoritative in the SDK. Flutter capabilities may present eligibility, but the SDK revalidates every read and write.
+- Keep RPCS3 discovery, process/session identity, detection, memory access, write authorization, verification, and `GameWriteResult` authoritative in the SDK. Offer editing for registered fields only after an exact successful numeric read; frontend parsing validates input shape while the SDK owns field ranges and authorization at write submission. Bind active drafts to their originating target and field mapping.
 - Reuse SDK types. Redux stores the complete immutable `TrainerSessionState` snapshot as one value and only `editingFieldId` as trainer-specific UI state. Do not duplicate SDK facts, errors, or policy, reshape SDK types for Redux, or add deep snapshot equality solely for Redux.
 - Keep Redux and GetIt inside `apps/ludava_app`; neither belongs in the SDK or Nocterm. Redux is the Flutter presentation-state owner; do not add a parallel controller or compatibility state system.
 - Keep numeric drafts, text controllers, cursor selection, focus, and keyboard interaction local to the inline editor.
@@ -24,8 +24,8 @@ These rules define the approved Redux architecture implemented in `apps/ludava_a
 
 - Keep `AppState` and feature state immutable; use `Equatable` with explicit `props` for states and ViewModels. Compose pure reducers with `combineReducers` and `TypedReducer`.
 - Reducers perform no lookup, SDK call, I/O, or widget work. Return the original object for a genuine no-op. Reconcile an SDK snapshot and any edit invalidation atomically; ignore the identical snapshot object already held.
-- Keep an active edit only while all of these still match the authoritative session: process ID and start time; detection status and confidence; profile ID, executable hash, and memory base; field existence; and SDK write-target eligibility.
-- Preserve the failed-read exception: a failed read for the edited field alone does not clear its draft when `lastWriteResult.fieldId` identifies that field. Any other stale or invalid safety condition cancels editing.
+- Keep an active edit only while its originating process ID and start time, profile/build and executable identity, memory base, field existence, and field mapping/representation remain unchanged. Identity confidence alone does not change the origin.
+- Preserve a draft across same-target read updates, including failed or missing reads. Cancel it when the process/session target or field mapping changes, or when the user completes or cancels editing.
 - Use plain, typed, minimal actions ending in `Action`, with `final` fields and `const` constructors where applicable; do not use `Equatable` for actions. `BeginEditingAction` carries only `fieldId`; its reducer resolves the field from the SDK snapshot. Put global `InitializeAppAction` and `ShutdownRequestedAction` in `shared/state/app.actions.dart`, and trainer actions in the trainer feature.
 - An action may be handled by a reducer, middleware, both when each has work, or neither. Do not require pass-through handling or add forwarding actions when an SDK snapshot already represents the result. The sole approved mutable action payload is `ShutdownRequestedAction`'s cleanup-future collection.
 
@@ -40,7 +40,7 @@ These rules define the approved Redux architecture implemented in `apps/ludava_a
 
 ## Selectors, ViewModels, and widgets
 
-- Selectors are the sole path for reading or deriving Redux state for presentation. Start with one trainer-level selector class. Keep selectors pure: select fields, read/write results, edit eligibility, and other derived values without GetIt, dispatch, I/O, widget logic, a selector framework, or premature memoization. Selectors may group related selected values into Dart records when useful, but must not require presentation-only entities or wrappers.
+- Selectors are the sole path for reading or deriving Redux state for presentation. Start with one trainer-level selector class. Keep selectors pure: select fields, exact read/write results, Redux-owned editing identity, and other derived values without GetIt, dispatch, I/O, widget logic, a selector framework, or premature memoization. Selectors may group related selected values into Dart records when useful, but must not require presentation-only entities or wrappers.
 - Each widget that independently consumes Redux owns exactly one dedicated ViewModel used exclusively by that widget. The widget contains its own `StoreConnector<AppState, ViewModel>`; do not introduce connector-only widgets, share ViewModels between widgets, or pass one widget's ViewModel to another. Widgets without independent Redux responsibilities do not need ViewModels.
 - A connected widget may receive the store inside its `StoreConnector` converter solely to pass it to its GetIt-registered ViewModel factory. Its builder consumes only ViewModel fields and invokes ViewModel callbacks for Redux actions. Otherwise, widgets must not read `store.state`, invoke selectors, dispatch Redux actions, or resolve Redux/SDK services through GetIt. The connector's `AppState` generic parameter is wiring, not permission to expose state.
 - ViewModels expose selector results needed by their owning widget, not whole Redux state or unrelated data. Reuse SDK types such as `GameField` and `GameReadResult` where helpful. Do not create UI entities, duplicate SDK models, or add records and wrappers just to transport values. Simple display formatting belongs in the widget or a focused reusable utility. ViewModels expose final callbacks, not operation methods, policy, filtering, or subscriptions.
@@ -51,6 +51,7 @@ These rules define the approved Redux architecture implemented in `apps/ludava_a
 ## Synchronous write bridge
 
 - Preserve synchronous `GameWriteResult` handling through one small bridge using the same registered capability as middleware. Expose it as a final callback on the appropriate ViewModel and check the shared one-way SDK operation guard before the call.
+- Before invoking the SDK, verify that the active edit and current SDK snapshot still match the captured process/session, profile/build, memory base, and field mapping. Return the existing unsuccessful `none` result without calling the SDK when the origin is stale.
 - If the guard is closed, return synchronously without calling the SDK, using its defined unsuccessful sentinel:
 
   ```dart
@@ -64,7 +65,7 @@ These rules define the approved Redux architecture implemented in `apps/ludava_a
 - Never invent SDK result constructors, statuses, or success; do not call the SDK after the guard closes, convert writes to fire-and-forget actions, infer success from dispatch, or dispatch cancellation from the bridge.
 - `InlineValueEditor.onApplied` runs only after a successful write or existing unchanged-value behavior; it dispatches the edit-cancellation action for the reducer. Failed writes retain a valid draft and show SDK feedback. Preserve unchanged-value behavior and synchronous stream reentrancy. Flutter does not repeat the SDK's full write-validation matrix.
 
-The SDK remains responsible for current process/session identity, executable hash, profile and field evidence, memory base, user approval, type/range, complete preliminary read, complete native transfer, and matching read-back. Failed/partial reads are not zero. Unsupported, stale, ambiguous, or unverified targets fail closed according to the [game detection](features/game-detection.md) and [game memory](features/game-memory.md) contracts.
+The SDK remains responsible for current process/session identity, executable hash, registered profile and field membership, memory base, explicit user confirmation, type/range, complete preliminary read, complete native transfer, and matching read-back. Production catalog membership records owner approval; it does not authorize an operation without current runtime checks. Failed/partial reads are not zero. Unsupported, stale, ambiguous, or unverified targets fail closed according to the [game detection](features/game-detection.md) and [game memory](features/game-memory.md) contracts.
 
 ## Initialization and native shutdown
 
@@ -83,7 +84,7 @@ Follow the shared [testing conventions](TESTING.md) for naming, fixtures, safety
 
 | Test area | Owns |
 | --- | --- |
-| Reducers | No-op identity, eligibility, snapshot replacement, same-session draft preservation, the failed-read exception, and stale-session invalidation. |
+| Reducers | No-op identity, read-backed edit entry, snapshot replacement, same-target draft preservation, and stale-session or field-mapping invalidation. |
 | Middleware | Action routing, refresh/process selection, stream projection, subscribe-before-connect, idempotent initialization, error reporting, and terminal guards. |
 | Lifecycle | Startup idempotence, cleanup collection/failures, exactly-once disposal, native veto, close failure/retry, overlapping requests, tree-disposal fallback, shutdown interaction/focus gating, and store lifetime. |
 | Write bridge | Synchronous results, failures, shutdown rejection, and reentrant SDK events. |

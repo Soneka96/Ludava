@@ -19,8 +19,6 @@ abstract final class ACrackInTimeBcus98124Profile {
     buildId: 'BCUS98124',
     executable: 'EBOOT.BIN',
     executableHash: executableHash,
-    readStatus: VerificationStatus.verified,
-    writeStatus: VerificationStatus.verified,
     fields: {
       'bolts': GameField(
         id: 'bolts',
@@ -28,8 +26,6 @@ abstract final class ACrackInTimeBcus98124Profile {
         guestOffset: 0x00e24e68,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
-        readStatus: VerificationStatus.verified,
-        writeStatus: VerificationStatus.verified,
         minimumValue: 0,
         maximumValue: GameMemoryConstants.maxUnsigned32,
       ),

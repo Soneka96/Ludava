@@ -19,15 +19,8 @@ class WriteGameFieldUseCase {
 
   /// Validates [params], reads the field, writes the value, and verifies it.
   GameWriteResult execute(WriteGameFieldParams params) {
-    if (!params.profile.canWrite) {
-      return GameWriteResult(
-        status: GameWriteStatus.unsupportedProfile,
-        fieldId: params.fieldId,
-        requestedValue: params.value,
-      );
-    }
     final field = params.profile.findField(params.fieldId);
-    if (field == null || !field.canWrite) {
+    if (field == null) {
       return GameWriteResult(
         status: GameWriteStatus.unsupportedField,
         fieldId: params.fieldId,

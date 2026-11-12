@@ -1,7 +1,7 @@
 # Task 05 — Live commas, caret accuracy, paste and undo/redo
 
 **Status:** Planned, not implemented or live-validated.
-**Prerequisite:** The existing static verification-status cleanup in docs/ROADMAP.md must be merged before any Flutter UI task.
+**Prerequisite:** PR #16 must be merged before this task begins.
 **Dependencies:** Task 01.
 **PR scope:** One primary responsibility in a focused branch from latest merged main.
 
@@ -9,7 +9,8 @@
 
 - Adapt existing trainer_value_formatter.dart or a focused TextInputFormatter to group integer digits live (e.g. 1000 becomes 1,000).
 - Preserve logical caret location, selection, composing text, insertion/deletion around separators, paste and text-edit history; avoid controller rewrites that break IMEs.
-- Parse ungrouped integer values, validate type/range against field definition, and prevent empty or invalid drafts from becoming a write of zero.
+- Accept digits-only input where applicable and parse integer text without treating empty, unparseable, or non-representable text as a value. Never fabricate a write of zero for an invalid or empty draft.
+- Keep text formatting and parsing separate from SDK field-range policy; the SDK evaluates permitted ranges when a write is submitted.
 
 ## Acceptance criteria
 
@@ -19,7 +20,7 @@
 
 ## Verification ownership
 
-- Pure formatter tests own offset/selection/composition, paste, range and undo-specific regressions.
+- Pure formatter tests own digit filtering, parsing, grouping, offset/selection/composition, paste and undo/redo regressions. They do not duplicate the SDK's write-range policy.
 - Focused input tests verify integration without retesting the framework.
 
 ## Explicit exclusions

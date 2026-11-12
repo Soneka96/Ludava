@@ -43,14 +43,12 @@ abstract final class TrainerSelectors {
   static bool hasMemoryBase(AppState state) =>
       session(state).memoryBase != null;
 
-  /// Selects each profile field with the SDK outcomes and row permissions.
+  /// Selects each profile field with exact SDK outcomes and edit state.
   static List<
     ({
       GameField field,
       GameReadResult? readResult,
       GameWriteResult? writeResult,
-      bool canRead,
-      bool canWrite,
       bool isEditing,
     })
   >
@@ -63,18 +61,13 @@ abstract final class TrainerSelectors {
       currentProfile.fields.values.map(
         (field) => (
           field: field,
-          readResult: currentSession.readResults[field.id],
+          readResult: currentSession.readResults[field.id]?.fieldId == field.id
+              ? currentSession.readResults[field.id]
+              : null,
           writeResult: currentSession.lastWriteResult?.fieldId == field.id
               ? currentSession.lastWriteResult
               : null,
-          canRead: currentProfile.canRead && field.canRead,
-          canWrite: TrainerWriteEligibility.isWriteEligible(
-            currentSession,
-            field,
-          ),
-          isEditing:
-              state.trainer.editingFieldId == field.id &&
-              TrainerWriteEligibility.hasValidTarget(currentSession, field),
+          isEditing: state.trainer.editingFieldId == field.id,
         ),
       ),
     );
