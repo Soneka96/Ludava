@@ -12,7 +12,7 @@ abstract final class IntoTheNexusBcus99245Profile {
   static const String executableHash =
       'PPU-8cb9b75e489362559db2d8a2c65cd93ebe2e4037';
 
-  /// Exposes the Bolts counter for this executable.
+  /// Exposes Bolts and Raritanium for this executable.
   static final GameProfile profile = GameProfile(
     id: id,
     gameName: 'Ratchet & Clank: Into the Nexus',
@@ -26,6 +26,17 @@ abstract final class IntoTheNexusBcus99245Profile {
         id: 'bolts',
         name: 'Bolts',
         guestOffset: 0x4aefbc3c,
+        valueType: MemoryValueType.unsigned32,
+        byteOrder: ByteOrder.big,
+        readStatus: VerificationStatus.verified,
+        writeStatus: VerificationStatus.researchConfirmed,
+        minimumValue: 0,
+        maximumValue: GameMemoryConstants.maxUnsigned32,
+      ),
+      'raritanium': GameField(
+        id: 'raritanium',
+        name: 'Raritanium',
+        guestOffset: 0x4127b8a0,
         valueType: MemoryValueType.unsigned32,
         byteOrder: ByteOrder.big,
         readStatus: VerificationStatus.verified,
